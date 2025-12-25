@@ -1,0 +1,40 @@
+{
+  "manifest_version": 2,
+  "name": "Tsukeru for EZFurigana",
+  "version": "2.0.1",
+  "description": "Add furigana (reading annotations) to Japanese text on any website using EZFurigana backend",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs",
+    "https://www.ezfurigana.com/*"
+  ],
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "tsukeru-furigana@example.com",
+      "strict_min_version": "91.0",
+      "data_collection_permissions": {
+        "required": ["none"],
+        "optional": []
+      }
+    }
+  },
+  "commands": {}
+}

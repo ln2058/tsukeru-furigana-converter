@@ -8,13 +8,13 @@ This extension is designed with a privacy-first, minimal-permissions philosophy.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 1.x     | :white_check_mark: |
+| 2.x     | :white_check_mark: |
 
 ---
 
 ## Data Handling
 
-- Text is sent to the backend only when the user explicitly clicks "Apply Furigana" or uses the keyboard shortcut on the active tab.
+- Text is sent to the backend only when the user explicitly clicks "Apply Furigana" (and the Chrome/Edge keyboard shortcut is used on the active tab).
 - Only visible Japanese text in the active tab is processed.
 - No background scraping or passive content collection occurs.
 
@@ -32,15 +32,15 @@ This extension is designed with a privacy-first, minimal-permissions philosophy.
 
 ## Storage
 
-- User settings are stored in Chrome Sync Storage.
-- Optional vocabulary data is stored locally using Chrome Local Storage.
+- User settings are stored in Sync Storage (Chrome/Edge/Firefox).
+- Optional vocabulary data is stored locally using Local Storage.
 - No browsing history, page content, or personal data is stored or logged.
 
 ---
 
 ## Network Access
 
-- The extension makes network requests only to the EZFurigana API domain declared in host_permissions.
+- The extension makes network requests only to the EZFurigana API domain declared in host permissions or permissions (Firefox MV2).
 - No wildcard URL access is used.
 - No third-party analytics, trackers, ads, or telemetry are included.
 - All requests are initiated by explicit user actions.
@@ -50,7 +50,8 @@ This extension is designed with a privacy-first, minimal-permissions philosophy.
 ## Permissions
 
 - Uses activeTab to operate only on the currently active page.
-- Does not request access to all URLs or background page content.
+- Chrome/Edge uses MV3 scripting and optional context menu/shortcut features.
+- Firefox is configured in a stricter, popup-only mode without always-on content scripts or global shortcuts.
 - Permissions are limited to the minimum required for functionality.
 
 ---

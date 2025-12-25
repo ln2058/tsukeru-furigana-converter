@@ -1,0 +1,392 @@
+/* Furigana styling - minimal impact on page layout */
+ruby {
+  ruby-position: over;
+  ruby-align: center;
+  cursor: pointer;
+  position: relative;
+  /* Inherit line-height from parent to preserve page layout */
+}
+
+ruby:hover {
+  background-color: rgba(102, 126, 234, 0.1);
+  border-radius: 2px;
+}
+
+rt {
+  font-size: 0.55em;
+  line-height: 1;
+  text-align: center;
+  user-select: none;
+  transition: opacity 0.15s ease;
+  color: #667eea;
+  font-weight: 500;
+  /* Let browser handle positioning naturally */
+}
+
+/* Click-to-hide feature */
+ruby.tsukeru-hidden rt {
+  opacity: 0;
+  transform: translateY(-3px);
+  pointer-events: none;
+}
+
+ruby.tsukeru-hidden {
+  cursor: pointer;
+}
+
+ruby.tsukeru-hidden:hover::after {
+  content: "👁";
+  position: absolute;
+  top: -1.2em;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.8em;
+  opacity: 0.5;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  rt {
+    opacity: 0.9;
+    color: #a5b4fc;
+  }
+
+  ruby:hover {
+    background-color: rgba(165, 180, 252, 0.12);
+  }
+}
+
+/* Smooth fade-in for newly added furigana */
+@keyframes furiganaFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+ruby[data-tsukeru-processed="true"] rt {
+  animation: furiganaFadeIn 0.3s ease;
+}
+
+/* Ambiguous reading indicator (words with multiple readings) */
+.ambiguous-reading rt .alt-indicator {
+  color: #f59e0b;
+  font-weight: bold;
+  margin-left: 2px;
+  cursor: help;
+}
+
+.ambiguous-reading {
+  position: relative;
+}
+
+.ambiguous-reading:hover {
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+/* Highlight vocab words (if the backend includes vocab data) */
+.vocab-word {
+  cursor: help;
+  border-bottom: 1px dotted currentColor;
+  transition: background-color 0.2s ease;
+}
+
+.vocab-word:hover {
+  background-color: rgba(59, 130, 246, 0.12);
+}
+
+/* Dictionary tooltip for inline popups */
+.tsukeru-word-tooltip {
+  position: fixed;
+  background-color: #ffffff;
+  color: #1f2937;
+  padding: 14px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  z-index: 2147483646;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+  pointer-events: none;
+  max-width: 320px;
+  min-width: 220px;
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+}
+
+.tsukeru-word-tooltip.show {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.tsukeru-word-tooltip .tsukeru-tooltip-word {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 6px;
+  border-bottom: 2px solid #3b82f6;
+  padding-bottom: 4px;
+  padding-right: 32px;
+}
+
+.tsukeru-word-tooltip .tsukeru-tooltip-reading {
+  font-size: 1rem;
+  color: #3b82f6;
+  margin-bottom: 10px;
+}
+
+.tsukeru-word-tooltip .tsukeru-tooltip-sense {
+  margin-bottom: 8px;
+  padding-left: 8px;
+  border-left: 2px solid #e5e7eb;
+}
+
+.tsukeru-word-tooltip .tsukeru-tooltip-pos {
+  font-size: 0.7rem;
+  color: #6b7280;
+  font-style: italic;
+  margin-bottom: 3px;
+}
+
+.tsukeru-word-tooltip .tsukeru-tooltip-gloss {
+  color: #4b5563;
+  line-height: 1.5;
+  font-size: 0.875rem;
+}
+
+.tsukeru-word-tooltip .tsukeru-tooltip-extra {
+  text-align: center;
+  margin-top: 8px;
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+.tsukeru-word-tooltip .tsukeru-tooltip-loading {
+  text-align: center;
+  color: #6b7280;
+  padding: 8px 0;
+}
+
+.tsukeru-word-tooltip .tsukeru-tooltip-error {
+  text-align: center;
+  color: #ef4444;
+  padding: 8px 0;
+}
+
+.tsukeru-word-tooltip .tsukeru-tooltip-close,
+.tsukeru-word-tooltip .tsukeru-tooltip-speaker {
+  position: absolute;
+  top: 8px;
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}
+
+.tsukeru-word-tooltip .tsukeru-tooltip-close {
+  right: 8px;
+  font-size: 1.2rem;
+}
+
+.tsukeru-word-tooltip .tsukeru-tooltip-speaker {
+  right: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tsukeru-word-tooltip .tsukeru-tooltip-speaker.speaking {
+  color: #3b82f6;
+}
+
+.tsukeru-word-tooltip::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tsukeru-word-tooltip::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+
+.tsukeru-word-tooltip::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.tsukeru-word-tooltip::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@media (prefers-color-scheme: dark) {
+  .tsukeru-word-tooltip {
+    background-color: #1f2937;
+    color: #f9fafb;
+    border-color: #374151;
+  }
+
+  .tsukeru-word-tooltip .tsukeru-tooltip-word {
+    color: #f9fafb;
+    border-bottom-color: #60a5fa;
+  }
+
+  .tsukeru-word-tooltip .tsukeru-tooltip-reading {
+    color: #60a5fa;
+  }
+
+  .tsukeru-word-tooltip .tsukeru-tooltip-sense {
+    border-left-color: #374151;
+  }
+
+  .tsukeru-word-tooltip .tsukeru-tooltip-gloss {
+    color: #d1d5db;
+  }
+
+  .tsukeru-word-tooltip .tsukeru-tooltip-pos {
+    color: #9ca3af;
+  }
+
+  .tsukeru-word-tooltip .tsukeru-tooltip-loading {
+    color: #9ca3af;
+  }
+
+  .tsukeru-word-tooltip .tsukeru-tooltip-close,
+  .tsukeru-word-tooltip .tsukeru-tooltip-speaker {
+    color: #9ca3af;
+  }
+}
+
+/* Print styles - hide furigana in print mode unless explicitly wanted */
+@media print {
+  rt {
+    font-size: 0.4em;
+    color: #666;
+  }
+}
+
+/* Accessibility - respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  ruby, rt, .vocab-word {
+    transition: none;
+    animation: none;
+  }
+
+  ruby.tsukeru-hidden rt {
+    transition: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  rt {
+    color: inherit;
+    font-weight: 600;
+  }
+
+  ruby:hover {
+    outline: 2px solid currentColor;
+    background-color: transparent;
+  }
+}
+
+/* Ensure minimal layout disruption */
+ruby {
+  display: ruby;
+  white-space: nowrap;
+}
+
+/* Prevent text selection issues */
+ruby::selection {
+  background: rgba(102, 126, 234, 0.2);
+}
+
+rt::selection {
+  background: transparent;
+}
+
+/* Vocabulary saved animation */
+ruby.vocab-saved {
+  animation: vocabSavedPulse 0.5s ease;
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+
+@keyframes vocabSavedPulse {
+  0%, 100% {
+    transform: scale(1);
+    background-color: rgba(16, 185, 129, 0.15);
+  }
+  50% {
+    transform: scale(1.05);
+    background-color: rgba(16, 185, 129, 0.3);
+  }
+}
+
+/* Highlight animation for vocab mode click-to-scroll */
+ruby.tsukeru-highlight {
+  animation: tsukeruHighlight 3s ease;
+  background-color: rgba(251, 191, 36, 0.4) !important;
+  border-radius: 3px;
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
+}
+
+@keyframes tsukeruHighlight {
+  0% {
+    background-color: rgba(251, 191, 36, 0.6);
+    box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.4);
+  }
+  50% {
+    background-color: rgba(251, 191, 36, 0.4);
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+/* Highlight modes controlled via data-tsukeru-highlight on <html> */
+:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt],
+:root[data-tsukeru-highlight="pos"] ruby[data-pos] {
+  position: relative;
+  z-index: 0;
+  padding: 0 1px;
+  border-radius: 1.5px;
+}
+
+:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt]::before,
+:root[data-tsukeru-highlight="pos"] ruby[data-pos]::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  height: 1.05em; /* keep highlight behind base text, not over furigana */
+  border-radius: 2px;
+  background: var(--tsukeru-highlight, transparent);
+  z-index: -2; /* keep highlight behind surrounding elements and furigana */
+  pointer-events: none;
+}
+
+:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="5"] { --tsukeru-highlight: #d1fae5; color: #065f46; }
+:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="4"] { --tsukeru-highlight: #ccfbf1; color: #0f766e; }
+:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="3"] { --tsukeru-highlight: #bfdbfe; color: #1d4ed8; }
+:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="2"] { --tsukeru-highlight: #fde68a; color: #92400e; }
+:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="1"] { --tsukeru-highlight: #fecdd3; color: #9f1239; }
+:root[data-tsukeru-highlight="jlpt"] ruby:not([data-jlpt]) { --tsukeru-highlight: #e5e7eb; color: #111827; }
+
+:root[data-tsukeru-highlight="pos"] ruby[data-pos="Noun" i] { --tsukeru-highlight: #e0f2fe; color: #1d4ed8; }
+:root[data-tsukeru-highlight="pos"] ruby[data-pos="Verb" i] { --tsukeru-highlight: #fee2e2; color: #b91c1c; }
+:root[data-tsukeru-highlight="pos"] ruby[data-pos="Adjective" i] { --tsukeru-highlight: #fef9c3; color: #92400e; }
+:root[data-tsukeru-highlight="pos"] ruby[data-pos="Adverb" i] { --tsukeru-highlight: #ede9fe; color: #6b21a8; }
+:root[data-tsukeru-highlight="pos"] ruby[data-pos="Particle" i] { --tsukeru-highlight: #dcfce7; color: #166534; }
+:root[data-tsukeru-highlight="pos"] ruby[data-pos]:not([data-pos="Noun" i]):not([data-pos="Verb" i]):not([data-pos="Adjective" i]):not([data-pos="Adverb" i]):not([data-pos="Particle" i]) {
+  --tsukeru-highlight: #e5e7eb;
+  color: #111827;
+}
