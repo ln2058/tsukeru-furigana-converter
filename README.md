@@ -2,8 +2,8 @@
   <img src="chrome/icons/icon128.png" alt="Tsukeru Logo" width="128">
   <h1>Tsukeru – Furigana Converter</h1>
   <p>Chrome/Edge + Firefox Extension</p>
-  <a href="https://buymeacoffee.com/riamua">
-    <img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support%20My%20Work-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me A Coffee">
+  <a href="https://www.buymeacoffee.com/riamua" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 44px !important;width: 158px !important;">
   </a>
 </div>
 
