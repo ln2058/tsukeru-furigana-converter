@@ -1,69 +1,64 @@
-# Security & Privacy
-
-This extension is designed with a privacy-first, minimal-permissions philosophy. It processes only the data required to generate furigana and does not collect or store personal or browsing information.
+# Security Policy
 
 ---
 
 ## Supported Versions
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 2.x     | :white_check_mark: |
+| Version | Supported |
+| ------- | --------- |
+| 3.0.1   | ✅        |
 
 ---
 
-## Data Handling
+## Permissions & Host Access
 
-- Text is sent to the backend only when the user explicitly clicks "Apply Furigana" (and the Chrome/Edge keyboard shortcut is used on the active tab).
-- Only visible Japanese text in the active tab is processed.
-- No background scraping or passive content collection occurs.
+The Chrome, Edge, and Firefox builds explicitly avoid `<all_urls>` permissions. The extension operates under `activeTab` only — no DOM scanning occurs until the user explicitly triggers it via the popup or keyboard shortcut.
 
-### Content Injection & Sanitization
-
-- Backend responses are strictly sanitized before being injected into the page.
-- Only the following elements are allowed:
-  - ruby
-  - rt
-  - plain text
-- All other HTML, attributes, scripts, styles, and event handlers are rejected.
-- This prevents script injection, DOM clobbering, and XSS vulnerabilities.
+All outbound network traffic is restricted by `host_permissions` to `https://www.ezfurigana.com/*`. No other domains are contacted at any point.
 
 ---
 
-## Storage
+## XSS Mitigation
 
-- User settings are stored in Sync Storage (Chrome/Edge/Firefox).
-- Optional vocabulary data is stored locally using Local Storage.
-- No browsing history, page content, or personal data is stored or logged.
+### DOM Traversal
 
----
+The extension uses a native `DOMParser` to read and traverse the page. No regex-based HTML parsing is used at any stage.
 
-## Network Access
+### Payload Handling
 
-- The extension makes network requests only to the EZFurigana API domain declared in host permissions or permissions (Firefox MV2).
-- No wildcard URL access is used.
-- No third-party analytics, trackers, ads, or telemetry are included.
-- All requests are initiated by explicit user actions.
+Before sending text to the API, the DOM is dismantled into raw text chunks paired with positional markers. No HTML structure is forwarded to the server.
 
----
+### Sanitization on Injection
 
-## Permissions
+API responses are passed through a strict allowlist sanitizer before being written back to the page. The sanitizer uses a `<template>` element and a recursive walker that permits only:
 
-- Uses activeTab to operate only on the currently active page.
-- Chrome/Edge uses MV3 scripting and optional context menu/shortcut features.
-- Firefox is configured in a stricter, popup-only mode without always-on content scripts or global shortcuts.
-- Permissions are limited to the minimum required for functionality.
+- `<ruby>`, `<rt>` — furigana annotations
+- `<mark>` — search highlights
+- `<span data-jlpt>` — JLPT level indicators
+
+All other elements, attributes, event handlers, and inline scripts are stripped. This covers XSS, DOM clobbering, and attribute injection from malformed or malicious API responses.
 
 ---
 
-## User Control
+## Rate Limiting
 
-- Users can remove injected furigana from the page at any time.
-- Dynamic content watching can be disabled from the extension settings.
-- The extension performs no actions when disabled.
+The service worker enforces a token-bucket rate limit before dispatching API requests. The ceiling is **50,000 characters per 10-second window**. Requests that would exceed this are dropped, preventing accidental API flooding on unusually large DOM structures.
 
 ---
 
-## Reporting Security Issues
+## Data & Storage
 
-If you discover a security or privacy issue, please report it responsibly by opening a private GitHub issue or contacting the maintainer directly.
+**No passive collection.** The extension performs no background scanning. Page content is only read from the active tab when explicitly triggered by the user.
+
+**IndexedDB caching.** API results are cached locally via IndexedDB to reduce repeat network requests. Cached dictionary entries expire after a fixed TTL.
+
+**Local storage only.** All user settings are written to `chrome.storage` (Sync or Local). No data leaves the browser except for the Japanese text sent to the EZFurigana API during an explicit apply action.
+
+**Zero telemetry.** The codebase contains no analytics, telemetry, or third-party tracking of any kind.
+
+---
+
+## Reporting a Vulnerability
+
+If you find a security issue, open a private GitHub issue or contact the maintainer directly. Please do not disclose vulnerabilities publicly before they have been addressed.
+

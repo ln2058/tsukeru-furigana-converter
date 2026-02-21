@@ -3,838 +3,89 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tsukeru for EZFurigana</title>
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    html, body {
-      width: 340px;
-      max-height: 520px;
-      overflow: hidden;
-    }
-
-    body {
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      margin: 0;
-      background: #f8fafc;
-      color: #1e293b;
-    }
-
-    .header {
-      background: white;
-      padding: 14px 16px;
-      border-bottom: 1px solid #e2e8f0;
-    }
-
-    .header h1 {
-      font-size: 15px;
-      font-weight: 600;
-      margin: 0;
-      color: #1e293b;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .header .subtitle {
-      font-size: 11px;
-      color: #64748b;
-      font-weight: 400;
-      margin-top: 2px;
-    }
-
-    .content {
-      background: white;
-      height: 320px;
-      overflow-y: auto;
-      overflow-x: hidden;
-    }
-
-    /* Ensure no nested scrollbars - content handles all scrolling */
-    .tab-content {
-      overflow: visible;
-    }
-
-    .vocab-list,
-    .vocabmode-table-container {
-      overflow: visible;
-    }
-
-    .quick-toggle {
-      padding: 12px 16px;
-      background: #f8fafc;
-      border-bottom: 1px solid #e2e8f0;
-    }
-
-    .toggle-container {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: white;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid #e2e8f0;
-    }
-
-    .toggle-label {
-      font-size: 13px;
-      font-weight: 500;
-      color: #1e293b;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .toggle-status {
-      font-size: 10px;
-      font-weight: 400;
-      color: #64748b;
-      margin-top: 2px;
-    }
-
-    /* Custom Toggle Switch */
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 40px;
-      height: 22px;
-    }
-
-    .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #cbd5e1;
-      transition: 0.2s;
-      border-radius: 22px;
-    }
-
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 16px;
-      width: 16px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: 0.2s;
-      border-radius: 50%;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-    }
-
-    input:checked + .slider {
-      background: #10b981;
-    }
-
-    input:checked + .slider:before {
-      transform: translateX(18px);
-    }
-
-    .settings-section {
-      padding: 12px 16px;
-    }
-
-    .section-title {
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #64748b;
-      margin: 0 0 8px 0;
-    }
-
-    .setting-group {
-      margin-bottom: 12px;
-    }
-
-    .setting-group:last-child {
-      margin-bottom: 0;
-    }
-
-    label {
-      display: block;
-      font-size: 12px;
-      font-weight: 500;
-      margin-bottom: 4px;
-      color: #475569;
-    }
-
-    input[type="text"], select {
-      width: 100%;
-      padding: 7px 10px;
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      font-size: 12px;
-      transition: border-color 0.2s;
-      font-family: inherit;
-      background: white;
-    }
-
-    input[type="text"]:focus, select:focus {
-      outline: none;
-      border-color: #3b82f6;
-    }
-
-    .radio-group {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .radio-option {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 8px;
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      background: #f8fafc;
-      cursor: pointer;
-      font-size: 12px;
-    }
-
-    .radio-option input[type="radio"] {
-      accent-color: #3b82f6;
-      margin: 0;
-    }
-
-    .highlight-legend {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      margin-top: 8px;
-    }
-
-    .legend-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .legend-label {
-      font-size: 11px;
-      color: #475569;
-      font-weight: 600;
-    }
-
-    .legend-chip {
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 10px;
-      color: #0f172a;
-      border: 1px solid #e2e8f0;
-      background: #f8fafc;
-    }
-
-    .checkbox-wrapper {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px;
-      background: #f8fafc;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-
-    .checkbox-wrapper:hover {
-      background: #f1f5f9;
-    }
-
-    .checkbox-wrapper input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
-      accent-color: #3b82f6;
-    }
-
-    .checkbox-wrapper label {
-      margin: 0;
-      cursor: pointer;
-      flex: 1;
-      font-weight: 400;
-    }
-
-    .info {
-      font-size: 10px;
-      color: #64748b;
-      margin-top: 3px;
-      line-height: 1.3;
-    }
-
-    .actions {
-      padding: 12px 16px;
-      background: #f8fafc;
-      border-top: 1px solid #e2e8f0;
-    }
-
-    button {
-      width: 100%;
-      padding: 8px;
-      background: #3b82f6;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.15s;
-      margin-bottom: 6px;
-    }
-
-    button:hover {
-      background: #2563eb;
-    }
-
-    button:active {
-      background: #1d4ed8;
-    }
-
-    button.secondary {
-      background: white;
-      color: #64748b;
-      border: 1px solid #e2e8f0;
-    }
-
-    button.secondary:hover {
-      background: #f8fafc;
-      border-color: #cbd5e1;
-    }
-
-    .status {
-      font-size: 11px;
-      padding: 8px 10px;
-      border-radius: 6px;
-      margin-top: 8px;
-      text-align: center;
-      display: none;
-      font-weight: 400;
-    }
-
-    .status.success {
-      background: #d1fae5;
-      color: #065f46;
-      border: 1px solid #6ee7b7;
-    }
-
-    .status.error {
-      background: #fee2e2;
-      color: #991b1b;
-      border: 1px solid #fca5a5;
-    }
-
-    .status.info {
-      background: #dbeafe;
-      color: #1e40af;
-      border: 1px solid #93c5fd;
-    }
-
-    .divider {
-      height: 1px;
-      background: #e2e8f0;
-      margin: 12px 0;
-    }
-
-    .shortcut-hint {
-      font-size: 10px;
-      color: #64748b;
-      text-align: center;
-      padding: 6px;
-      background: white;
-      border-radius: 4px;
-      margin-top: 6px;
-      border: 1px solid #e2e8f0;
-    }
-
-    .shortcut-hint kbd {
-      background: #f8fafc;
-      padding: 2px 5px;
-      border-radius: 3px;
-      border: 1px solid #cbd5e1;
-      font-family: monospace;
-      font-size: 9px;
-    }
-
-    /* Tab Navigation */
-    .tab-navigation {
-      display: flex;
-      background: white;
-      border-bottom: 1px solid #e2e8f0;
-    }
-
-    .tab-btn {
-      flex: 1;
-      padding: 10px;
-      background: transparent;
-      border: none;
-      border-bottom: 2px solid transparent;
-      font-size: 12px;
-      font-weight: 500;
-      color: #64748b;
-      cursor: pointer;
-      transition: all 0.15s;
-      margin: 0;
-      box-shadow: none;
-    }
-
-    .tab-btn:hover {
-      background: #f8fafc;
-      color: #1e293b;
-      transform: none;
-    }
-
-    .tab-btn.active {
-      color: #3b82f6;
-      border-bottom-color: #3b82f6;
-      background: white;
-    }
-
-    .tab-content {
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
-    }
-
-    /* Vocabulary Styles */
-    .vocab-header {
-      padding: 10px 16px;
-      background: #f8fafc;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-      border-bottom: 1px solid #e2e8f0;
-    }
-
-    .vocab-stats {
-      flex: 1;
-      color: #1e293b;
-      font-size: 12px;
-      font-weight: 500;
-    }
-
-    .vocab-action-btn {
-      padding: 5px 10px;
-      background: white;
-      color: #475569;
-      border: 1px solid #e2e8f0;
-      border-radius: 4px;
-      font-size: 10px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s;
-      margin: 0;
-      width: auto;
-      box-shadow: none;
-    }
-
-    .vocab-action-btn:hover {
-      background: #f8fafc;
-      border-color: #cbd5e1;
-      transform: none;
-    }
-
-    .vocab-action-btn.danger:hover {
-      background: #fef2f2;
-      color: #dc2626;
-      border-color: #fca5a5;
-    }
-
-    .vocab-search {
-      padding: 10px 16px;
-      background: white;
-      border-bottom: 1px solid #e2e8f0;
-    }
-
-    .vocab-search input {
-      width: 100%;
-      padding: 6px 10px;
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      font-size: 12px;
-    }
-
-    .vocab-list {
-      background: white;
-    }
-
-    .vocab-empty {
-      text-align: center;
-      padding: 30px 20px;
-      color: #64748b;
-    }
-
-    .vocab-empty-text {
-      font-size: 12px;
-      font-weight: 500;
-      margin-bottom: 4px;
-      color: #64748b;
-    }
-
-    .vocab-empty-hint {
-      font-size: 10px;
-      color: #94a3b8;
-    }
-
-    .vocab-item {
-      padding: 10px 14px;
-      border-bottom: 1px solid #f1f5f9;
-      transition: background 0.15s;
-    }
-
-    .vocab-item:hover {
-      background: #fafbfc;
-    }
-
-    .vocab-item-header {
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-      margin-bottom: 4px;
-    }
-
-    .vocab-word {
-      font-size: 14px;
-      font-weight: 600;
-      color: #1e293b;
-    }
-
-    .vocab-reading {
-      font-size: 11px;
-      color: #64748b;
-      font-weight: 400;
-    }
-
-    .vocab-meta {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 4px;
-      flex-wrap: wrap;
-    }
-
-    .vocab-badge {
-      font-size: 8px;
-      padding: 1px 5px;
-      border-radius: 2px;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.2px;
-      background: #f1f5f9;
-      color: #475569;
-    }
-
-    .vocab-badge.pos {
-      background: #f1f5f9;
-      color: #64748b;
-    }
-
-    .jlpt-tag {
-      display: inline-flex;
-      align-items: center;
-      padding: 2px 6px;
-      border-radius: 10px;
-      font-weight: 600;
-      font-size: 10px;
-      background: #e5e7eb;
-      color: #111827;
-      line-height: 1;
-      white-space: nowrap;
-    }
-
-    /* Shared JLPT palette for badges and table tags */
-    .vocab-badge.jlpt.jlpt-5, .jlpt-tag.jlpt-5 { background: #d1fae5; color: #065f46; }
-    .vocab-badge.jlpt.jlpt-4, .jlpt-tag.jlpt-4 { background: #ccfbf1; color: #0f766e; }
-    .vocab-badge.jlpt.jlpt-3, .jlpt-tag.jlpt-3 { background: #bfdbfe; color: #1d4ed8; }
-    .vocab-badge.jlpt.jlpt-2, .jlpt-tag.jlpt-2 { background: #fde68a; color: #92400e; }
-    .vocab-badge.jlpt.jlpt-1, .jlpt-tag.jlpt-1 { background: #fecdd3; color: #9f1239; }
-    .vocab-badge.jlpt:not([class*="jlpt-"]), .jlpt-tag:not([class*="jlpt-"]) { background: #e5e7eb; color: #111827; }
-
-    .vocab-definition {
-      margin: 4px 0 6px;
-      font-size: 12px;
-      color: #1e293b;
-      line-height: 1.4;
-      font-weight: 500;
-    }
-
-    .saved-word-highlight {
-      background: rgba(251, 191, 36, 0.4);
-      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.25);
-      border-radius: 3px;
-      padding: 1px 2px;
-    }
-
-    ruby.saved-word-highlight {
-      padding: 1px 2px;
-    }
-
-    ruby.saved-word-highlight rt {
-      color: #1f2937;
-    }
-
-    .vocab-sentence {
-      font-size: 11px;
-      line-height: 1.6;
-      color: #475569;
-      background: #f8fafc;
-      padding: 6px 8px;
-      border-radius: 4px;
-      margin-bottom: 4px;
-      border-left: 2px solid #e2e8f0;
-      word-break: break-word;
-    }
-
-    .vocab-sentence ruby {
-      ruby-position: over;
-    }
-
-    .vocab-sentence rt {
-      font-size: 0.55em;
-      color: #64748b;
-      font-weight: 400;
-    }
-
-    .vocab-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 9px;
-      color: #94a3b8;
-      margin-top: 4px;
-    }
-
-    .vocab-url {
-      color: #94a3b8;
-      text-decoration: none;
-      max-width: 180px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .vocab-url:hover {
-      color: #64748b;
-    }
-
-    .vocab-delete {
-      background: none;
-      border: none;
-      color: #cbd5e1;
-      cursor: pointer;
-      padding: 2px 4px;
-      border-radius: 2px;
-      font-size: 9px;
-      font-weight: 400;
-      transition: all 0.15s;
-      margin: 0;
-      width: auto;
-      box-shadow: none;
-    }
-
-    .vocab-delete:hover {
-      background: #fee2e2;
-      color: #ef4444;
-      transform: none;
-    }
-
-    /* Vocab Mode Styles */
-    .vocabmode-header {
-      padding: 10px 16px;
-      background: #f8fafc;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      border-bottom: 1px solid #e2e8f0;
-    }
-
-    .vocabmode-stats {
-      flex: 1;
-      color: #1e293b;
-      font-size: 12px;
-      font-weight: 500;
-    }
-
-    .vocabmode-filters {
-      padding: 8px 16px;
-      background: white;
-      display: flex;
-      gap: 6px;
-      border-bottom: 1px solid #e2e8f0;
-    }
-
-    .vocabmode-filters select,
-    .vocabmode-filters input {
-      padding: 4px 8px;
-      border: 1px solid #e2e8f0;
-      border-radius: 4px;
-      font-size: 10px;
-      background: white;
-    }
-
-    .vocabmode-filters select {
-      width: 70px;
-    }
-
-    .vocabmode-filters input {
-      flex: 1;
-      min-width: 60px;
-    }
-
-    .vocabmode-table-container {
-      background: white;
-    }
-
-    .vocabmode-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 11px;
-    }
-
-    .vocabmode-table thead {
-      position: sticky;
-      top: 0;
-      background: #f8fafc;
-      z-index: 1;
-    }
-
-    .vocabmode-table th {
-      padding: 6px 8px;
-      text-align: left;
-      font-weight: 600;
-      color: #64748b;
-      font-size: 9px;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-      border-bottom: 1px solid #e2e8f0;
-    }
-
-    .vocabmode-table th.sortable {
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .vocabmode-table th.sortable:hover {
-      background: #f1f5f9;
-    }
-
-    .vocabmode-table th.sorted-asc::after {
-      content: ' ↑';
-      font-size: 8px;
-    }
-
-    .vocabmode-table th.sorted-desc::after {
-      content: ' ↓';
-      font-size: 8px;
-    }
-
-    .vocabmode-table td {
-      padding: 6px 8px;
-      border-bottom: 1px solid #f1f5f9;
-      color: #1e293b;
-    }
-
-    .vocabmode-table tr:hover {
-      background: #fafbfc;
-    }
-
-    .vocabmode-table tbody tr {
-      cursor: pointer;
-    }
-
-    .vocabmode-table tbody tr:active {
-      background: #e0f2fe;
-    }
-
-    .vocabmode-table .word-cell {
-      font-weight: 500;
-    }
-
-    .vocabmode-table .reading-cell {
-      color: #64748b;
-    }
-
-    .vocabmode-table .jlpt-cell,
-    .vocabmode-table .pos-cell {
-      font-size: 9px;
-      color: #64748b;
-      white-space: nowrap;
-    }
-
-    .vocabmode-add-btn {
-      padding: 2px 6px;
-      background: white;
-      color: #10b981;
-      border: 1px solid #d1fae5;
-      border-radius: 3px;
-      font-size: 9px;
-      cursor: pointer;
-      transition: all 0.15s;
-      margin: 0;
-      width: auto;
-      box-shadow: none;
-    }
-
-    .vocabmode-add-btn:hover {
-      background: #d1fae5;
-      border-color: #10b981;
-      transform: none;
-    }
-
-    .vocabmode-add-btn.added {
-      background: #f1f5f9;
-      color: #94a3b8;
-      border-color: #e2e8f0;
-      cursor: default;
-    }
-
-    .vocabmode-empty {
-      text-align: center;
-      padding: 30px 20px;
-      color: #64748b;
-      display: none;
-    }
-
-    .vocabmode-empty.show {
-      display: block;
-    }
-  </style>
+  <title>Tsukeru</title>
+  <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <div class="header">
-    <h1>Tsukeru for EZFurigana</h1>
-    <div class="subtitle">Furigana for Japanese Websites</div>
+    <div class="header-left">
+      <div class="header-title-row">
+        <h1>Tsukeru</h1>
+        <span class="by-label">by EZFurigana</span>
+      </div>
+      <a href="https://buymeacoffee.com/riamua" target="_blank" class="header-support-text">
+        Help support new features! ♥
+      </a>
+    </div>
+    <div class="header-right">
+      <a href="https://github.com/ln2058/tsukeru-furigana-converter" target="_blank" title="View Source on GitHub" class="header-link-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.418 22 12c0-5.523-4.477-10-10-10z"></path>
+        </svg>
+      </a>
+      <a id="header-review-link" href="https://chromewebstore.google.com/detail/tsukeru-for-ezfurigana/lmfkndmjigoadbmidhlenapakagnbkpc/reviews" target="_blank" title="Leave a Review" class="header-link-icon star-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+      </a>
+      <a href="https://buymeacoffee.com/riamua" target="_blank" title="Buy Me a Coffee" class="header-link-icon coffee-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+          <line x1="6" y1="1" x2="6" y2="4"></line>
+          <line x1="10" y1="1" x2="10" y2="4"></line>
+          <line x1="14" y1="1" x2="14" y2="4"></line>
+        </svg>
+      </a>
+      <img src="icons/icon48.png" class="header-icon" alt="Tsukeru icon">
+    </div>
   </div>
 
   <!-- Tab Navigation -->
   <div class="tab-navigation">
-    <button class="tab-btn active" data-tab="settings">Settings</button>
-    <button class="tab-btn" data-tab="vocabmode">Vocab Mode</button>
-    <button class="tab-btn" data-tab="vocabulary">Saved</button>
+    <div class="tab-nav-inner">
+      <button class="tab-btn active" data-tab="vocabulary">Saved</button>
+      <button class="tab-btn" data-tab="vocabmode">Vocab Mode</button>
+      <button class="tab-btn" data-tab="settings">Settings</button>
+    </div>
   </div>
 
   <div class="content">
     <!-- Settings Tab -->
-    <div class="tab-content active" id="settings-tab">
+    <div class="tab-content" id="settings-tab">
     <div class="settings-section">
-      <div class="info">This extension only runs when you click Apply Furigana on the current tab.</div>
+      <div class="section-title">Furigana Appearance</div>
+
+      <div class="setting-group">
+        <div class="appearance-row">
+          <label for="rubySize">Size</label>
+          <div class="range-wrap">
+            <input type="range" id="rubySize" min="0.4" max="1.0" step="0.05">
+            <span class="range-value" id="rubySizeValue"></span>
+          </div>
+        </div>
+        <div class="appearance-row">
+          <label for="rubyColor">Color</label>
+          <input type="color" id="rubyColor">
+        </div>
+        <div class="appearance-row">
+          <label for="rubyWeight">Weight</label>
+          <select id="rubyWeight" style="width: auto; flex: 1;">
+            <option value="normal">Normal</option>
+            <option value="bold">Bold</option>
+          </select>
+        </div>
+      </div>
     </div>
     <div class="settings-section">
       <div class="section-title">Furigana Options</div>
+
+      <div class="setting-group">
+        <div class="checkbox-wrapper">
+          <input type="checkbox" id="watchDynamic">
+          <label for="watchDynamic">Enable on dynamic sites (YouTube, X.com)</label>
+        </div>
+      </div>
 
       <div class="setting-group">
         <label for="jlptLevel">JLPT Level Filter</label>
@@ -844,9 +95,7 @@
           <option value="3">N3</option>
           <option value="2">N2</option>
           <option value="1">N1 (Advanced)</option>
-          <option value="0">All Kanji</option>
         </select>
-        <div class="info">Show furigana for kanji at or above this difficulty</div>
       </div>
 
       <div class="setting-group">
@@ -863,7 +112,6 @@
           <input type="checkbox" id="firstOccurrenceOnly">
           <label for="firstOccurrenceOnly">First occurrence only</label>
         </div>
-        <div class="info">Only show furigana on the first appearance of each word</div>
       </div>
 
       <div class="setting-group">
@@ -882,35 +130,30 @@
             JLPT colors
           </label>
         </div>
-        <div class="info">Color-code furigana by part of speech or JLPT level (EZFurigana style). Off is default.</div>
-        <div class="highlight-legend">
-          <div class="legend-row">
-            <span class="legend-label">JLPT:</span>
-            <span class="legend-chip" style="background:#d1fae5;color:#065f46;">N5</span>
-            <span class="legend-chip" style="background:#ccfbf1;color:#0f766e;">N4</span>
-            <span class="legend-chip" style="background:#bfdbfe;color:#1d4ed8;">N3</span>
-            <span class="legend-chip" style="background:#fde68a;color:#92400e;">N2</span>
-            <span class="legend-chip" style="background:#fecdd3;color:#9f1239;">N1</span>
+        <details class="legend-details">
+          <summary>Color legend</summary>
+          <div class="highlight-legend">
+            <div class="legend-row">
+              <span class="legend-label">JLPT:</span>
+              <span class="legend-chip" style="background:#d1fae5;color:#065f46;">N5</span>
+              <span class="legend-chip" style="background:#ccfbf1;color:#0f766e;">N4</span>
+              <span class="legend-chip" style="background:#bfdbfe;color:#1d4ed8;">N3</span>
+              <span class="legend-chip" style="background:#fde68a;color:#92400e;">N2</span>
+              <span class="legend-chip" style="background:#fecdd3;color:#9f1239;">N1</span>
+            </div>
+            <div class="legend-row">
+              <span class="legend-label">POS:</span>
+              <span class="legend-chip" style="background:#e0f2fe;color:#1d4ed8;">Noun</span>
+              <span class="legend-chip" style="background:#fee2e2;color:#b91c1c;">Verb</span>
+              <span class="legend-chip" style="background:#fef9c3;color:#92400e;">Adj</span>
+              <span class="legend-chip" style="background:#ede9fe;color:#6b21a8;">Adv</span>
+              <span class="legend-chip" style="background:#dcfce7;color:#166534;">Particle</span>
+              <span class="legend-chip" style="background:#e5e7eb;color:#111827;">Other</span>
+            </div>
           </div>
-          <div class="legend-row">
-            <span class="legend-label">POS:</span>
-            <span class="legend-chip" style="background:#e0f2fe;color:#1d4ed8;">Noun</span>
-            <span class="legend-chip" style="background:#fee2e2;color:#b91c1c;">Verb</span>
-            <span class="legend-chip" style="background:#fef9c3;color:#92400e;">Adj</span>
-            <span class="legend-chip" style="background:#ede9fe;color:#6b21a8;">Adv</span>
-            <span class="legend-chip" style="background:#dcfce7;color:#166534;">Particle</span>
-            <span class="legend-chip" style="background:#e5e7eb;color:#111827;">Other</span>
-          </div>
-        </div>
+        </details>
       </div>
 
-      <div class="setting-group">
-        <div class="checkbox-wrapper">
-          <input type="checkbox" id="watchDynamic">
-          <label for="watchDynamic">Watch for dynamic content</label>
-        </div>
-        <div class="info">Apply furigana to content that loads after the page</div>
-      </div>
     </div>
     </div>
     <!-- End Settings Tab -->
@@ -924,60 +167,42 @@
         <button id="refreshVocabmodeBtn" class="vocab-action-btn">Refresh</button>
       </div>
 
-      <div class="vocabmode-filters">
-        <select id="vocabmodeJlptFilter">
-          <option value="all">All JLPT</option>
-          <option value="5">N5</option>
-          <option value="4">N4</option>
-          <option value="3">N3</option>
-          <option value="2">N2</option>
-          <option value="1">N1</option>
-        </select>
-        <select id="vocabmodePosFilter">
-          <option value="all">All POS</option>
-          <option value="Noun">Noun</option>
-          <option value="Verb">Verb</option>
-          <option value="Adjective">Adjective</option>
-          <option value="Adverb">Adverb</option>
-        </select>
-        <input type="text" id="vocabmodeSearch" placeholder="Filter...">
+      <div class="vm-controls">
+        <div class="vm-top-bar">
+          <input type="text" id="vocabmodeSearch" class="vm-search" placeholder="Search words…">
+          <button id="vmSortBtn" class="vm-sort-btn" title="Cycle sort order">⏱ Appearance</button>
+        </div>
+        <div class="vm-jlpt-pills">
+          <button class="vm-jlpt-pill active" data-jlpt="all">All</button>
+          <button class="vm-jlpt-pill n5" data-jlpt="5">N5</button>
+          <button class="vm-jlpt-pill n4" data-jlpt="4">N4</button>
+          <button class="vm-jlpt-pill n3" data-jlpt="3">N3</button>
+          <button class="vm-jlpt-pill n2" data-jlpt="2">N2</button>
+          <button class="vm-jlpt-pill n1" data-jlpt="1">N1</button>
+        </div>
       </div>
 
-      <div class="vocabmode-table-container">
-        <table class="vocabmode-table">
-          <thead>
-            <tr>
-              <th class="sortable" data-sort="word">Word</th>
-              <th class="sortable" data-sort="reading">Reading</th>
-              <th class="sortable" data-sort="jlpt">JLPT</th>
-              <th class="sortable" data-sort="pos">POS</th>
-              <th class="sortable" data-sort="frequency">Freq</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="vocabmodeBody">
-          </tbody>
-        </table>
-        <div class="vocabmode-empty" id="vocabmodeEmpty">
-          <div class="vocab-empty-text">No words found</div>
-          <div class="vocab-empty-hint">Apply furigana to the page first</div>
-        </div>
+      <div id="vocabmodeList" class="vm-list"></div>
+      <div class="vocabmode-empty" id="vocabmodeEmpty">
+        <div class="vocab-empty-text">No words found</div>
+        <div class="vocab-empty-hint">Apply furigana to the page first</div>
       </div>
     </div>
     <!-- End Vocab Mode Tab -->
 
     <!-- Vocabulary Tab -->
-    <div class="tab-content" id="vocabulary-tab">
+    <div class="tab-content active" id="vocabulary-tab">
       <div class="vocab-header">
         <div class="vocab-stats">
-          <span id="vocabCount">0 words saved</span>
+          <span id="vocabCount">0 saved</span>
         </div>
-        <button id="exportVocabBtn" class="vocab-action-btn">Export</button>
+        <button id="exportVocabBtn" class="vocab-action-btn">Export Anki</button>
+        <button id="exportAudioBtn" class="vocab-action-btn audio">+ Audio</button>
         <button id="clearVocabBtn" class="vocab-action-btn danger">Clear</button>
       </div>
 
       <div class="vocab-search">
-        <input type="text" id="vocabSearch" placeholder="Search vocabulary...">
+        <input type="text" id="vocabSearch" placeholder="Search...">
       </div>
 
       <div class="vocab-list" id="vocabList">
@@ -991,16 +216,51 @@
   </div>
 
   <div class="actions">
-    <button id="applyBtn">Apply Furigana</button>
-    <button id="clearBtn" class="secondary">Clear Furigana</button>
-
-    <div class="shortcut-hint">
-      <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> to toggle
+    <div class="actions-row">
+      <button id="applyBtn" style="flex:2">Apply</button>
+      <button id="clearBtn" class="secondary" style="flex:1">Clear</button>
     </div>
-
+    <div id="shortcut-text" class="shortcut-text">Ctrl+Shift+Z to toggle</div>
     <div class="status" id="status"></div>
   </div>
 
-  <script src="popup.js"></script>
+  <!-- Report Wrong Reading Modal -->
+  <div id="extReportModal" class="ext-report-modal hidden">
+    <div class="ext-report-modal-content">
+      <div class="ext-report-header">
+        <span class="ext-report-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+            <line x1="4" y1="22" x2="4" y2="15"></line>
+          </svg>
+          Report Reading
+        </span>
+        <button id="extReportClose" class="ext-report-close">&times;</button>
+      </div>
+      <div class="ext-report-body">
+        <div id="extReportError" class="ext-report-msg error hidden"></div>
+        <div id="extReportSuccess" class="ext-report-msg success hidden"></div>
+        <div class="ext-report-field">
+          <label>Word</label>
+          <input type="text" id="extReportWord" readonly>
+        </div>
+        <div class="ext-report-field">
+          <label>Current Reading (wrong)</label>
+          <input type="text" id="extReportReading" readonly>
+        </div>
+        <div class="ext-report-field">
+          <label>Context</label>
+          <textarea id="extReportContext" rows="2" readonly></textarea>
+        </div>
+        <div class="ext-report-field">
+          <label>Correct Reading (optional)</label>
+          <input type="text" id="extReportCorrect" placeholder="Enter correction...">
+        </div>
+        <button id="extReportSubmit" class="ext-report-submit">Submit Report</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/popup-main.js"></script>
 </body>
 </html>

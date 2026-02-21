@@ -7,20 +7,27 @@ ruby {
   /* Inherit line-height from parent to preserve page layout */
 }
 
-ruby:hover {
+span[data-jlpt] {
+  cursor: pointer;
+  position: relative;
+}
+
+ruby:hover,
+span[data-jlpt]:hover {
   background-color: rgba(102, 126, 234, 0.1);
   border-radius: 2px;
 }
 
 rt {
-  font-size: 0.55em;
+  font-size: var(--tsukeru-ruby-size, 0.65em);
   line-height: 1;
   text-align: center;
   user-select: none;
   transition: opacity 0.15s ease;
-  color: #667eea;
-  font-weight: 500;
-  /* Let browser handle positioning naturally */
+  color: var(--tsukeru-ruby-color, #475569);
+  font-weight: var(--tsukeru-ruby-weight, normal);
+  position: relative;
+  z-index: 10; /* Force furigana to render above all highlights */
 }
 
 /* Click-to-hide feature */
@@ -51,7 +58,8 @@ ruby.tsukeru-hidden:hover::after {
     color: #a5b4fc;
   }
 
-  ruby:hover {
+  ruby:hover,
+  span[data-jlpt]:hover {
     background-color: rgba(165, 180, 252, 0.12);
   }
 }
@@ -62,6 +70,7 @@ ruby.tsukeru-hidden:hover::after {
     opacity: 0;
     transform: translateY(-2px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -101,12 +110,15 @@ ruby[data-tsukeru-processed="true"] rt {
 
 /* Dictionary tooltip for inline popups */
 .tsukeru-word-tooltip {
-  position: fixed;
+  position: absolute;
   background-color: #ffffff;
   color: #1f2937;
   padding: 14px 16px;
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: 14px;
+  font-family: system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  letter-spacing: normal;
   z-index: 2147483646;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
   opacity: 0;
@@ -115,7 +127,7 @@ ruby[data-tsukeru-processed="true"] rt {
   pointer-events: none;
   max-width: 320px;
   min-width: 220px;
-  max-height: 400px;
+  max-height: clamp(250px, 50vh, 450px);
   overflow-y: auto;
   border: 1px solid #e5e7eb;
 }
@@ -126,46 +138,143 @@ ruby[data-tsukeru-processed="true"] rt {
   pointer-events: auto;
 }
 
-.tsukeru-word-tooltip .tsukeru-tooltip-word {
-  font-size: 1.2rem;
+.tsukeru-word-tooltip::-webkit-scrollbar {
+  width: 6px;
+}
+.tsukeru-word-tooltip::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tsukeru-word-tooltip::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 20px;
+}
+.tsukeru-word-tooltip:hover::-webkit-scrollbar-thumb {
+  background-color: #94a3b8;
+}
+
+
+.tsukeru-word-tooltip .tsukeru-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 20px;
+  /* text-xl */
   font-weight: 700;
   color: #111827;
-  margin-bottom: 6px;
-  border-bottom: 2px solid #3b82f6;
-  padding-bottom: 4px;
-  padding-right: 32px;
+  margin-bottom: 4px;
 }
 
-.tsukeru-word-tooltip .tsukeru-tooltip-reading {
-  font-size: 1rem;
+.tsukeru-word-tooltip .tsukeru-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tsukeru-word-tooltip .tsukeru-header-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* JLPT and POS badges used in header */
+.tsukeru-word-tooltip .tsukeru-badge-jlpt,
+.tsukeru-word-tooltip .tsukeru-badge-inline {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  /* rounded */
+  font-size: 12px;
+  /* text-xs */
+  font-weight: 500;
+}
+
+.tsukeru-word-tooltip .tsukeru-bg-jlpt-1 {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.tsukeru-word-tooltip .tsukeru-bg-jlpt-2 {
+  background-color: #ffedd5;
+  color: #9a3412;
+}
+
+.tsukeru-word-tooltip .tsukeru-bg-jlpt-3 {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.tsukeru-word-tooltip .tsukeru-bg-jlpt-4 {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.tsukeru-word-tooltip .tsukeru-bg-jlpt-5 {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.tsukeru-word-tooltip .tsukeru-badge-pos {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  background-color: #f3f4f6;
+  /* bg-gray-100 */
+  color: #6b7280;
+  /* text-gray-500 */
+}
+
+.tsukeru-word-tooltip .tsukeru-reading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tsukeru-word-tooltip .tsukeru-reading-text {
+  font-size: 16px;
   color: #3b82f6;
-  margin-bottom: 10px;
+  /* text-blue-500 */
+  margin: 0;
 }
 
-.tsukeru-word-tooltip .tsukeru-tooltip-sense {
+.tsukeru-word-tooltip .tsukeru-reading-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tsukeru-word-tooltip .tsukeru-sense-row {
   margin-bottom: 8px;
   padding-left: 8px;
   border-left: 2px solid #e5e7eb;
+  /* border-gray-200 */
 }
 
-.tsukeru-word-tooltip .tsukeru-tooltip-pos {
-  font-size: 0.7rem;
+.tsukeru-word-tooltip .tsukeru-sense-pos {
+  font-size: 12px;
   color: #6b7280;
+  /* text-gray-500 */
   font-style: italic;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 
-.tsukeru-word-tooltip .tsukeru-tooltip-gloss {
+.tsukeru-word-tooltip .tsukeru-sense-gloss {
   color: #4b5563;
+  /* text-gray-600 */
   line-height: 1.5;
-  font-size: 0.875rem;
+  font-size: 14px;
+  /* text-sm */
 }
 
-.tsukeru-word-tooltip .tsukeru-tooltip-extra {
+.tsukeru-word-tooltip .tsukeru-sense-more {
   text-align: center;
-  margin-top: 8px;
+  margin-top: 4px;
+  font-size: 11px;
   color: #6b7280;
-  font-size: 0.8rem;
 }
 
 .tsukeru-word-tooltip .tsukeru-tooltip-loading {
@@ -180,32 +289,72 @@ ruby[data-tsukeru-processed="true"] rt {
   padding: 8px 0;
 }
 
-.tsukeru-word-tooltip .tsukeru-tooltip-close,
-.tsukeru-word-tooltip .tsukeru-tooltip-speaker {
-  position: absolute;
-  top: 8px;
+.tsukeru-word-tooltip .tsukeru-tooltip-close {
   background: none;
   border: none;
-  color: #6b7280;
+  color: #9ca3af;
+  /* text-gray-400 */
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 4px;
   line-height: 1;
-}
-
-.tsukeru-word-tooltip .tsukeru-tooltip-close {
-  right: 8px;
-  font-size: 1.2rem;
-}
-
-.tsukeru-word-tooltip .tsukeru-tooltip-speaker {
-  right: 32px;
-  display: inline-flex;
+  font-size: 20px;
+  display: flex;
   align-items: center;
   justify-content: center;
 }
 
+.tsukeru-word-tooltip .tsukeru-tooltip-close:hover {
+  color: #4b5563;
+  /* hover:text-gray-600 */
+}
+
+.tsukeru-word-tooltip .tsukeru-tooltip-save {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tsukeru-word-tooltip .tsukeru-tooltip-save:hover {
+  color: #3b82f6;
+}
+
+.tsukeru-word-tooltip .tsukeru-tooltip-save.saved {
+  color: #3b82f6;
+}
+
+/* Fill the icon when the word is already saved */
+.tsukeru-word-tooltip .tsukeru-tooltip-save.saved svg {
+  fill: currentColor;
+  stroke: none;
+}
+
+.tsukeru-word-tooltip .tsukeru-tooltip-speaker {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  /* text-gray-400 */
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  transition: opacity 0.2s, color 0.2s;
+}
+
+.tsukeru-word-tooltip .tsukeru-tooltip-speaker:hover {
+  color: #3b82f6;
+  opacity: 1;
+}
+
 .tsukeru-word-tooltip .tsukeru-tooltip-speaker.speaking {
   color: #3b82f6;
+  opacity: 1;
 }
 
 .tsukeru-word-tooltip::-webkit-scrollbar {
@@ -273,7 +422,10 @@ ruby[data-tsukeru-processed="true"] rt {
 
 /* Accessibility - respect reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
-  ruby, rt, .vocab-word {
+
+  ruby,
+  rt,
+  .vocab-word {
     transition: none;
     animation: none;
   }
@@ -290,7 +442,8 @@ ruby[data-tsukeru-processed="true"] rt {
     font-weight: 600;
   }
 
-  ruby:hover {
+  ruby:hover,
+  span[data-jlpt]:hover {
     outline: 2px solid currentColor;
     background-color: transparent;
   }
@@ -318,10 +471,13 @@ ruby.vocab-saved {
 }
 
 @keyframes vocabSavedPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     background-color: rgba(16, 185, 129, 0.15);
   }
+
   50% {
     transform: scale(1.05);
     background-color: rgba(16, 185, 129, 0.3);
@@ -341,10 +497,12 @@ ruby.tsukeru-highlight {
     background-color: rgba(251, 191, 36, 0.6);
     box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.4);
   }
+
   50% {
     background-color: rgba(251, 191, 36, 0.4);
     box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
   }
+
   100% {
     background-color: transparent;
     box-shadow: none;
@@ -353,7 +511,9 @@ ruby.tsukeru-highlight {
 
 /* Highlight modes controlled via data-tsukeru-highlight on <html> */
 :root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt],
-:root[data-tsukeru-highlight="pos"] ruby[data-pos] {
+:root[data-tsukeru-highlight="jlpt"] span[data-jlpt],
+:root[data-tsukeru-highlight="pos"] ruby[data-pos],
+:root[data-tsukeru-highlight="pos"] span[data-pos] {
   position: relative;
   z-index: 0;
   padding: 0 1px;
@@ -361,32 +521,601 @@ ruby.tsukeru-highlight {
 }
 
 :root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt]::before,
-:root[data-tsukeru-highlight="pos"] ruby[data-pos]::before {
+:root[data-tsukeru-highlight="jlpt"] span[data-jlpt]::before,
+:root[data-tsukeru-highlight="pos"] ruby[data-pos]::before,
+:root[data-tsukeru-highlight="pos"] span[data-pos]::before {
   content: '';
   position: absolute;
   left: -1px;
   right: -1px;
   bottom: -1px;
-  height: 1.05em; /* keep highlight behind base text, not over furigana */
+  height: 1.05em;
+  /* keep highlight behind base text, not over furigana */
   border-radius: 2px;
   background: var(--tsukeru-highlight, transparent);
-  z-index: -2; /* keep highlight behind surrounding elements and furigana */
+  z-index: -2;
+  /* keep highlight behind surrounding elements and furigana */
   pointer-events: none;
 }
 
-:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="5"] { --tsukeru-highlight: #d1fae5; color: #065f46; }
-:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="4"] { --tsukeru-highlight: #ccfbf1; color: #0f766e; }
-:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="3"] { --tsukeru-highlight: #bfdbfe; color: #1d4ed8; }
-:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="2"] { --tsukeru-highlight: #fde68a; color: #92400e; }
-:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="1"] { --tsukeru-highlight: #fecdd3; color: #9f1239; }
-:root[data-tsukeru-highlight="jlpt"] ruby:not([data-jlpt]) { --tsukeru-highlight: #e5e7eb; color: #111827; }
+:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="5"],
+:root[data-tsukeru-highlight="jlpt"] span[data-jlpt="5"] {
+  --tsukeru-highlight: #dbeafe;
+  color: #1e40af;
+}
 
-:root[data-tsukeru-highlight="pos"] ruby[data-pos="Noun" i] { --tsukeru-highlight: #e0f2fe; color: #1d4ed8; }
-:root[data-tsukeru-highlight="pos"] ruby[data-pos="Verb" i] { --tsukeru-highlight: #fee2e2; color: #b91c1c; }
-:root[data-tsukeru-highlight="pos"] ruby[data-pos="Adjective" i] { --tsukeru-highlight: #fef9c3; color: #92400e; }
-:root[data-tsukeru-highlight="pos"] ruby[data-pos="Adverb" i] { --tsukeru-highlight: #ede9fe; color: #6b21a8; }
-:root[data-tsukeru-highlight="pos"] ruby[data-pos="Particle" i] { --tsukeru-highlight: #dcfce7; color: #166534; }
-:root[data-tsukeru-highlight="pos"] ruby[data-pos]:not([data-pos="Noun" i]):not([data-pos="Verb" i]):not([data-pos="Adjective" i]):not([data-pos="Adverb" i]):not([data-pos="Particle" i]) {
+:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="4"],
+:root[data-tsukeru-highlight="jlpt"] span[data-jlpt="4"] {
+  --tsukeru-highlight: #dcfce7;
+  color: #166534;
+}
+
+:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="3"],
+:root[data-tsukeru-highlight="jlpt"] span[data-jlpt="3"] {
+  --tsukeru-highlight: #fef3c7;
+  color: #92400e;
+}
+
+:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="2"],
+:root[data-tsukeru-highlight="jlpt"] span[data-jlpt="2"] {
+  --tsukeru-highlight: #ffedd5;
+  color: #9a3412;
+}
+
+:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="1"],
+:root[data-tsukeru-highlight="jlpt"] span[data-jlpt="1"] {
+  --tsukeru-highlight: #fee2e2;
+  color: #991b1b;
+}
+
+:root[data-tsukeru-highlight="jlpt"] ruby:not([data-jlpt]) {
   --tsukeru-highlight: #e5e7eb;
   color: #111827;
+}
+
+:root[data-tsukeru-highlight="pos"] ruby[data-pos="Noun" i],
+:root[data-tsukeru-highlight="pos"] span[data-pos="Noun" i] {
+  --tsukeru-highlight: #e0f2fe;
+  color: #1d4ed8;
+}
+
+:root[data-tsukeru-highlight="pos"] ruby[data-pos="Verb" i],
+:root[data-tsukeru-highlight="pos"] span[data-pos="Verb" i] {
+  --tsukeru-highlight: #fee2e2;
+  color: #b91c1c;
+}
+
+:root[data-tsukeru-highlight="pos"] ruby[data-pos="Adjective" i],
+:root[data-tsukeru-highlight="pos"] span[data-pos="Adjective" i] {
+  --tsukeru-highlight: #fef9c3;
+  color: #92400e;
+}
+
+:root[data-tsukeru-highlight="pos"] ruby[data-pos="Adverb" i],
+:root[data-tsukeru-highlight="pos"] span[data-pos="Adverb" i] {
+  --tsukeru-highlight: #ede9fe;
+  color: #6b21a8;
+}
+
+:root[data-tsukeru-highlight="pos"] ruby[data-pos="Particle" i],
+:root[data-tsukeru-highlight="pos"] span[data-pos="Particle" i] {
+  --tsukeru-highlight: #dcfce7;
+  color: #166534;
+}
+
+:root[data-tsukeru-highlight="pos"] ruby[data-pos]:not([data-pos="Noun" i]):not([data-pos="Verb" i]):not([data-pos="Adjective" i]):not([data-pos="Adverb" i]):not([data-pos="Particle" i]),
+:root[data-tsukeru-highlight="pos"] span[data-pos]:not([data-pos="Noun" i]):not([data-pos="Verb" i]):not([data-pos="Adjective" i]):not([data-pos="Adverb" i]):not([data-pos="Particle" i]) {
+  --tsukeru-highlight: #e5e7eb;
+  color: #111827;
+}
+
+/* --- New Extension Features: Tags, Examples, Kanji Breakdown --- */
+.tsukeru-word-tooltip .tsukeru-tooltip-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.tsukeru-word-tooltip .tsukeru-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tsukeru-word-tooltip .tsukeru-tag-jlpt {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.tsukeru-word-tooltip .tsukeru-tag-pos {
+  background-color: #e0f2fe;
+  color: #1d4ed8;
+}
+
+.tsukeru-word-tooltip .tsukeru-tooltip-pos-inline {
+  display: inline-block;
+  font-size: 10px;
+  color: #15803d;
+  background-color: #dcfce7;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* --- Dropdown Components (Example, Kanji) --- */
+.tsukeru-word-tooltip .tsukeru-async-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+  /* border-gray-200 */
+}
+
+.tsukeru-word-tooltip .tsukeru-dropdown-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  font-size: 12px;
+  /* text-xs */
+  font-weight: 500;
+  color: #6b7280;
+  /* text-gray-500 */
+  background: none;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.tsukeru-word-tooltip .tsukeru-example-toggle:hover {
+  color: #3b82f6;
+  /* hover-blue-600 */
+}
+
+.tsukeru-word-tooltip .tsukeru-kanji-toggle:hover {
+  color: #9333ea;
+  /* hover-purple-600 */
+}
+
+.tsukeru-word-tooltip .tsukeru-dropdown-arrow {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.tsukeru-word-tooltip .tsukeru-rotate-180 {
+  transform: rotate(180deg);
+}
+
+.tsukeru-word-tooltip .tsukeru-dropdown-content {
+  margin-top: 4px;
+}
+
+.tsukeru-word-tooltip .tsukeru-hidden {
+  display: none;
+}
+
+/* Higher-specificity override: dropdown content with .tsukeru-hidden always wins over display:flex */
+.tsukeru-word-tooltip .tsukeru-dropdown-content.tsukeru-hidden {
+  display: none;
+}
+
+/* Example Sentence */
+.tsukeru-word-tooltip .tsukeru-example-item {
+  font-size: 13px;
+  /* pl-2 */
+  border-left: 2px solid #93c5fd;
+  /* border-blue-300 */
+  margin-top: 4px;
+}
+
+.tsukeru-word-tooltip .tsukeru-example-jp {
+  font-weight: 500;
+  color: #111827;
+  /* text-gray-900 */
+}
+
+.tsukeru-word-tooltip .tsukeru-example-en {
+  color: #6b7280;
+  /* text-gray-500 */
+  margin-left: 4px;
+  /* ml-1 */
+}
+
+.tsukeru-word-tooltip mark.example-highlight {
+  background: rgba(251, 191, 36, 0.4);
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.25);
+  border-radius: 3px;
+  padding: 1px 2px;
+  color: inherit;
+}
+
+/* Kanji Breakdown */
+.tsukeru-word-tooltip .tsukeru-kanji-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* space-y-2 */
+}
+
+.tsukeru-word-tooltip .tsukeru-kanji-item {
+  padding-left: 8px;
+  /* pl-2 */
+  border-left: 2px solid #d8b4fe;
+  /* border-purple-300 */
+}
+
+.tsukeru-word-tooltip .tsukeru-kanji-item-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  /* gap-1 */
+}
+
+.tsukeru-word-tooltip .tsukeru-kanji-char-large {
+  font-size: 18px;
+  /* text-lg */
+  font-weight: 500;
+  color: #111827;
+  /* text-gray-900 */
+}
+
+.tsukeru-word-tooltip .tsukeru-kanji-reading {
+  font-size: 12px;
+  /* text-xs */
+  color: #4b5563;
+  /* text-gray-600 */
+}
+
+.tsukeru-word-tooltip .tsukeru-on-label {
+  color: #3b82f6;
+  /* text-blue-600 */
+}
+
+.tsukeru-word-tooltip .tsukeru-kun-label {
+  color: #9333ea;
+  /* text-purple-600 */
+}
+
+.tsukeru-word-tooltip .tsukeru-kanji-meaning {
+  font-size: 12px;
+  /* text-xs */
+  color: #6b7280;
+  /* text-gray-500 */
+}
+
+.tsukeru-word-tooltip .tsukeru-loader {
+  border: 2px solid #e2e8f0;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  animation: tsukeru-spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes tsukeru-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .tsukeru-word-tooltip .tsukeru-tag-jlpt {
+    background-color: #991b1b;
+    color: #fca5a5;
+  }
+
+  .tsukeru-word-tooltip .tsukeru-tag-pos {
+    background-color: #1e3a8a;
+    color: #93c5fd;
+  }
+
+  .tsukeru-word-tooltip .tsukeru-tooltip-pos-inline {
+    background-color: #14532d;
+    color: #86efac;
+  }
+
+  .tsukeru-word-tooltip .tsukeru-async-section {
+    border-color: #374151;
+  }
+
+  .tsukeru-word-tooltip .tsukeru-example-sentence {
+    background: #0f172a;
+    border-left-color: #818cf8;
+  }
+
+  .tsukeru-word-tooltip .tsukeru-example-jp {
+    color: #f8fafc;
+  }
+
+  .tsukeru-word-tooltip .tsukeru-example-en {
+    color: #94a3b8;
+  }
+
+  .tsukeru-word-tooltip mark.example-highlight {
+    background: rgba(251, 191, 36, 0.25);
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
+    color: #fde68a;
+  }
+
+  .tsukeru-word-tooltip .tsukeru-kanji-card {
+    background: #1e293b;
+    border-color: #334155;
+  }
+
+  .tsukeru-word-tooltip .tsukeru-kanji-char {
+    color: #f8fafc;
+    border-color: #334155;
+  }
+
+  .tsukeru-word-tooltip .tsukeru-kanji-meanings {
+    color: #cbd5e1;
+  }
+
+  .tsukeru-word-tooltip .tsukeru-kanji-reading-on span,
+  .tsukeru-word-tooltip .tsukeru-kanji-reading-kun span {
+    background: #334155;
+    color: #94a3b8;
+  }
+
+  .tsukeru-word-tooltip .tsukeru-loader {
+    border-color: #334155;
+    border-top-color: #60a5fa;
+  }
+}
+
+/* ── Inline Report Button (inside tooltip) ─────────────────────────── */
+.tsukeru-tooltip-report-btn {
+  background: transparent !important;
+  border: none !important;
+  padding: 2px 4px !important;
+  cursor: pointer !important;
+  border-radius: 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  opacity: 0.7;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.tsukeru-tooltip-report-btn:hover {
+  opacity: 1 !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* ── Injected Content Report Modal (maximum isolation) ─────────────── */
+.tsukeru-content-report-modal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.6) !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  box-sizing: border-box !important;
+}
+
+.tsukeru-content-report-modal.hidden {
+  display: none !important;
+}
+
+.tsukeru-crm-content {
+  background: #ffffff !important;
+  border-radius: 8px !important;
+  width: 380px !important;
+  max-width: 90vw !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+  color: #1e293b !important;
+  overflow: hidden !important;
+}
+
+.tsukeru-crm-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 12px 16px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: #1e293b !important;
+}
+
+.tsukeru-crm-header button {
+  background: transparent !important;
+  border: none !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  color: #64748b !important;
+  padding: 0 4px !important;
+}
+
+.tsukeru-crm-header button:hover {
+  color: #1e293b !important;
+}
+
+.tsukeru-crm-body {
+  padding: 14px 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.tsukeru-crm-label {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #475569 !important;
+  margin-top: 4px !important;
+  display: block !important;
+}
+
+.tsukeru-crm-input,
+.tsukeru-crm-textarea {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 6px 8px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 4px !important;
+  font-size: 13px !important;
+  color: #1e293b !important;
+  background: #f8fafc !important;
+  font-family: system-ui, sans-serif !important;
+  resize: none !important;
+}
+
+.tsukeru-crm-input[readonly],
+.tsukeru-crm-textarea[readonly] {
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+}
+
+.tsukeru-crm-msg {
+  padding: 8px 10px !important;
+  border-radius: 4px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  margin-bottom: 2px !important;
+}
+
+.tsukeru-crm-error {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+  border: 1px solid #fca5a5 !important;
+}
+
+.tsukeru-crm-success {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+  border: 1px solid #86efac !important;
+}
+
+.tsukeru-crm-msg.hidden {
+  display: none !important;
+}
+
+.tsukeru-crm-submit {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  width: 100% !important;
+  padding: 8px !important;
+  border: none !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  margin-top: 6px !important;
+  font-family: system-ui, sans-serif !important;
+}
+
+.tsukeru-crm-submit:hover:not(:disabled) {
+  background: #dc2626 !important;
+}
+
+.tsukeru-crm-submit:disabled {
+  background: #fca5a5 !important;
+  cursor: not-allowed !important;
+}
+
+/* ── Smart Caching: Soft-disable (preserves DOM, hides visually) ─────────── */
+body.tsukeru-furigana-disabled ruby rt {
+  display: none !important;
+}
+
+body.tsukeru-furigana-disabled ruby {
+  background-color: transparent !important;
+  cursor: text !important;
+}
+
+/* ── Smart Caching: CSS-driven JLPT level filtering ─────────────────────── */
+/* N5 (Beginner): user needs furigana for everything — no rules needed. */
+
+/* N4: user knows N5 words already, hide N5 furigana. */
+:root[data-tsukeru-jlpt="4"] ruby[data-jlpt="5"] rt { display: none !important; }
+
+/* N3: user knows N5–N4, hide N5 and N4 furigana. */
+:root[data-tsukeru-jlpt="3"] ruby[data-jlpt="5"] rt,
+:root[data-tsukeru-jlpt="3"] ruby[data-jlpt="4"] rt { display: none !important; }
+
+/* N2: user knows N5–N3, hide N5, N4, N3 furigana. */
+:root[data-tsukeru-jlpt="2"] ruby[data-jlpt="5"] rt,
+:root[data-tsukeru-jlpt="2"] ruby[data-jlpt="4"] rt,
+:root[data-tsukeru-jlpt="2"] ruby[data-jlpt="3"] rt { display: none !important; }
+
+/* N1 (Advanced): user knows N5–N2, hide N5, N4, N3, N2 furigana. */
+:root[data-tsukeru-jlpt="1"] ruby[data-jlpt="5"] rt,
+:root[data-tsukeru-jlpt="1"] ruby[data-jlpt="4"] rt,
+:root[data-tsukeru-jlpt="1"] ruby[data-jlpt="3"] rt,
+:root[data-tsukeru-jlpt="1"] ruby[data-jlpt="2"] rt { display: none !important; }
+
+/* ==========================================================================
+   SITE-SPECIFIC FIXES: YouTube
+   ========================================================================== */
+
+/* --- 1. Main Video Title Fix ---
+   Break the rigid 56px max-height on the parent container so it can grow downwards.
+*/
+h1.ytd-watch-metadata:has(ruby),
+#title.ytd-watch-metadata h1:has(ruby) {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/*
+   Break the -webkit-box line-clamp on the actual text, and provide massive
+   line-height so the furigana doesn't smash into the text above it.
+*/
+h1.ytd-watch-metadata yt-formatted-string:has(ruby) {
+  line-height: 2.0 !important; /* Huge breathing room for large main titles */
+  display: block !important;
+  max-height: none !important;
+  -webkit-line-clamp: none !important;
+  overflow: visible !important;
+}
+
+/* Ensure the title pushes the channel info/subscribe button down instead of overlapping */
+#owner.ytd-watch-metadata {
+  margin-top: 10px !important;
+}
+
+/* --- 2. Sidebar & Recommended Video Titles Fix ---
+   Fix for the smaller thumbnails in sidebar/grid.
+*/
+#video-title:has(ruby),
+.yt-lockup-metadata-view-model__title:has(ruby),
+ytd-compact-video-renderer #video-title:has(ruby),
+ytd-grid-video-renderer #video-title:has(ruby) {
+  line-height: 1.8 !important;
+  display: block !important;
+  max-height: none !important;
+  -webkit-line-clamp: none !important;
+  overflow: visible !important;
+}
+
+/* --- 3. YouTube Formatted Comments Fix --- */
+ytd-comment-renderer #content-text:has(ruby) {
+  line-height: 1.6 !important;
+}
+
+/* --- 4. Global YouTube Ruby Optimization ---
+   Shrinking the ruby text specifically on YouTube prevents the layout
+   from getting too aggressively stretched horizontally and vertically.
+*/
+ytd-app ruby rt {
+  font-size: 0.55em !important;
+  line-height: 1 !important;
+  vertical-align: top !important;
 }

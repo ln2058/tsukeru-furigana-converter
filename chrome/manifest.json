@@ -1,17 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Tsukeru for EZFurigana",
-  "version": "2.0.1",
+  "version": "3.0.1",
   "description": "Add furigana (reading annotations) to Japanese text on any website using EZFurigana backend",
   "permissions": [
     "activeTab",
     "storage",
     "scripting",
-    "tabs",
     "contextMenus"
   ],
   "host_permissions": [
-    "https://www.ezfurigana.com/*"
+    "https://www.ezfurigana.com/*",
+    "*://*.ezfurigana.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -27,13 +27,19 @@
     "128": "icons/icon128.png"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
+  "content_scripts": [{
+    "matches": ["<all_urls>"],
+    "js": ["js/content-dom.js", "js/content-tooltip.js", "js/content-main.js"],
+    "css": ["content.css"]
+  }],
   "commands": {
     "toggle-furigana": {
       "suggested_key": {
-        "default": "Ctrl+Shift+F",
-        "mac": "Command+Shift+F"
+        "default": "Ctrl+Shift+Z",
+        "mac": "Command+Shift+Z"
       },
       "description": "Toggle furigana on/off"
     }

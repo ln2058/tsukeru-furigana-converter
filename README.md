@@ -1,32 +1,57 @@
 <div align="center">
-  <img src="chrome/edge/icons/icon128.png" alt="Tsukeru Logo" width="128">
-  <h1>Tsukeru – Furigana Converter for Japanese Text</h1>
+  <img src="chrome/icons/icon128.png" alt="Tsukeru Logo" width="128">
+  <h1>Tsukeru – Furigana Converter</h1>
   <p>Chrome/Edge + Firefox Extension</p>
+  <a href="https://buymeacoffee.com/riamua">
+    <img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support%20My%20Work-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me A Coffee">
+  </a>
 </div>
 
-Tsukeru is a lightweight furigana converter for Chrome/Edge and Firefox that adds hiragana readings to kanji directly on the page. It works as a Japanese reading aid for learners by converting kanji to hiragana using ruby annotations, without leaving the site you are reading.
+Tsukeru is a furigana extension for Chrome and Firefox. It injects hiragana readings above kanji on any Japanese webpage, with offline dictionary tooltips, vocabulary saving, and JLPT-level filtering. Powered by the open-source [EZFurigana](https://www.ezfurigana.com) API.
 
-> Powered by the [EZFurigana](https://www.ezfurigana.com) backend.
+![Wikipedia Example](screenshots/wikipedia.png)
 
 ---
 
 ## Features
 
-- One-click Apply and Clear on the active tab only
-- Global keyboard shortcut (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>) to toggle furigana on the current tab (Chrome/Edge)
-- Optional support for dynamic content (SPA / infinite scroll)
-- Dictionary popups and vocabulary saving
-- Works on common sites such as YouTube, X (Twitter), Reddit, and more
+### 🎌 YouTube & Dynamic Site Support
+
+Custom CSS overrides and Intersection Observers ensure furigana renders correctly on heavily structured sites like YouTube — no title clipping, no layout breaks.
+
+![YouTube Subtitles](screenshots/youtubesubtitles.png)
+![YouTube Comments](screenshots/youtubecomments.png)
+
+### 🐦 Social Media
+
+Read Japanese tweets directly in your feed.
+
+![Twitter Example](screenshots/twitter.png)
+
+### 🔤 Offline Dictionary Tooltips & JLPT Filtering
+
+Click any word for instant definitions, kanji breakdowns, and example sentences. In Settings, filter out N5/N4 kana readings to reduce visual clutter on pages you're already comfortable with.
+
+### 💾 Vocabulary Builder & Anki Export
+
+Save words directly from the tooltip into a built-in vocabulary list. Export to a `.zip` containing CSVs and native TTS audio — formatted for one-click Anki import.
 
 ---
 
 ## How It Works
 
-When you click "Apply Furigana," the extension collects visible Japanese text from the active page only. The text is sent to the EZFurigana backend, which returns sanitized ruby markup. The extension then inserts the furigana annotations directly into the page.
+Clicking "Apply Furigana" extracts visible Japanese text from the active tab. The text is sent to the EZFurigana backend, which returns ruby-annotated HTML. The extension sanitizes and injects the annotations back into the page.
 
-This allows users to add furigana to Japanese text and read kanji with hiragana support in context.
+You can also toggle furigana on/off with a keyboard shortcut:
+**`Ctrl+Shift+Z`** on Chrome/Edge or **`Ctrl+Shift+F`** on Firefox (Mac: `⌘+Shift+Z` or `⌘+Shift+F`).
 
-No background processing occurs, and no content is sent unless the user explicitly triggers it.
+Nothing runs in the background. No text is sent unless you trigger it.
+
+---
+
+## Architecture
+
+Pure Vanilla MV3 with native ES Modules — no bundler, no build step. The source is exactly what runs in the browser, making it straightforward to read and contribute to.
 
 ---
 
@@ -34,9 +59,9 @@ No background processing occurs, and no content is sent unless the user explicit
 
 Tsukeru does not collect, track, or store user data.
 
-Japanese text is sent to the EZFurigana backend only when the user explicitly applies furigana. The text is processed to generate readings and exists on the server only for the duration of that request. It is not logged, stored, or retained after processing.
+Text is sent to the EZFurigana backend only when you explicitly apply furigana. It is processed server-side to generate readings and discarded immediately after. No text is logged, retained, or associated with a user.
 
-No personal information, browsing history, or page content is collected or saved.
+No personal information, browsing history, or page content is collected.
 
 For more details, see the full [privacy policy](https://www.ezfurigana.com/privacy).
 
@@ -44,58 +69,30 @@ For more details, see the full [privacy policy](https://www.ezfurigana.com/priva
 
 ## Extension Folders
 
-- `chrome/edge`: MV3 build for Chrome and Microsoft Edge
-- `firefox`: MV2 build for Firefox
+- `chrome`: MV3 build for Chrome and Microsoft Edge
+- `firefox`: MV3 build for Firefox
 
 ---
 
-## Permissions (Chrome/Edge Web Store)
+## Permissions
 
-The extension uses the minimum permissions required for its functionality:
+The extension uses the strictest minimum permissions across all browsers:
 
-- **activeTab, scripting**  
-  Injects content only after explicit user action on the active tab
-
-- **storage**  
-  Stores user settings and optional vocabulary data
-
-- **tabs**  
-  Queries the currently active tab only
-
-- **contextMenus**  
-  Provides Apply and Clear actions via the context menu
-
-- **host_permissions**  
-  Network access is restricted to the EZFurigana API domain only
-
-No wildcard URL access is requested.
-
----
-
-## Permissions (Firefox MV2)
-
-Firefox is configured in a stricter, popup-only mode:
-
-- **activeTab**  
-  Injects content only after explicit user action on the active tab
-
-- **storage**  
-  Stores user settings and optional vocabulary data
-
-- **tabs**  
-  Queries the currently active tab only
-
-- **https://www.ezfurigana.com/**  
-  Network access is restricted to the EZFurigana API domain only
-
-No wildcard URL access, no always-on content scripts, no context menu, and no global shortcut.
+- **activeTab & scripting**
+  Injects furigana logic only after explicit user action on the active tab. No background scanning occurs.
+- **storage**
+  Stores user settings and optional vocabulary data locally.
+- **contextMenus**
+  Provides Apply and Clear actions via right-click.
+- **host_permissions**
+  Network access is hard-restricted to `https://www.ezfurigana.com/*`. No wildcard `<all_urls>` access is requested.
 
 ---
 
 ## Submission Notes
 
 - Manual activation only. The extension does not run automatically on pages.
-- No page content is processed unless the user clicks "Apply Furigana" (and the Chrome/Edge shortcut is used).
+- No page content is processed unless the user clicks "Apply Furigana" (or uses the keyboard shortcut).
 - No analytics, trackers, or third-party scripts are included.
 
 ---

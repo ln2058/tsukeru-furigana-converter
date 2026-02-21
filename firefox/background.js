@@ -1,25 +1,16 @@
-// Background script for the extension
-// Default to hosted backend; update if hosting elsewhere
-const browserApi = typeof browser !== 'undefined' ? browser : chrome;
-const ACTION_API = browserApi.action || browserApi.browserAction;
-const API_BASE_URL = 'https://www.ezfurigana.com';
-const DEFAULT_SETTINGS = {
-  jlptLevel: 5,
-  furiganaType: 'hiragana',
-  firstOccurrenceOnly: false,
-  highlightMode: 'off',
-  watchDynamic: false,
-};
-const definitionCache = new Map();
-const DEFINITION_CACHE_TTL = 5 * 60 * 1000; // cache definitions for 5 minutes
-const RATE_LIMIT_WINDOW_MS = 10_000;
-const RATE_LIMIT_MAX_CHARS = 50_000; // maximum chars allowed per window
-const rateLimitBuckets = [];
+// Background service worker — Chrome message router and command handler.
+// All API/cache logic lives in ./js/bg-api.js and ./js/bg-cache.js.
+import {
+  handleFuriganaRequest, lookupDefinition, fetchExampleSentence, fetchKanjiBreakdown,
+  handlePlayAudio, handlePlayAudioDirect, handleFetchProxyAudio, handleExportAnkiAudio,
+  API_BASE_URL, DEFAULT_SETTINGS,
+} from './js/bg-api.js';
 
-browserApi.runtime.onInstalled.addListener(() => {
+
+chrome.runtime.onInstalled.addListener(() => {
   // Seed defaults without overwriting existing user settings
-  browserApi.storage.sync.get(DEFAULT_SETTINGS, (stored) => {
-    browserApi.storage.sync.set({
+  chrome.storage.sync.get(DEFAULT_SETTINGS, (stored) => {
+    chrome.storage.sync.set({
       jlptLevel: stored.jlptLevel ?? DEFAULT_SETTINGS.jlptLevel,
       furiganaType: stored.furiganaType || DEFAULT_SETTINGS.furiganaType,
       firstOccurrenceOnly: stored.firstOccurrenceOnly ?? DEFAULT_SETTINGS.firstOccurrenceOnly,
@@ -29,14 +20,44 @@ browserApi.runtime.onInstalled.addListener(() => {
 });
 
 // Handle extension icon click
-if (ACTION_API?.onClicked) {
-  ACTION_API.onClicked.addListener((tab) => {
-    // Popup is set in manifest, so this won't trigger unless popup is removed
+chrome.action.onClicked.addListener((tab) => {
+  // Popup is set in manifest, so this won't trigger unless popup is removed
+});
+
+// Optional: Add context menu for quick actions
+if (chrome.contextMenus) {
+  chrome.runtime.onInstalled.addListener(() => {
+    chrome.contextMenus.create({
+      id: 'applyFurigana',
+      title: 'Apply Furigana to Page',
+      contexts: ['page'],
+    });
+
+    chrome.contextMenus.create({
+      id: 'clearFurigana',
+      title: 'Clear Furigana',
+      contexts: ['page'],
+    });
   });
+
+  chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+    if (info.menuItemId === 'applyFurigana') {
+      const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
+      chrome.tabs.sendMessage(tab.id, { action: 'applyFurigana', settings }).catch(err =>
+        console.warn('Tsukeru: Target page cannot receive messages. Reload the page.', err)
+      );
+    } else if (info.menuItemId === 'clearFurigana') {
+      chrome.tabs.sendMessage(tab.id, { action: 'clearFurigana' }).catch(err =>
+        console.warn('Tsukeru: Target page cannot receive messages. Reload the page.', err)
+      );
+    }
+  });
+} else {
+  console.warn('contextMenus API not available (missing permission?)');
 }
 
 // Process furigana requests coming from the content script so we can bypass site CORS
-browserApi.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'processFurigana') {
     handleFuriganaRequest(message.payload)
       .then((result) => sendResponse({ success: true, ...result }))
@@ -56,159 +77,127 @@ browserApi.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     return true;
   }
+
+  if (message.action === 'fetchExampleSentence') {
+    fetchExampleSentence(message.word)
+      .then((data) => sendResponse({ success: true, data }))
+      .catch((error) => {
+        console.error('Example sentence fetch failed', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    return true;
+  }
+
+  if (message.action === 'fetchKanjiBreakdown') {
+    fetchKanjiBreakdown(message.word)
+      .then((data) => sendResponse({ success: true, data }))
+      .catch((error) => {
+        console.error('Kanji breakdown fetch failed', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    return true;
+  }
+
+  if (message.action === 'playAudioDirect') {
+    handlePlayAudioDirect(message.word, message.reading)
+      .then(() => sendResponse({ success: true }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  if (message.action === 'playAudio') {
+    handlePlayAudio(message.word, message.reading)
+      .then((result) => sendResponse({ success: true, ...result }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  if (message.action === 'fetchProxyAudio') {
+    handleFetchProxyAudio(message.url)
+      .then((result) => sendResponse({ success: true, ...result }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  if (message.action === 'exportAnkiAudio') {
+    handleExportAnkiAudio(message.payload)
+      .then((result) => sendResponse({ success: true, ...result }))
+      .catch((error) => {
+        console.error('Anki audio export failed', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    return true;
+  }
+
+  if (message.action === 'reportReadingError') {
+    fetch(`${API_BASE_URL}/api/report-error`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Source': 'Chrome-Extension-TSUKERU'
+      },
+      body: JSON.stringify(message.payload)
+    })
+      .then(async (response) => {
+        if (response.ok) {
+          sendResponse({ success: true });
+        } else {
+          let errMsg = `Server returned ${response.status}`;
+          if (response.status === 429) {
+            errMsg = 'Rate limit exceeded. Please try again in an hour.';
+          } else {
+            try {
+              const errData = await response.json();
+              if (errData.error) errMsg = errData.error;
+            } catch (e) {}
+          }
+          sendResponse({ success: false, error: errMsg });
+        }
+      })
+      .catch(() => {
+        sendResponse({ success: false, error: 'Network error. Please try again later.' });
+      });
+    return true;
+  }
 });
 
-async function handleFuriganaRequest(payload) {
-  const { textContent = '', settings = {}, tabUrl } = payload;
-  const apiUrl = API_BASE_URL;
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== 'toggle-furigana') return;
 
-  if (!checkCharRateLimit(textContent.length)) {
-    throw new Error(`Rate limit exceeded: max ${RATE_LIMIT_MAX_CHARS} characters per ${RATE_LIMIT_WINDOW_MS / 1000}s`);
-  }
-
-  // Try extension-friendly endpoint first
-  const endpoints = [`${apiUrl}/api/extension/furigana`, `${apiUrl}/furigana/html`];
-  let lastError = null;
-
-  for (const endpoint of endpoints) {
-    try {
-      const formData = new FormData();
-      formData.append('input_mode', endpoint.includes('/extension/') ? 'text' : 'text');
-      formData.append('engine', 'sudachi');
-      formData.append('jlpt_level', String(settings.jlptLevel ?? DEFAULT_SETTINGS.jlptLevel));
-      formData.append('furigana_type', settings.furiganaType || DEFAULT_SETTINGS.furiganaType);
-      formData.append('first_occurrence_only', settings.firstOccurrenceOnly ? 'on' : '');
-      formData.append('raw_text', textContent);
-      formData.append('website_url', tabUrl || '');
-      formData.append('csrf_token', '');
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-        mode: 'cors',
-      });
-      if (!response.ok) {
-        lastError = new Error(`API request failed: ${response.status} ${response.statusText}`);
-        console.error('Tsukeru backend error', endpoint, response.status, response.statusText);
-        continue;
-      }
-
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        const data = await response.json();
-        if (data?.html) return { processedHTML: data.html };
-        lastError = new Error('JSON response missing html field');
-        continue;
-      }
-
-      const responseText = await response.text();
-      const processedHTML = extractProcessedHtml(responseText);
-      if (processedHTML) return { processedHTML };
-      lastError = new Error('Could not read processed HTML from backend response.');
-    } catch (err) {
-      lastError = err;
-      console.error('Tsukeru fetch exception', endpoint, err);
-      continue;
-    }
-  }
-
-  throw lastError || new Error('API request failed');
-}
-
-async function lookupDefinition(word) {
-  const term = (word || '').trim();
-  if (!term) {
-    throw new Error('No word provided');
-  }
-
-  const now = Date.now();
-  const cached = definitionCache.get(term);
-  if (cached && now - cached.timestamp < DEFINITION_CACHE_TTL) {
-    return cached.data;
-  }
-
-  const endpoints = [
-    `${API_BASE_URL}/api/extension/word-definition?word=${encodeURIComponent(term)}`,
-    `${API_BASE_URL}/api/word-definition/${encodeURIComponent(term)}`
-  ];
-  let lastError = null;
-
-  for (const endpoint of endpoints) {
-    try {
-      const response = await fetch(endpoint, {
-        method: 'GET',
-        credentials: 'include',
-        mode: 'cors',
-      });
-
-      if (!response.ok) {
-        lastError = new Error(`API request failed: ${response.status} ${response.statusText}`);
-        continue;
-      }
-
-      const data = await response.json();
-      definitionCache.set(term, { data, timestamp: now });
-      return data;
-    } catch (err) {
-      lastError = err;
-      console.error('Definition fetch exception', endpoint, err);
-      continue;
-    }
-  }
-
-  throw lastError || new Error('Definition lookup failed');
-}
-
-function extractProcessedHtml(htmlText) {
   try {
-    if (typeof DOMParser === 'undefined') {
-      return extractViaRegex(htmlText);
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id || !/^https?:\/\//i.test(tab.url || '')) return;
+
+    await ensureContentScript(tab.id);
+    const state = await chrome.tabs.sendMessage(tab.id, { action: 'getFuriganaState' })
+      .catch(() => null);
+
+    if (state?.active) {
+      await chrome.tabs.sendMessage(tab.id, { action: 'clearFurigana' });
+    } else {
+      const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
+      await chrome.tabs.sendMessage(tab.id, { action: 'applyFurigana', settings });
     }
-
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlText, 'text/html');
-
-    // Prefer the main preview container used by the FastAPI app
-    const preview = doc.querySelector('#normalPreview');
-    if (preview && preview.innerHTML.trim()) return preview.innerHTML;
-
-    const resultSection = doc.querySelector('#result');
-    if (resultSection && resultSection.innerHTML.trim()) {
-      return resultSection.innerHTML;
-    }
-
-    const bodyContent = doc.body?.innerHTML?.trim();
-    if (bodyContent) return bodyContent;
   } catch (err) {
-    console.error('Failed to parse backend response:', err);
+    console.error('Tsukeru: command handler failed', err);
   }
-  return extractViaRegex(htmlText);
-}
+});
 
-function extractViaRegex(htmlText) {
-  if (typeof htmlText !== 'string') return null;
-  const matchPreview = htmlText.match(/<div[^>]*id=["']normalPreview["'][^>]*>([\s\S]*?)<\/div>/i);
-  if (matchPreview && matchPreview[1]) return matchPreview[1];
-  const matchResult = htmlText.match(/<section[^>]*id=["']result["'][^>]*>([\s\S]*?)<\/section>/i);
-  if (matchResult && matchResult[1]) return matchResult[1];
-  return null;
-}
-
-function sanitizeFilename(name) {
-  return (name || 'page').replace(/[^a-zA-Z0-9-_]+/g, '-').replace(/^-+|-+$/g, '') || 'page';
-}
-
-function checkCharRateLimit(nextLen) {
-  const now = Date.now();
-  // Remove expired entries
-  while (rateLimitBuckets.length && now - rateLimitBuckets[0].timestamp > RATE_LIMIT_WINDOW_MS) {
-    rateLimitBuckets.shift();
+async function ensureContentScript(tabId) {
+  if (!chrome.scripting) return;
+  try {
+    await chrome.scripting.insertCSS({ target: { tabId }, files: ['content.css'] });
+  } catch (e) {
+    // Ignore if already injected or not permitted.
   }
-  const used = rateLimitBuckets.reduce((sum, entry) => sum + entry.len, 0);
-  if (used + nextLen > RATE_LIMIT_MAX_CHARS) {
-    return false;
+  // Inject the split content scripts in dependency order.
+  // The guard in content-main.js (window.__TSUKERU_LOADED__) prevents
+  // double-initialization if the manifest already auto-injected them.
+  for (const file of ['js/content-dom.js', 'js/content-tooltip.js', 'js/content-main.js']) {
+    try {
+      await chrome.scripting.executeScript({ target: { tabId }, files: [file] });
+    } catch (e) {
+      // Ignore if already injected or not permitted.
+    }
   }
-  rateLimitBuckets.push({ timestamp: now, len: nextLen });
-  return true;
 }
