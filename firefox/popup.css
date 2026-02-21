@@ -1027,14 +1027,38 @@ input[type="range"] {
   cursor: pointer;
 }
 
-input[type="color"] {
-  width: 34px;
-  height: 26px;
-  padding: 1px 2px;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
+.color-palette {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.color-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
   cursor: pointer;
-  background: white;
+  padding: 0;
+  transition: transform 0.1s;
+}
+
+.color-swatch:hover {
+  transform: scale(1.1);
+  opacity: 1;
+}
+
+.color-swatch.selected {
+  border-color: #fff;
+  outline: 2px solid #3b82f6;
+}
+
+.color-swatch[data-color="#ffffff"] {
+  border-color: #d1d5db;
+}
+
+.color-swatch[data-color="#ffffff"].selected {
+  border-color: #fff;
 }
 
 .range-value {

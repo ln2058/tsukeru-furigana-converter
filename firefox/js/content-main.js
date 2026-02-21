@@ -207,5 +207,11 @@ if (!window.__TSUKERU_LOADED__) {
       document.documentElement.setAttribute('data-tsukeru-jlpt', String(request.level ?? 5));
       sendResponse({ ok: true });
     }
+    if (request.action === 'updateAppearance') {
+      if (request.color) document.documentElement.style.setProperty('--tsukeru-ruby-color', request.color);
+      if (request.size) document.documentElement.style.setProperty('--tsukeru-ruby-size', request.size);
+      if (request.weight) document.documentElement.style.setProperty('--tsukeru-ruby-weight', request.weight);
+      sendResponse({ ok: true });
+    }
   });
 }

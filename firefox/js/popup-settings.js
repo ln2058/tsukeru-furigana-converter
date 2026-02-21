@@ -88,7 +88,7 @@ export async function initSettingsForm() {
   const watchDynamicCheckbox = document.getElementById('watchDynamic');
   const highlightRadios = document.querySelectorAll('input[name="highlightMode"]');
   const rubySizeInput = document.getElementById('rubySize');
-  const rubyColorInput = document.getElementById('rubyColor');
+  const rubyColorPalette = document.getElementById('rubyColorPalette');
   const rubyWeightSelect = document.getElementById('rubyWeight');
   const rubySizeValue = document.getElementById('rubySizeValue');
 
@@ -104,11 +104,17 @@ export async function initSettingsForm() {
   });
   rubySizeInput.value = String(stored.rubySize ?? DEFAULT_SETTINGS.rubySize);
   rubySizeValue.textContent = `${parseFloat(rubySizeInput.value).toFixed(2)}em`;
-  rubyColorInput.value = stored.rubyColor || DEFAULT_SETTINGS.rubyColor;
+  const initialColor = stored.rubyColor || DEFAULT_SETTINGS.rubyColor;
+  rubyColorPalette.querySelectorAll('.color-swatch').forEach(swatch => {
+    swatch.classList.toggle('selected', swatch.dataset.color === initialColor);
+  });
   rubyWeightSelect.value = stored.rubyWeight || DEFAULT_SETTINGS.rubyWeight;
 
   // Auto-save on any change
   const saveSettings = async () => {
+    const activeColor = rubyColorPalette.querySelector('.color-swatch.selected')?.dataset.color || DEFAULT_SETTINGS.rubyColor;
+    const activeSize = `${parseFloat(rubySizeInput.value).toFixed(2)}em`;
+    const activeWeight = rubyWeightSelect.value || DEFAULT_SETTINGS.rubyWeight;
     const settings = {
       jlptLevel: Number(jlptSelect.value || DEFAULT_SETTINGS.jlptLevel),
       furiganaType: furiganaTypeSelect.value || DEFAULT_SETTINGS.furiganaType,
@@ -116,10 +122,19 @@ export async function initSettingsForm() {
       highlightMode: getSelectedHighlightMode(),
       watchDynamic: Boolean(watchDynamicCheckbox.checked),
       rubySize: parseFloat(rubySizeInput.value) || DEFAULT_SETTINGS.rubySize,
-      rubyColor: rubyColorInput.value || DEFAULT_SETTINGS.rubyColor,
-      rubyWeight: rubyWeightSelect.value || DEFAULT_SETTINGS.rubyWeight,
+      rubyColor: activeColor,
+      rubyWeight: activeWeight,
     };
     await chrome.storage.sync.set(settings);
+    const tab = await getActiveTab();
+    if (tab?.id) {
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'updateAppearance',
+        color: activeColor,
+        size: activeSize,
+        weight: activeWeight,
+      }).catch(() => {});
+    }
   };
 
   jlptSelect.addEventListener('change', async () => {
@@ -139,8 +154,13 @@ export async function initSettingsForm() {
     rubySizeValue.textContent = `${parseFloat(rubySizeInput.value).toFixed(2)}em`;
     saveSettings();
   });
-  rubyColorInput.addEventListener('input', saveSettings);
-  rubyColorInput.addEventListener('change', saveSettings);
+  rubyColorPalette.querySelectorAll('.color-swatch').forEach(swatch => {
+    swatch.addEventListener('click', () => {
+      rubyColorPalette.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+      swatch.classList.add('selected');
+      saveSettings();
+    });
+  });
   rubyWeightSelect.addEventListener('change', saveSettings);
 
   applyBtn.addEventListener('click', async () => {
@@ -158,7 +178,7 @@ export async function initSettingsForm() {
       highlightMode: getSelectedHighlightMode(),
       watchDynamic: Boolean(watchDynamicCheckbox.checked),
       rubySize: parseFloat(rubySizeInput.value) || DEFAULT_SETTINGS.rubySize,
-      rubyColor: rubyColorInput.value || DEFAULT_SETTINGS.rubyColor,
+      rubyColor: rubyColorPalette.querySelector('.color-swatch.selected')?.dataset.color || DEFAULT_SETTINGS.rubyColor,
       rubyWeight: rubyWeightSelect.value || DEFAULT_SETTINGS.rubyWeight,
     };
     await chrome.storage.sync.set(settings);

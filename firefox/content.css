@@ -55,7 +55,6 @@ ruby.tsukeru-hidden:hover::after {
 @media (prefers-color-scheme: dark) {
   rt {
     opacity: 0.9;
-    color: #a5b4fc;
   }
 
   ruby:hover,
