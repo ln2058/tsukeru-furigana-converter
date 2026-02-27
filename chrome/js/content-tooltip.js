@@ -1,3 +1,25 @@
+/*
+Module: content-tooltip
+Purpose: Manage dictionary tooltip UI, word interactions, reporting, and vocabulary capture on pages.
+
+Inputs:
+- Pointer/selection events, ruby metadata, and background lookup/audio responses.
+
+Outputs:
+- Tooltip rendering updates, saved vocabulary entries, and report payload messages.
+
+Side Effects:
+- Creates/removes tooltip DOM and listeners.
+- Reads/writes `chrome.storage.local` vocabulary data.
+
+Failure Modes:
+- Lookup/audio/report requests can fail and trigger fallback/no-op paths.
+- Missing metadata prevents save/play actions for a target word.
+
+Security Notes:
+- Escapes/sanitizes rendered content before DOM injection.
+- Avoids direct third-party media fetches from page context.
+*/
 // ============================================================================
 // content-tooltip.js — Dictionary tooltip, vocabulary saving, TTS, report modal
 // Loaded as a plain content script after content-dom.js.
@@ -12,6 +34,11 @@
 
 function kata2hira(str) {
   return (str || '').replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+}
+
+function t(key, substitutions, fallback = '') {
+  const message = chrome.i18n?.getMessage ? chrome.i18n.getMessage(key, substitutions) : '';
+  return message || fallback;
 }
 
 // ── Dictionary tooltip: enable / click handling ───────────────────────────────
@@ -110,7 +137,10 @@ async function showDefinitionTooltip(ruby, wordInfo) {
   } catch (err) {
     if (tooltip._lookupVersion !== myToken) return;
     console.error('Tsukeru: dictionary lookup failed', err);
-    tooltip.innerHTML = getTooltipErrorHtml(wordInfo.word, 'Error loading definition');
+    tooltip.innerHTML = getTooltipErrorHtml(
+      wordInfo.word,
+      t('content_error_loading_definition', undefined, 'Error loading definition')
+    );
     addTooltipInteractionHandlers();
   }
 }
@@ -200,7 +230,7 @@ function addTooltipInteractionHandlers() {
         try {
           await removeFromVocabulary(word);
           saveBtn.classList.remove('saved');
-          saveBtn.title = 'Save word';
+          saveBtn.title = t('content_save_word', undefined, 'Save word');
         } catch (err) {
           console.error('Tsukeru: unsave failed', err);
         }
@@ -236,7 +266,7 @@ function addTooltipInteractionHandlers() {
         await attachDefinitionToEntry(entry);
         await saveToVocabulary(entry);
         saveBtn.classList.add('saved');
-        saveBtn.title = 'Saved!';
+        saveBtn.title = t('content_saved', undefined, 'Saved!');
         showVocabSavedToast(word);
       } catch (err) {
         console.error('Tsukeru: save from tooltip failed', err);
@@ -251,7 +281,7 @@ function addTooltipInteractionHandlers() {
         const { vocabulary = [] } = await chrome.storage.local.get(['vocabulary']);
         if (vocabulary.some(v => v.word === word)) {
           saveBtn.classList.add('saved');
-          saveBtn.title = 'Already saved';
+          saveBtn.title = t('content_already_saved', undefined, 'Already saved');
         }
       } catch (_) { }
     })();
@@ -274,7 +304,7 @@ function addTooltipInteractionHandlers() {
       document.getElementById('tsukeru-crm-error').classList.add('hidden');
       document.getElementById('tsukeru-crm-success').classList.add('hidden');
       document.getElementById('tsukeru-crm-submit').disabled = false;
-      document.getElementById('tsukeru-crm-submit').textContent = 'Submit Report';
+      document.getElementById('tsukeru-crm-submit').textContent = t('content_report_submit', undefined, 'Submit Report');
       modal.classList.remove('hidden');
     };
   }
@@ -303,15 +333,15 @@ function addTooltipInteractionHandlers() {
 
 function getTooltipLoadingHtml(word) {
   return `
-    <button class="tsukeru-tooltip-close" aria-label="Close">&times;</button>
+    <button class="tsukeru-tooltip-close" aria-label="${escapeHtml(t('content_close', undefined, 'Close'))}">&times;</button>
     <div class="tsukeru-tooltip-word">${escapeHtml(word)}</div>
-    <div class="tsukeru-tooltip-loading">Loading...</div>
+    <div class="tsukeru-tooltip-loading">${escapeHtml(t('content_loading', undefined, 'Loading...'))}</div>
   `;
 }
 
 function getTooltipErrorHtml(word, message) {
   return `
-    <button class="tsukeru-tooltip-close" aria-label="Close">&times;</button>
+    <button class="tsukeru-tooltip-close" aria-label="${escapeHtml(t('content_close', undefined, 'Close'))}">&times;</button>
     <div class="tsukeru-tooltip-word">${escapeHtml(word)}</div>
     <div class="tsukeru-tooltip-error">${escapeHtml(message)}</div>
   `;
@@ -323,7 +353,7 @@ function generateAltReadingsDropdown(alternativeReadings, uniqueId) {
   return `
     <div class="tsukeru-alt-readings-container" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border, #e4e4e7);">
       <button type="button" class="tsukeru-alt-readings-toggle" data-target="${altId}" style="width: 100%; display: flex; align-items: center; justify-content: space-between; text-align: left; font-size: 11px; font-weight: 500; color: var(--text-muted, #71717a); background: none; border: none; cursor: pointer; padding: 0;">
-        <span>→ Alt. Readings (${alternativeReadings.length})</span>
+        <span>${escapeHtml(t('content_alt_readings_count', [String(alternativeReadings.length)], `→ Alt. Readings (${alternativeReadings.length})`))}</span>
         <svg class="tsukeru-alt-arrow" style="width: 10px; height: 10px; transition: transform 0.2s;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
         </svg>
@@ -367,14 +397,20 @@ function normalizeDefinitionData(data) {
 
 function renderDefinitionTooltip(tooltip, wordInfo, data) {
   if (data?.error) {
-    tooltip.innerHTML = getTooltipErrorHtml(wordInfo.word, 'Dictionary not available');
+    tooltip.innerHTML = getTooltipErrorHtml(
+      wordInfo.word,
+      t('content_dictionary_unavailable', undefined, 'Dictionary not available')
+    );
     addTooltipInteractionHandlers();
     return;
   }
 
   const normalized = normalizeDefinitionData(data);
   if (!normalized || normalized.senses.length === 0) {
-    tooltip.innerHTML = getTooltipErrorHtml(wordInfo.word, 'No definition found');
+    tooltip.innerHTML = getTooltipErrorHtml(
+      wordInfo.word,
+      t('content_no_definition_found', undefined, 'No definition found')
+    );
     addTooltipInteractionHandlers();
     return;
   }
@@ -391,12 +427,12 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
               ${jlptBadge}${posBadge}
           </div>
           <div class="tsukeru-header-right">
-              <button class="tooltip-save tsukeru-tooltip-save" title="Save word">
+              <button class="tooltip-save tsukeru-tooltip-save" title="${escapeHtml(t('content_save_word', undefined, 'Save word'))}">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
                   </svg>
               </button>
-              <button class="tooltip-close tsukeru-tooltip-close" aria-label="Close">&times;</button>
+              <button class="tooltip-close tsukeru-tooltip-close" aria-label="${escapeHtml(t('content_close', undefined, 'Close'))}">&times;</button>
           </div>
       </div>`;
 
@@ -407,7 +443,7 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
               <button class="tooltip-audio-btn tsukeru-tooltip-speaker"
                   data-reading="${escapeHtml(readingText)}"
                   data-word="${escapeHtml(displayWord)}"
-                  title="Play pronunciation">
+                  title="${escapeHtml(t('content_play_pronunciation', undefined, 'Play pronunciation'))}">
                   <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M5 7H3a1 1 0 00-1 1v4a1 1 0 001 1h2l4 3V4L5 7z"/>
                       <path d="M13.5 7.5a3 3 0 010 5"/>
@@ -416,7 +452,7 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
               <button class="tsukeru-tooltip-report-btn"
                   data-reading="${escapeHtml(readingText)}"
                   data-word="${escapeHtml(displayWord)}"
-                  title="Report wrong reading">
+                  title="${escapeHtml(t('content_report_wrong_reading', undefined, 'Report wrong reading'))}">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
                       <line x1="4" y1="22" x2="4" y2="15"></line>
@@ -440,7 +476,8 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
   });
 
   if (normalized.senses.length > sensesToShow.length) {
-    html += `<div class="tooltip-pos tsukeru-sense-more">+${normalized.senses.length - sensesToShow.length} more</div>`;
+    const moreCount = String(normalized.senses.length - sensesToShow.length);
+    html += `<div class="tooltip-pos tsukeru-sense-more">${escapeHtml(t('content_more_count', [moreCount], `+${moreCount} more`))}</div>`;
   }
 
   html += generateAltReadingsDropdown(wordInfo.altReadings, Date.now());
@@ -546,7 +583,7 @@ async function loadExampleSentence(word) {
       let html = `
         <div class="tsukeru-dropdown-header">
           <button type="button" class="tsukeru-example-toggle tsukeru-dropdown-toggle">
-            <span>→ Example Sentence (1)</span>
+            <span>${escapeHtml(t('content_example_sentence_count', ['1'], '→ Example Sentence (1)'))}</span>
             <svg class="tsukeru-dropdown-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
@@ -592,7 +629,7 @@ async function loadKanjiBreakdown(word) {
       let html = `
         <div class="tsukeru-dropdown-header">
           <button type="button" class="tsukeru-kanji-toggle tsukeru-dropdown-toggle">
-            <span>→ Kanji (${data.characters.length})</span>
+            <span>${escapeHtml(t('content_kanji_count', [String(data.characters.length)], `→ Kanji (${data.characters.length})`))}</span>
             <svg class="tsukeru-dropdown-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
@@ -655,21 +692,21 @@ function ensureContentReportModal() {
   modal.innerHTML = `
     <div class="tsukeru-crm-content">
       <div class="tsukeru-crm-header">
-        <span>Report Reading</span>
+        <span>${escapeHtml(t('content_report_title', undefined, 'Report Reading'))}</span>
         <button id="tsukeru-crm-close">&times;</button>
       </div>
       <div class="tsukeru-crm-body">
         <div id="tsukeru-crm-error" class="tsukeru-crm-msg tsukeru-crm-error hidden"></div>
         <div id="tsukeru-crm-success" class="tsukeru-crm-msg tsukeru-crm-success hidden"></div>
-        <label class="tsukeru-crm-label">Word:</label>
+        <label class="tsukeru-crm-label">${escapeHtml(t('content_report_label_word', undefined, 'Word:'))}</label>
         <input type="text" id="tsukeru-crm-word" class="tsukeru-crm-input" readonly>
-        <label class="tsukeru-crm-label">Wrong Reading:</label>
+        <label class="tsukeru-crm-label">${escapeHtml(t('content_report_label_wrong_reading', undefined, 'Wrong Reading:'))}</label>
         <input type="text" id="tsukeru-crm-reading" class="tsukeru-crm-input" readonly>
-        <label class="tsukeru-crm-label">Context:</label>
+        <label class="tsukeru-crm-label">${escapeHtml(t('content_report_label_context', undefined, 'Context:'))}</label>
         <textarea id="tsukeru-crm-context" class="tsukeru-crm-textarea" rows="2" readonly></textarea>
-        <label class="tsukeru-crm-label">Correction (Optional):</label>
+        <label class="tsukeru-crm-label">${escapeHtml(t('content_report_label_correction_optional', undefined, 'Correction (Optional):'))}</label>
         <input type="text" id="tsukeru-crm-correct" class="tsukeru-crm-input">
-        <button id="tsukeru-crm-submit" class="tsukeru-crm-submit">Submit Report</button>
+        <button id="tsukeru-crm-submit" class="tsukeru-crm-submit">${escapeHtml(t('content_report_submit', undefined, 'Submit Report'))}</button>
       </div>
     </div>
   `;
@@ -692,7 +729,7 @@ function ensureContentReportModal() {
     errorDiv.classList.add('hidden');
     successDiv.classList.add('hidden');
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Submitting...';
+    submitBtn.textContent = t('content_report_submitting', undefined, 'Submitting...');
 
     chrome.runtime.sendMessage({
       action: 'reportReadingError',
@@ -705,13 +742,15 @@ function ensureContentReportModal() {
       }
     }, (response) => {
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Submit Report';
+      submitBtn.textContent = t('content_report_submit', undefined, 'Submit Report');
       if (response && response.success) {
-        successDiv.textContent = 'Thanks for your report!';
+        successDiv.textContent = t('content_report_success', undefined, 'Thanks for your report!');
         successDiv.classList.remove('hidden');
         setTimeout(() => modal.classList.add('hidden'), 2000);
       } else {
-        const msg = (response && response.error) ? response.error : 'Submission failed. Please try again.';
+        const msg = (response && response.error)
+          ? response.error
+          : t('content_report_failed', undefined, 'Submission failed. Please try again.');
         errorDiv.textContent = msg;
         errorDiv.classList.remove('hidden');
       }
@@ -874,7 +913,7 @@ async function removeFromVocabulary(wordToRemove) {
 
 function showVocabSavedToast(word) {
   const toast = document.createElement('div');
-  toast.textContent = `Saved: ${word}`;
+  toast.textContent = t('content_saved_toast_with_word', [word], `Saved: ${word}`);
   toast.style.cssText = `
     position: fixed;
     top: 16px;

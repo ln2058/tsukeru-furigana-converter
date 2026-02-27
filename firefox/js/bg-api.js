@@ -1,3 +1,26 @@
+/*
+Module: bg-api
+Purpose: Execute backend workflows for furigana processing, dictionary data, audio proxying, and export.
+
+Inputs:
+- Text chunk payloads, settings, tab URLs, and action parameters.
+- Network responses from EZFurigana API endpoints.
+
+Outputs:
+- Processed furigana HTML, lookup payloads, base64 data URLs, and direct-audio playback results.
+
+Side Effects:
+- Performs network fetches and enforces in-memory rate limiting.
+- Reads/writes cached furigana fragments and uses object URLs for Firefox direct-audio playback.
+
+Failure Modes:
+- Network/API failures, malformed responses, and rate-limit rejections.
+- Direct-audio playback can fail and fall back to caller-level alternatives.
+
+Security Notes:
+- Treat all backend responses as untrusted until sanitized by content scripts.
+- Revoke temporary object URLs after playback attempts.
+*/
 // External network requests, furigana pipeline, and audio for the service worker.
 import { sha256Hash, cacheGet, cacheSet, definitionCache, DEFINITION_CACHE_TTL } from './bg-cache.js';
 import { kata2hira } from './utils.js';
@@ -10,6 +33,7 @@ export const DEFAULT_SETTINGS = {
   firstOccurrenceOnly: false,
   highlightMode: 'off',
   watchDynamic: false,
+  removeCustomStyling: false,
 };
 
 const RATE_LIMIT_WINDOW_MS = 10_000;

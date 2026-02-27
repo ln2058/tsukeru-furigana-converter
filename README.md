@@ -72,6 +72,22 @@ For more details, see the full [privacy policy](https://www.ezfurigana.com/priva
 - `chrome`: MV3 build for Chrome and Microsoft Edge
 - `firefox`: MV3 build for Firefox
 
+## Locale Validation
+
+Run locale validation before every unpacked load/reload:
+
+```bash
+node scripts/validate-locales.js
+```
+
+The validator checks:
+- locale JSON syntax
+- placeholder syntax rules
+- key parity across `chrome`/`firefox` and `en`/`ja`
+- referenced i18n keys from JS/HTML/manifest tokens
+
+If it fails, fix missing/extra keys or malformed placeholders before loading the extension.
+
 ---
 
 ## Permissions

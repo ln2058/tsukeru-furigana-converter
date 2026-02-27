@@ -1,3 +1,26 @@
+/*
+Module: content-main
+Purpose: Coordinate furigana apply/clear lifecycle and route content-script message actions.
+
+Inputs:
+- Popup/background message actions and persisted settings payloads.
+- DOM helper functions and runtime state flags.
+
+Outputs:
+- Action responses and page furigana state transitions.
+
+Side Effects:
+- Toggles page classes/attributes/styles and shared runtime globals.
+- Starts/stops observers, dictionary popup behavior, and live appearance updates.
+
+Failure Modes:
+- Concurrent apply requests are ignored while processing.
+- Runtime messaging/API failures surface as logged errors and user alerts.
+
+Security Notes:
+- Sends only required text payloads to background processing.
+- Relies on sanitized HTML insertion path for all backend output.
+*/
 // ============================================================================
 // content-main.js — Core furigana logic, state initialization, message router
 //
@@ -11,6 +34,11 @@
 // ============================================================================
 
 // ── Core furigana functions ───────────────────────────────────────────────────
+
+function t(key, substitutions, fallback = '') {
+  const message = chrome.i18n?.getMessage ? chrome.i18n.getMessage(key, substitutions) : '';
+  return message || fallback;
+}
 
 async function applyFurigana(settings) {
   if (isProcessing) {
@@ -31,6 +59,10 @@ async function applyFurigana(settings) {
       document.body.classList.remove('tsukeru-furigana-disabled');
       isFuriganaActive = true;
       setHighlightMode(settings?.highlightMode || 'off');
+      document.documentElement.setAttribute(
+        'data-tsukeru-custom-style',
+        settings?.removeCustomStyling ? 'off' : 'on'
+      );
       document.documentElement.setAttribute('data-tsukeru-jlpt', String(settings?.jlptLevel ?? 5));
       isProcessing = false;
       return;
@@ -41,6 +73,10 @@ async function applyFurigana(settings) {
     hardClearFurigana();
   }
   setHighlightMode(settings?.highlightMode || 'off');
+  document.documentElement.setAttribute(
+    'data-tsukeru-custom-style',
+    settings?.removeCustomStyling ? 'off' : 'on'
+  );
   document.documentElement.style.setProperty('--tsukeru-ruby-size', `${settings?.rubySize ?? 0.65}em`);
   document.documentElement.style.setProperty('--tsukeru-ruby-color', settings?.rubyColor || '#475569');
   document.documentElement.style.setProperty('--tsukeru-ruby-weight', settings?.rubyWeight || 'normal');
@@ -48,7 +84,9 @@ async function applyFurigana(settings) {
 
   try {
     const textNodes = collectTextNodes();
-    if (!textNodes.length) throw new Error('No text content found on page');
+    if (!textNodes.length) {
+      throw new Error(t('content_error_no_text_found', undefined, 'No text content found on page'));
+    }
 
     const batches = buildBatches(textNodes);
     for (let i = 0; i < batches.length; i++) {
@@ -63,7 +101,7 @@ async function applyFurigana(settings) {
       });
 
       if (!response || !response.success || !response.processedHTML) {
-        throw new Error(response?.error || 'Backend returned an empty response');
+        throw new Error(response?.error || t('content_error_backend_empty', undefined, 'Backend returned an empty response'));
       }
 
       applyBatchResult(batch, response.processedHTML);
@@ -93,7 +131,7 @@ async function applyFurigana(settings) {
 
   } catch (error) {
     console.error('Error applying furigana:', error);
-    alert('Failed to apply furigana: ' + error.message);
+    alert(t('content_apply_failed_with_reason', [error.message], `Failed to apply furigana: ${error.message}`));
     setHighlightMode('off');
   } finally {
     isProcessing = false;
@@ -104,6 +142,7 @@ async function applyFurigana(settings) {
 // Re-enabling is instant (zero API calls) when settings haven't changed.
 function clearFurigana() {
   document.body.classList.add('tsukeru-furigana-disabled');
+  document.documentElement.removeAttribute('data-tsukeru-custom-style');
   hideDefinitionTooltip();
   isFuriganaActive = false;
   stopWatchingDynamicContent();
@@ -132,6 +171,7 @@ function hardClearFurigana() {
     el.removeAttribute('data-tsukeru-observed');
   });
   document.body.classList.remove('tsukeru-furigana-disabled');
+  document.documentElement.removeAttribute('data-tsukeru-custom-style');
   originalTextMap = new WeakMap();
   hideDefinitionTooltip();
   isFuriganaActive = false;
@@ -205,6 +245,20 @@ if (!window.__TSUKERU_LOADED__) {
 
     if (request.action === 'updateJLPT') {
       document.documentElement.setAttribute('data-tsukeru-jlpt', String(request.level ?? 5));
+      sendResponse({ ok: true });
+    }
+
+    if (request.action === 'updateAppearance') {
+      if (request.color) document.documentElement.style.setProperty('--tsukeru-ruby-color', request.color);
+      if (request.size) document.documentElement.style.setProperty('--tsukeru-ruby-size', request.size);
+      if (request.weight) document.documentElement.style.setProperty('--tsukeru-ruby-weight', request.weight);
+      const hasManagedRuby = document.querySelector('[data-tsukeru-wrapper="1"]');
+      if (typeof request.removeCustomStyling === 'boolean' && (isFuriganaActive || hasManagedRuby)) {
+        document.documentElement.setAttribute(
+          'data-tsukeru-custom-style',
+          request.removeCustomStyling ? 'off' : 'on'
+        );
+      }
       sendResponse({ ok: true });
     }
   });

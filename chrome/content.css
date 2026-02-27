@@ -1,5 +1,5 @@
 /* Furigana styling - minimal impact on page layout */
-ruby {
+:root[data-tsukeru-custom-style="on"] ruby {
   ruby-position: over;
   ruby-align: center;
   cursor: pointer;
@@ -7,18 +7,18 @@ ruby {
   /* Inherit line-height from parent to preserve page layout */
 }
 
-span[data-jlpt] {
+:root[data-tsukeru-custom-style="on"] span[data-jlpt] {
   cursor: pointer;
   position: relative;
 }
 
-ruby:hover,
-span[data-jlpt]:hover {
+:root[data-tsukeru-custom-style="on"] ruby:hover,
+:root[data-tsukeru-custom-style="on"] span[data-jlpt]:hover {
   background-color: rgba(102, 126, 234, 0.1);
   border-radius: 2px;
 }
 
-rt {
+:root[data-tsukeru-custom-style="on"] rt {
   font-size: var(--tsukeru-ruby-size, 0.65em);
   line-height: 1;
   text-align: center;
@@ -31,17 +31,17 @@ rt {
 }
 
 /* Click-to-hide feature */
-ruby.tsukeru-hidden rt {
+:root[data-tsukeru-custom-style="on"] ruby.tsukeru-hidden rt {
   opacity: 0;
   transform: translateY(-3px);
   pointer-events: none;
 }
 
-ruby.tsukeru-hidden {
+:root[data-tsukeru-custom-style="on"] ruby.tsukeru-hidden {
   cursor: pointer;
 }
 
-ruby.tsukeru-hidden:hover::after {
+:root[data-tsukeru-custom-style="on"] ruby.tsukeru-hidden:hover::after {
   content: "👁";
   position: absolute;
   top: -1.2em;
@@ -53,13 +53,13 @@ ruby.tsukeru-hidden:hover::after {
 
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
-  rt {
+  :root[data-tsukeru-custom-style="on"] rt {
     opacity: 0.9;
-    color: #a5b4fc;
+    color: var(--tsukeru-ruby-color, #475569);
   }
 
-  ruby:hover,
-  span[data-jlpt]:hover {
+  :root[data-tsukeru-custom-style="on"] ruby:hover,
+  :root[data-tsukeru-custom-style="on"] span[data-jlpt]:hover {
     background-color: rgba(165, 180, 252, 0.12);
   }
 }
@@ -77,34 +77,34 @@ ruby.tsukeru-hidden:hover::after {
   }
 }
 
-ruby[data-tsukeru-processed="true"] rt {
+:root[data-tsukeru-custom-style="on"] ruby[data-tsukeru-processed="true"] rt {
   animation: furiganaFadeIn 0.3s ease;
 }
 
 /* Ambiguous reading indicator (words with multiple readings) */
-.ambiguous-reading rt .alt-indicator {
+:root[data-tsukeru-custom-style="on"] .ambiguous-reading rt .alt-indicator {
   color: #f59e0b;
   font-weight: bold;
   margin-left: 2px;
   cursor: help;
 }
 
-.ambiguous-reading {
+:root[data-tsukeru-custom-style="on"] .ambiguous-reading {
   position: relative;
 }
 
-.ambiguous-reading:hover {
+:root[data-tsukeru-custom-style="on"] .ambiguous-reading:hover {
   background-color: rgba(245, 158, 11, 0.1);
 }
 
 /* Highlight vocab words (if the backend includes vocab data) */
-.vocab-word {
+:root[data-tsukeru-custom-style="on"] .vocab-word {
   cursor: help;
   border-bottom: 1px dotted currentColor;
   transition: background-color 0.2s ease;
 }
 
-.vocab-word:hover {
+:root[data-tsukeru-custom-style="on"] .vocab-word:hover {
   background-color: rgba(59, 130, 246, 0.12);
 }
 
@@ -414,7 +414,7 @@ ruby[data-tsukeru-processed="true"] rt {
 
 /* Print styles - hide furigana in print mode unless explicitly wanted */
 @media print {
-  rt {
+  :root[data-tsukeru-custom-style="on"] rt {
     font-size: 0.4em;
     color: #666;
   }
@@ -423,49 +423,49 @@ ruby[data-tsukeru-processed="true"] rt {
 /* Accessibility - respect reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
 
-  ruby,
-  rt,
-  .vocab-word {
+  :root[data-tsukeru-custom-style="on"] ruby,
+  :root[data-tsukeru-custom-style="on"] rt,
+  :root[data-tsukeru-custom-style="on"] .vocab-word {
     transition: none;
     animation: none;
   }
 
-  ruby.tsukeru-hidden rt {
+  :root[data-tsukeru-custom-style="on"] ruby.tsukeru-hidden rt {
     transition: none;
   }
 }
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
-  rt {
+  :root[data-tsukeru-custom-style="on"] rt {
     color: inherit;
     font-weight: 600;
   }
 
-  ruby:hover,
-  span[data-jlpt]:hover {
+  :root[data-tsukeru-custom-style="on"] ruby:hover,
+  :root[data-tsukeru-custom-style="on"] span[data-jlpt]:hover {
     outline: 2px solid currentColor;
     background-color: transparent;
   }
 }
 
 /* Ensure minimal layout disruption */
-ruby {
+:root[data-tsukeru-custom-style="on"] ruby {
   display: ruby;
   white-space: nowrap;
 }
 
 /* Prevent text selection issues */
-ruby::selection {
+:root[data-tsukeru-custom-style="on"] ruby::selection {
   background: rgba(102, 126, 234, 0.2);
 }
 
-rt::selection {
+:root[data-tsukeru-custom-style="on"] rt::selection {
   background: transparent;
 }
 
 /* Vocabulary saved animation */
-ruby.vocab-saved {
+:root[data-tsukeru-custom-style="on"] ruby.vocab-saved {
   animation: vocabSavedPulse 0.5s ease;
   background-color: rgba(16, 185, 129, 0.15) !important;
 }
@@ -485,7 +485,7 @@ ruby.vocab-saved {
 }
 
 /* Highlight animation for vocab mode click-to-scroll */
-ruby.tsukeru-highlight {
+:root[data-tsukeru-custom-style="on"] ruby.tsukeru-highlight {
   animation: tsukeruHighlight 3s ease;
   background-color: rgba(251, 191, 36, 0.4) !important;
   border-radius: 3px;
@@ -510,20 +510,20 @@ ruby.tsukeru-highlight {
 }
 
 /* Highlight modes controlled via data-tsukeru-highlight on <html> */
-:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt],
-:root[data-tsukeru-highlight="jlpt"] span[data-jlpt],
-:root[data-tsukeru-highlight="pos"] ruby[data-pos],
-:root[data-tsukeru-highlight="pos"] span[data-pos] {
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos] {
   position: relative;
   z-index: 0;
   padding: 0 1px;
   border-radius: 1.5px;
 }
 
-:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt]::before,
-:root[data-tsukeru-highlight="jlpt"] span[data-jlpt]::before,
-:root[data-tsukeru-highlight="pos"] ruby[data-pos]::before,
-:root[data-tsukeru-highlight="pos"] span[data-pos]::before {
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt]::before,
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt]::before,
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos]::before,
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos]::before {
   content: '';
   position: absolute;
   left: -1px;
@@ -538,73 +538,73 @@ ruby.tsukeru-highlight {
   pointer-events: none;
 }
 
-:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="5"],
-:root[data-tsukeru-highlight="jlpt"] span[data-jlpt="5"] {
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt="5"],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt="5"] {
   --tsukeru-highlight: #dbeafe;
   color: #1e40af;
 }
 
-:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="4"],
-:root[data-tsukeru-highlight="jlpt"] span[data-jlpt="4"] {
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt="4"],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt="4"] {
   --tsukeru-highlight: #dcfce7;
   color: #166534;
 }
 
-:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="3"],
-:root[data-tsukeru-highlight="jlpt"] span[data-jlpt="3"] {
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt="3"],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt="3"] {
   --tsukeru-highlight: #fef3c7;
   color: #92400e;
 }
 
-:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="2"],
-:root[data-tsukeru-highlight="jlpt"] span[data-jlpt="2"] {
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt="2"],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt="2"] {
   --tsukeru-highlight: #ffedd5;
   color: #9a3412;
 }
 
-:root[data-tsukeru-highlight="jlpt"] ruby[data-jlpt="1"],
-:root[data-tsukeru-highlight="jlpt"] span[data-jlpt="1"] {
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt="1"],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt="1"] {
   --tsukeru-highlight: #fee2e2;
   color: #991b1b;
 }
 
-:root[data-tsukeru-highlight="jlpt"] ruby:not([data-jlpt]) {
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby:not([data-jlpt]) {
   --tsukeru-highlight: #e5e7eb;
   color: #111827;
 }
 
-:root[data-tsukeru-highlight="pos"] ruby[data-pos="Noun" i],
-:root[data-tsukeru-highlight="pos"] span[data-pos="Noun" i] {
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos="Noun" i],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Noun" i] {
   --tsukeru-highlight: #e0f2fe;
   color: #1d4ed8;
 }
 
-:root[data-tsukeru-highlight="pos"] ruby[data-pos="Verb" i],
-:root[data-tsukeru-highlight="pos"] span[data-pos="Verb" i] {
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos="Verb" i],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Verb" i] {
   --tsukeru-highlight: #fee2e2;
   color: #b91c1c;
 }
 
-:root[data-tsukeru-highlight="pos"] ruby[data-pos="Adjective" i],
-:root[data-tsukeru-highlight="pos"] span[data-pos="Adjective" i] {
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos="Adjective" i],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Adjective" i] {
   --tsukeru-highlight: #fef9c3;
   color: #92400e;
 }
 
-:root[data-tsukeru-highlight="pos"] ruby[data-pos="Adverb" i],
-:root[data-tsukeru-highlight="pos"] span[data-pos="Adverb" i] {
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos="Adverb" i],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Adverb" i] {
   --tsukeru-highlight: #ede9fe;
   color: #6b21a8;
 }
 
-:root[data-tsukeru-highlight="pos"] ruby[data-pos="Particle" i],
-:root[data-tsukeru-highlight="pos"] span[data-pos="Particle" i] {
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos="Particle" i],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Particle" i] {
   --tsukeru-highlight: #dcfce7;
   color: #166534;
 }
 
-:root[data-tsukeru-highlight="pos"] ruby[data-pos]:not([data-pos="Noun" i]):not([data-pos="Verb" i]):not([data-pos="Adjective" i]):not([data-pos="Adverb" i]):not([data-pos="Particle" i]),
-:root[data-tsukeru-highlight="pos"] span[data-pos]:not([data-pos="Noun" i]):not([data-pos="Verb" i]):not([data-pos="Adjective" i]):not([data-pos="Adverb" i]):not([data-pos="Particle" i]) {
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos]:not([data-pos="Noun" i]):not([data-pos="Verb" i]):not([data-pos="Adjective" i]):not([data-pos="Adverb" i]):not([data-pos="Particle" i]),
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos]:not([data-pos="Noun" i]):not([data-pos="Verb" i]):not([data-pos="Adjective" i]):not([data-pos="Adverb" i]):not([data-pos="Particle" i]) {
   --tsukeru-highlight: #e5e7eb;
   color: #111827;
 }
@@ -1031,11 +1031,11 @@ ruby.tsukeru-highlight {
 }
 
 /* ── Smart Caching: Soft-disable (preserves DOM, hides visually) ─────────── */
-body.tsukeru-furigana-disabled ruby rt {
+body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby rt {
   display: none !important;
 }
 
-body.tsukeru-furigana-disabled ruby {
+body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby {
   background-color: transparent !important;
   cursor: text !important;
 }
@@ -1044,22 +1044,22 @@ body.tsukeru-furigana-disabled ruby {
 /* N5 (Beginner): user needs furigana for everything — no rules needed. */
 
 /* N4: user knows N5 words already, hide N5 furigana. */
-:root[data-tsukeru-jlpt="4"] ruby[data-jlpt="5"] rt { display: none !important; }
+:root[data-tsukeru-jlpt="4"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="5"] rt { display: none !important; }
 
 /* N3: user knows N5–N4, hide N5 and N4 furigana. */
-:root[data-tsukeru-jlpt="3"] ruby[data-jlpt="5"] rt,
-:root[data-tsukeru-jlpt="3"] ruby[data-jlpt="4"] rt { display: none !important; }
+:root[data-tsukeru-jlpt="3"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="5"] rt,
+:root[data-tsukeru-jlpt="3"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="4"] rt { display: none !important; }
 
 /* N2: user knows N5–N3, hide N5, N4, N3 furigana. */
-:root[data-tsukeru-jlpt="2"] ruby[data-jlpt="5"] rt,
-:root[data-tsukeru-jlpt="2"] ruby[data-jlpt="4"] rt,
-:root[data-tsukeru-jlpt="2"] ruby[data-jlpt="3"] rt { display: none !important; }
+:root[data-tsukeru-jlpt="2"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="5"] rt,
+:root[data-tsukeru-jlpt="2"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="4"] rt,
+:root[data-tsukeru-jlpt="2"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="3"] rt { display: none !important; }
 
 /* N1 (Advanced): user knows N5–N2, hide N5, N4, N3, N2 furigana. */
-:root[data-tsukeru-jlpt="1"] ruby[data-jlpt="5"] rt,
-:root[data-tsukeru-jlpt="1"] ruby[data-jlpt="4"] rt,
-:root[data-tsukeru-jlpt="1"] ruby[data-jlpt="3"] rt,
-:root[data-tsukeru-jlpt="1"] ruby[data-jlpt="2"] rt { display: none !important; }
+:root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="5"] rt,
+:root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="4"] rt,
+:root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="3"] rt,
+:root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="2"] rt { display: none !important; }
 
 /* ==========================================================================
    SITE-SPECIFIC FIXES: YouTube
@@ -1068,8 +1068,8 @@ body.tsukeru-furigana-disabled ruby {
 /* --- 1. Main Video Title Fix ---
    Break the rigid 56px max-height on the parent container so it can grow downwards.
 */
-h1.ytd-watch-metadata:has(ruby),
-#title.ytd-watch-metadata h1:has(ruby) {
+:root[data-tsukeru-custom-style="on"] h1.ytd-watch-metadata:has(ruby[data-surface]),
+:root[data-tsukeru-custom-style="on"] #title.ytd-watch-metadata h1:has(ruby[data-surface]) {
   max-height: none !important;
   overflow: visible !important;
 }
@@ -1078,7 +1078,7 @@ h1.ytd-watch-metadata:has(ruby),
    Break the -webkit-box line-clamp on the actual text, and provide massive
    line-height so the furigana doesn't smash into the text above it.
 */
-h1.ytd-watch-metadata yt-formatted-string:has(ruby) {
+:root[data-tsukeru-custom-style="on"] h1.ytd-watch-metadata yt-formatted-string:has(ruby[data-surface]) {
   line-height: 2.0 !important; /* Huge breathing room for large main titles */
   display: block !important;
   max-height: none !important;
@@ -1094,10 +1094,10 @@ h1.ytd-watch-metadata yt-formatted-string:has(ruby) {
 /* --- 2. Sidebar & Recommended Video Titles Fix ---
    Fix for the smaller thumbnails in sidebar/grid.
 */
-#video-title:has(ruby),
-.yt-lockup-metadata-view-model__title:has(ruby),
-ytd-compact-video-renderer #video-title:has(ruby),
-ytd-grid-video-renderer #video-title:has(ruby) {
+:root[data-tsukeru-custom-style="on"] #video-title:has(ruby[data-surface]),
+:root[data-tsukeru-custom-style="on"] .yt-lockup-metadata-view-model__title:has(ruby[data-surface]),
+:root[data-tsukeru-custom-style="on"] ytd-compact-video-renderer #video-title:has(ruby[data-surface]),
+:root[data-tsukeru-custom-style="on"] ytd-grid-video-renderer #video-title:has(ruby[data-surface]) {
   line-height: 1.8 !important;
   display: block !important;
   max-height: none !important;
@@ -1106,7 +1106,7 @@ ytd-grid-video-renderer #video-title:has(ruby) {
 }
 
 /* --- 3. YouTube Formatted Comments Fix --- */
-ytd-comment-renderer #content-text:has(ruby) {
+:root[data-tsukeru-custom-style="on"] ytd-comment-renderer #content-text:has(ruby[data-surface]) {
   line-height: 1.6 !important;
 }
 
@@ -1114,7 +1114,7 @@ ytd-comment-renderer #content-text:has(ruby) {
    Shrinking the ruby text specifically on YouTube prevents the layout
    from getting too aggressively stretched horizontally and vertically.
 */
-ytd-app ruby rt {
+:root[data-tsukeru-custom-style="on"] ytd-app [data-tsukeru-wrapper="1"] ruby rt {
   font-size: 0.55em !important;
   line-height: 1 !important;
   vertical-align: top !important;

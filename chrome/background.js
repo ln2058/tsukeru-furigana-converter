@@ -1,3 +1,26 @@
+/*
+Module: background
+Purpose: Route extension events and messages between popup/content scripts and background API helpers.
+
+Inputs:
+- Runtime install, command, and context menu events.
+- Message actions and payloads from popup/content scripts.
+
+Outputs:
+- Async message responses and tab-level apply/clear toggles.
+
+Side Effects:
+- Seeds and reads `chrome.storage.sync` defaults.
+- Creates context menus and injects content scripts/CSS when needed.
+
+Failure Modes:
+- Message delivery fails when tabs/content scripts are unavailable.
+- Script/CSS injection can fail on restricted pages.
+
+Security Notes:
+- Delegates external network traffic to `bg-api` only.
+- Avoid logging raw user page text in error paths.
+*/
 // Background service worker — Chrome message router and command handler.
 // All API/cache logic lives in ./js/bg-api.js and ./js/bg-cache.js.
 import {
@@ -5,6 +28,14 @@ import {
   handlePlayAudio, handleFetchProxyAudio, handleExportAnkiAudio,
   API_BASE_URL, DEFAULT_SETTINGS,
 } from './js/bg-api.js';
+
+const runtimeApi = typeof browser !== 'undefined' ? browser : chrome;
+const i18nApi = runtimeApi?.i18n;
+
+function t(key, fallback) {
+  const message = i18nApi?.getMessage?.(key);
+  return message || fallback;
+}
 
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -29,13 +60,13 @@ if (chrome.contextMenus) {
   chrome.runtime.onInstalled.addListener(() => {
     chrome.contextMenus.create({
       id: 'applyFurigana',
-      title: 'Apply Furigana to Page',
+      title: t('contextMenuApplyFurigana', 'Apply Furigana to Page'),
       contexts: ['page'],
     });
 
     chrome.contextMenus.create({
       id: 'clearFurigana',
-      title: 'Clear Furigana',
+      title: t('contextMenuClearFurigana', 'Clear Furigana'),
       contexts: ['page'],
     });
   });
@@ -135,9 +166,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (response.ok) {
           sendResponse({ success: true });
         } else {
-          let errMsg = `Server returned ${response.status}`;
+          let errMsg = t('errorUnexpectedShort', 'Unexpected error. Please try again.');
           if (response.status === 429) {
-            errMsg = 'Rate limit exceeded. Please try again in an hour.';
+            errMsg = t('errorRateLimitShort', 'Rate limit exceeded. Please try again in an hour.');
           } else {
             try {
               const errData = await response.json();
@@ -148,7 +179,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
       })
       .catch(() => {
-        sendResponse({ success: false, error: 'Network error. Please try again later.' });
+        sendResponse({
+          success: false,
+          error: t('errorNetworkShort', 'Network error. Please try again later.')
+        });
       });
     return true;
   }

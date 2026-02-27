@@ -1,3 +1,25 @@
+/*
+Module: popup-settings
+Purpose: Manage settings persistence, content-script bootstrapping, and apply/clear actions from popup.
+
+Inputs:
+- Settings form events, active-tab info, and stored sync settings.
+
+Outputs:
+- Updated settings in storage and apply/clear command messages to content scripts.
+
+Side Effects:
+- Reads/writes `chrome.storage.sync`.
+- Injects content scripts/CSS, updates popup status UI, and sends live appearance updates.
+
+Failure Modes:
+- Non-http tabs reject apply/clear actions.
+- Injection/messaging failures return status errors.
+
+Security Notes:
+- Only acts on explicit user-triggered popup interactions.
+- Keeps settings/state local to extension storage APIs.
+*/
 // Settings constants, shared utilities, report modal — imported by all popup modules.
 
 export const DEFAULT_SETTINGS = {
@@ -6,6 +28,7 @@ export const DEFAULT_SETTINGS = {
   firstOccurrenceOnly: false,
   highlightMode: 'off',
   watchDynamic: false,
+  removeCustomStyling: false,
   rubySize: 0.65,
   rubyColor: '#475569',
   rubyWeight: 'normal',
@@ -15,6 +38,31 @@ export const DICTIONARY_MAX_SENSES = 3;
 export const DEFINITION_CACHE_TTL = 5 * 60 * 1000;
 
 // ── Shared DOM/tab utilities ──────────────────────────────────────────────────
+
+export function t(key, substitutions, fallback = '') {
+  const message = chrome.i18n?.getMessage ? chrome.i18n.getMessage(key, substitutions) : '';
+  return message || fallback;
+}
+
+export function applyI18nToPopupDom(root = document) {
+  root.querySelectorAll('[data-i18n]').forEach((el) => {
+    const key = el.getAttribute('data-i18n');
+    const message = key ? t(key) : '';
+    if (message) el.textContent = message;
+  });
+
+  root.querySelectorAll('[data-i18n-title]').forEach((el) => {
+    const key = el.getAttribute('data-i18n-title');
+    const message = key ? t(key) : '';
+    if (message) el.setAttribute('title', message);
+  });
+
+  root.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    const message = key ? t(key) : '';
+    if (message) el.setAttribute('placeholder', message);
+  });
+}
 
 export function setStatus(message, type) {
   const el = document.getElementById('status');
@@ -65,7 +113,7 @@ export function openReportModal(word, reading, context) {
   document.getElementById('extReportSuccess').textContent = '';
   const submitBtn = document.getElementById('extReportSubmit');
   submitBtn.disabled = false;
-  submitBtn.textContent = 'Submit Report';
+  submitBtn.textContent = t('report_submit_button', undefined, 'Submit Report');
   const modal = document.getElementById('extReportModal');
   modal.classList.remove('hidden');
   requestAnimationFrame(() => modal.classList.add('show'));
@@ -86,6 +134,7 @@ export async function initSettingsForm() {
   const furiganaTypeSelect = document.getElementById('furiganaType');
   const firstOccurrenceCheckbox = document.getElementById('firstOccurrenceOnly');
   const watchDynamicCheckbox = document.getElementById('watchDynamic');
+  const removeCustomStylingCheckbox = document.getElementById('removeCustomStyling');
   const highlightRadios = document.querySelectorAll('input[name="highlightMode"]');
   const rubySizeInput = document.getElementById('rubySize');
   const rubyColorPalette = document.getElementById('rubyColorPalette');
@@ -98,6 +147,7 @@ export async function initSettingsForm() {
   furiganaTypeSelect.value = stored.furiganaType || DEFAULT_SETTINGS.furiganaType;
   firstOccurrenceCheckbox.checked = stored.firstOccurrenceOnly ?? DEFAULT_SETTINGS.firstOccurrenceOnly;
   watchDynamicCheckbox.checked = stored.watchDynamic ?? DEFAULT_SETTINGS.watchDynamic;
+  removeCustomStylingCheckbox.checked = stored.removeCustomStyling ?? DEFAULT_SETTINGS.removeCustomStyling;
   const selectedHighlight = stored.highlightMode || DEFAULT_SETTINGS.highlightMode;
   highlightRadios.forEach(radio => {
     radio.checked = radio.value === selectedHighlight;
@@ -121,6 +171,7 @@ export async function initSettingsForm() {
       firstOccurrenceOnly: Boolean(firstOccurrenceCheckbox.checked),
       highlightMode: getSelectedHighlightMode(),
       watchDynamic: Boolean(watchDynamicCheckbox.checked),
+      removeCustomStyling: Boolean(removeCustomStylingCheckbox.checked),
       rubySize: parseFloat(rubySizeInput.value) || DEFAULT_SETTINGS.rubySize,
       rubyColor: activeColor,
       rubyWeight: activeWeight,
@@ -133,6 +184,7 @@ export async function initSettingsForm() {
         color: activeColor,
         size: activeSize,
         weight: activeWeight,
+        removeCustomStyling: settings.removeCustomStyling,
       }).catch(() => {});
     }
   };
@@ -147,6 +199,7 @@ export async function initSettingsForm() {
   furiganaTypeSelect.addEventListener('change', saveSettings);
   firstOccurrenceCheckbox.addEventListener('change', saveSettings);
   watchDynamicCheckbox.addEventListener('change', saveSettings);
+  removeCustomStylingCheckbox.addEventListener('change', saveSettings);
   highlightRadios.forEach(radio => {
     radio.addEventListener('change', saveSettings);
   });
@@ -177,6 +230,7 @@ export async function initSettingsForm() {
       firstOccurrenceOnly: Boolean(firstOccurrenceCheckbox.checked),
       highlightMode: getSelectedHighlightMode(),
       watchDynamic: Boolean(watchDynamicCheckbox.checked),
+      removeCustomStyling: Boolean(removeCustomStylingCheckbox.checked),
       rubySize: parseFloat(rubySizeInput.value) || DEFAULT_SETTINGS.rubySize,
       rubyColor: rubyColorPalette.querySelector('.color-swatch.selected')?.dataset.color || DEFAULT_SETTINGS.rubyColor,
       rubyWeight: rubyWeightSelect.value || DEFAULT_SETTINGS.rubyWeight,
@@ -184,36 +238,37 @@ export async function initSettingsForm() {
     await chrome.storage.sync.set(settings);
     const tab = await getActiveTab();
     if (!tab?.id || !isHttpTab(tab.url)) {
-      setStatus('Open a normal http/https page and try again.', 'error');
+      setStatus(t('status_open_normal_page', undefined, 'Open a normal http/https page and try again.'), 'error');
       return;
     }
     try {
       await ensureContentScript(tab.id);
-      setStatus('Processing...', 'info');
+      setStatus(t('status_processing', undefined, 'Processing...'), 'info');
       const response = await chrome.tabs.sendMessage(tab.id, { action: 'applyFurigana', settings });
       if (response?.ok) {
-        setStatus('Furigana applied', 'success');
+        setStatus(t('status_furigana_applied', undefined, 'Furigana applied'), 'success');
       } else {
         throw new Error(response?.error || 'Unknown error');
       }
     } catch (err) {
       console.error(err);
-      setStatus('Failed: ' + (err.message || 'Could not reach page'), 'error');
+      const reason = err.message || t('status_could_not_reach_page', undefined, 'Could not reach page');
+      setStatus(t('status_failed_with_reason', [reason], `Failed: ${reason}`), 'error');
     }
   }
 
   async function clearFuriganaFromPage() {
     const tab = await getActiveTab();
     if (!tab?.id || !isHttpTab(tab.url)) {
-      setStatus('Open a normal http/https page and try again.', 'error');
+      setStatus(t('status_open_normal_page', undefined, 'Open a normal http/https page and try again.'), 'error');
       return;
     }
     try {
       await chrome.tabs.sendMessage(tab.id, { action: 'clearFurigana' });
-      setStatus('Furigana cleared', 'success');
+      setStatus(t('status_furigana_cleared', undefined, 'Furigana cleared'), 'success');
     } catch (err) {
       console.error(err);
-      setStatus('Could not reach the page. Try reloading and retry.', 'error');
+      setStatus(t('status_reload_and_retry', undefined, 'Could not reach the page. Try reloading and retry.'), 'error');
     }
   }
 }

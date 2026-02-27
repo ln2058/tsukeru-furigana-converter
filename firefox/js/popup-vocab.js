@@ -1,3 +1,25 @@
+/*
+Module: popup-vocab
+Purpose: Power vocabulary list and vocab-mode workflows, including lookup enrichment, audio, and exports.
+
+Inputs:
+- Stored vocabulary data, popup UI events, active-tab word/context responses, and background API responses.
+
+Outputs:
+- Rendered vocab lists, saved vocabulary entries, and CSV/ZIP export downloads.
+
+Side Effects:
+- Reads/writes `chrome.storage.local` vocabulary.
+- Sends runtime/tab messages and triggers browser downloads.
+
+Failure Modes:
+- Storage/message/network failures can block lookup, save, or export operations.
+- Audio playback can fail and fall back to speech synthesis.
+
+Security Notes:
+- Sanitizes/escapes sentence HTML before rendering.
+- Avoids storing secrets and limits exported fields to vocabulary data.
+*/
 // Vocabulary tab, vocab mode tab, dictionary helpers, and audio playback.
 import {
   DEFAULT_SETTINGS,
@@ -6,12 +28,20 @@ import {
   getActiveTab,
   isHttpTab,
   openReportModal,
+  t,
 } from './popup-settings.js';
 
 // ── Shared utilities ──────────────────────────────────────────────────────────
 
 export function generateEntryId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function formatCountWithNoun(count, singularKey, pluralKey, templateKey, fallbackTemplate) {
+  const noun = count === 1
+    ? t(singularKey, undefined, 'word')
+    : t(pluralKey, undefined, 'words');
+  return t(templateKey, [String(count), noun], fallbackTemplate.replace('{count}', String(count)).replace('{noun}', noun));
 }
 
 export function getEntryId(item) {
@@ -229,21 +259,27 @@ export async function loadVocabulary() {
 export function renderVocabulary() {
   const vocabList = document.getElementById('vocabList');
   const vocabCount = document.getElementById('vocabCount');
-  vocabCount.textContent = `${currentVocabulary.length} word${currentVocabulary.length !== 1 ? 's' : ''} saved`;
+  vocabCount.textContent = formatCountWithNoun(
+    currentVocabulary.length,
+    'word_singular',
+    'word_plural',
+    'vocab_count_saved',
+    '{count} {noun} saved'
+  );
   vocabList.innerHTML = '';
 
   if (filteredVocabulary.length === 0) {
     if (currentVocabulary.length === 0) {
       vocabList.innerHTML = `
         <div class="vocab-empty">
-          <div class="vocab-empty-text">No vocabulary saved yet</div>
-          <div class="vocab-empty-hint">Double-click any word with furigana to save it</div>
+          <div class="vocab-empty-text">${escapeHtml(t('vocab_empty_text', undefined, 'No vocabulary saved yet'))}</div>
+          <div class="vocab-empty-hint">${escapeHtml(t('vocab_empty_hint', undefined, 'Double-click any word with furigana to save it'))}</div>
         </div>
       `;
     } else {
       vocabList.innerHTML = `
         <div class="vocab-empty">
-          <div class="vocab-empty-text">No results found</div>
+          <div class="vocab-empty-text">${escapeHtml(t('vocab_no_results', undefined, 'No results found'))}</div>
         </div>
       `;
     }
@@ -269,7 +305,7 @@ export function createVocabItem(item, index) {
   try {
     urlDisplay = new URL(item.url).hostname;
   } catch (e) {
-    urlDisplay = 'Unknown source';
+    urlDisplay = t('vocab_unknown_source', undefined, 'Unknown source');
   }
 
   const definitionText = getDefinitionText(item);
@@ -283,7 +319,7 @@ export function createVocabItem(item, index) {
         <div class="vocab-word">${escapeHtml(item.word)}</div>
         <div class="vocab-reading">${escapeHtml(item.reading)}</div>
       </div>
-      <button class="vocab-speaker-btn" data-word="${escapeHtml(item.word)}" data-reading="${escapeHtml(item.reading)}" title="Listen" style="background: none; border: none; cursor: pointer; color: #6b7280; padding: 4px; display: flex; align-items: center; border-radius: 4px; width: auto; margin-bottom: 0; flex-shrink: 0;">
+      <button class="vocab-speaker-btn" data-word="${escapeHtml(item.word)}" data-reading="${escapeHtml(item.reading)}" title="${escapeHtml(t('vocab_listen', undefined, 'Listen'))}" style="background: none; border: none; cursor: pointer; color: #6b7280; padding: 4px; display: flex; align-items: center; border-radius: 4px; width: auto; margin-bottom: 0; flex-shrink: 0;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
           <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
@@ -302,16 +338,16 @@ export function createVocabItem(item, index) {
       <div class="vocab-sentence tatoeba-sentence">
         <div class="tatoeba-jp">${tatoebaHtml}</div>
         ${item.tatoebaEn ? `<div class="tatoeba-en">${escapeHtml(item.tatoebaEn)}</div>` : ''}
-        <div class="tatoeba-source">(Source: Tatoeba)</div>
+        <div class="tatoeba-source">${escapeHtml(t('vocab_source_tatoeba', undefined, '(Source: Tatoeba)'))}</div>
       </div>
     ` : ''}
     <div class="vocab-footer">
       <a href="${escapeHtml(item.url)}" class="vocab-url" target="_blank" title="${escapeHtml(item.url)}">${escapeHtml(urlDisplay)} &middot; ${dateStr}</a>
       <div style="display:flex;gap:4px;align-items:center;">
-        <button class="vocab-action-btn report-btn" title="Report Wrong Reading" data-word="${escapeHtml(item.word)}" data-reading="${escapeHtml(item.reading)}" data-context="${escapeHtml((item.sentence || '').replace(/<[^>]+>/g, '').substring(0, 100))}">
+        <button class="vocab-action-btn report-btn" title="${escapeHtml(t('report_button_title', undefined, 'Report Wrong Reading'))}" data-word="${escapeHtml(item.word)}" data-reading="${escapeHtml(item.reading)}" data-context="${escapeHtml((item.sentence || '').replace(/<[^>]+>/g, '').substring(0, 100))}">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
         </button>
-        <button class="vocab-delete" data-id="${escapeHtml(entryId)}">Delete</button>
+        <button class="vocab-delete" data-id="${escapeHtml(entryId)}">${escapeHtml(t('vocab_delete', undefined, 'Delete'))}</button>
       </div>
     </div>
   `;
@@ -352,21 +388,29 @@ export async function deleteVocabItem(entryId) {
     renderVocabulary();
   } catch (err) {
     console.error('Failed to delete vocabulary item:', err);
-    alert('Failed to delete item');
+    alert(t('vocab_delete_failed', undefined, 'Failed to delete item'));
   }
 }
 
 export function exportVocabulary() {
   if (currentVocabulary.length === 0) {
-    alert('No vocabulary to export');
+    alert(t('vocab_no_items_to_export', undefined, 'No vocabulary to export'));
     return;
   }
 
   const headers = [
-    'Word', 'Reading', 'Definition',
-    'Sentence (with furigana)', 'Sentence (plain text)',
-    'Tatoeba (with furigana)', 'Tatoeba (plain text)', 'Tatoeba (English translation)',
-    'JLPT', 'Part of Speech', 'URL', 'Date'
+    t('csv_header_word', undefined, 'Word'),
+    t('csv_header_reading', undefined, 'Reading'),
+    t('csv_header_definition', undefined, 'Definition'),
+    t('csv_header_sentence_with_furigana', undefined, 'Sentence (with furigana)'),
+    t('csv_header_sentence_plain_text', undefined, 'Sentence (plain text)'),
+    t('csv_header_tatoeba_with_furigana', undefined, 'Tatoeba (with furigana)'),
+    t('csv_header_tatoeba_plain_text', undefined, 'Tatoeba (plain text)'),
+    t('csv_header_tatoeba_english', undefined, 'Tatoeba (English translation)'),
+    t('csv_header_jlpt', undefined, 'JLPT'),
+    t('csv_header_pos', undefined, 'Part of Speech'),
+    t('csv_header_url', undefined, 'URL'),
+    t('csv_header_date', undefined, 'Date'),
   ];
   const rows = [headers];
 
@@ -421,11 +465,11 @@ export function exportVocabulary() {
 
 export async function exportAnkiAudio() {
   if (currentVocabulary.length === 0) {
-    alert('No vocabulary to export');
+    alert(t('vocab_no_items_to_export', undefined, 'No vocabulary to export'));
     return;
   }
   const btn = document.getElementById('exportAudioBtn');
-  btn.textContent = 'Exporting…';
+  btn.textContent = t('vocab_exporting', undefined, 'Exporting...');
   btn.disabled = true;
   try {
     const payload = currentVocabulary.map(w => ({
@@ -439,15 +483,16 @@ export async function exportAnkiAudio() {
       altReadings: ''
     }));
     const result = await chrome.runtime.sendMessage({ action: 'exportAnkiAudio', payload });
-    if (!result.success) throw new Error(result.error || 'Export failed');
+    if (!result.success) throw new Error(result.error || t('vocab_export_failed_short', undefined, 'Export failed'));
     const link = document.createElement('a');
     link.href = result.dataUrl;
     link.download = `tsukeru_anki_${Date.now()}.zip`;
     link.click();
   } catch (err) {
-    alert(`Export failed: ${err.message}`);
+    const fallback = t('vocab_export_failed_short', undefined, 'Export failed');
+    alert(t('vocab_export_failed_with_reason', [err.message || fallback], `Export failed: ${err.message || fallback}`));
   } finally {
-    btn.textContent = 'Export Anki + Audio';
+    btn.textContent = t('vocab_export_audio', undefined, '+ Audio');
     btn.disabled = false;
   }
 }
@@ -480,7 +525,7 @@ export async function initVocabularyTab() {
 
   clearBtn.addEventListener('click', async () => {
     if (currentVocabulary.length === 0) return;
-    if (confirm(`Clear all ${currentVocabulary.length} vocabulary items?`)) {
+    if (confirm(t('vocab_clear_confirm', [String(currentVocabulary.length)], `Clear all ${currentVocabulary.length} vocabulary items?`))) {
       await chrome.storage.local.set({ vocabulary: [] });
       await loadVocabulary();
     }
@@ -495,10 +540,10 @@ export let vocabModeSortMode = 'occurrence';
 export let vocabModeJlptFilter = 'all';
 
 export const VM_SORT_MODES = [
-  { key: 'occurrence', label: '⏱ Appearance' },
-  { key: 'frequency',  label: '📊 Frequency'  },
-  { key: 'word',       label: '🔤 A–Z'         },
-  { key: 'jlpt',       label: '🎓 Difficulty'  },
+  { key: 'occurrence', labelKey: 'vm_sort_occurrence', fallbackLabel: '⏱ Appearance' },
+  { key: 'frequency', labelKey: 'vm_sort_frequency', fallbackLabel: '📊 Frequency' },
+  { key: 'word', labelKey: 'vm_sort_word', fallbackLabel: '🔤 A-Z' },
+  { key: 'jlpt', labelKey: 'vm_sort_jlpt', fallbackLabel: '🎓 Difficulty' },
 ];
 
 export async function initVocabModeTab() {
@@ -596,7 +641,7 @@ export function updateSortButton() {
   const btn = document.getElementById('vmSortBtn');
   if (!btn) return;
   const mode = VM_SORT_MODES.find(m => m.key === vocabModeSortMode);
-  if (mode) btn.textContent = mode.label;
+  if (mode) btn.textContent = t(mode.labelKey, undefined, mode.fallbackLabel);
 }
 
 export async function renderVocabMode() {
@@ -604,7 +649,13 @@ export async function renderVocabMode() {
   const countEl = document.getElementById('vocabmodeCount');
   const emptyEl = document.getElementById('vocabmodeEmpty');
 
-  countEl.textContent = `${filteredVocabModeWords.length} word${filteredVocabModeWords.length !== 1 ? 's' : ''} on page`;
+  countEl.textContent = formatCountWithNoun(
+    filteredVocabModeWords.length,
+    'word_singular',
+    'word_plural',
+    'vocabmode_count_on_page',
+    '{count} {noun} on page'
+  );
 
   if (filteredVocabModeWords.length === 0) {
     list.innerHTML = '';
@@ -646,12 +697,12 @@ export async function renderVocabMode() {
         ${freqBadge}
         ${jlptTag}
         <div class="vm-actions">
-          <button class="vm-action-btn save-btn${isSaved ? ' saved' : ''}" title="${isSaved ? 'Saved' : 'Save word'}">${isSaved ? '✓' : '+'}</button>
-          <button class="vm-action-btn play-btn" title="Play pronunciation">
+          <button class="vm-action-btn save-btn${isSaved ? ' saved' : ''}" title="${escapeHtml(isSaved ? t('vm_saved', undefined, 'Saved') : t('vm_save_word', undefined, 'Save word'))}">${isSaved ? '✓' : '+'}</button>
+          <button class="vm-action-btn play-btn" title="${escapeHtml(t('vm_play_pronunciation', undefined, 'Play pronunciation'))}">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
           </button>
-          <button class="vm-action-btn jump-btn" title="Jump to word on page">↗</button>
-          <button class="vm-action-btn report-btn" title="Report Wrong Reading">
+          <button class="vm-action-btn jump-btn" title="${escapeHtml(t('vm_jump_to_word', undefined, 'Jump to word on page'))}">↗</button>
+          <button class="vm-action-btn report-btn" title="${escapeHtml(t('report_button_title', undefined, 'Report Wrong Reading'))}">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
           </button>
         </div>
@@ -738,7 +789,7 @@ export async function addToVocabularyFromVocabMode(word, btn) {
     if (existingIndex >= 0) {
       btn.textContent = '✓';
       btn.classList.add('saved');
-      btn.title = 'Already saved';
+      btn.title = t('vm_already_saved', undefined, 'Already saved');
       return;
     }
 
@@ -749,7 +800,7 @@ export async function addToVocabularyFromVocabMode(word, btn) {
 
     btn.textContent = '✓';
     btn.classList.add('saved');
-    btn.title = 'Saved';
+    btn.title = t('vm_saved', undefined, 'Saved');
   } catch (err) {
     console.error('Failed to save word:', err);
     btn.textContent = '!';

@@ -1,3 +1,25 @@
+/*
+Module: content-dom
+Purpose: Collect processable page text, sanitize backend HTML, and apply DOM/observer workflows.
+
+Inputs:
+- Current document nodes, site-specific selectors, settings, and processed HTML batches.
+
+Outputs:
+- Batched marker payloads, injected ruby wrappers, and extracted vocab/context data.
+
+Side Effects:
+- Mutates page DOM, attributes, classes, and inline CSS variables.
+- Starts/stops mutation, intersection, and caption observers.
+
+Failure Modes:
+- Invalid selectors, DOM race conditions, and batch marker mismatches.
+- Partial dynamic processing failures are logged and skipped.
+
+Security Notes:
+- Enforces strict allowlist sanitization before HTML insertion.
+- Excludes sensitive/non-text targets from processing.
+*/
 // ============================================================================
 // content-dom.js — DOM utilities, text node collection, observers, HTML cleaning
 // Loaded as a plain content script (no import/export). State variables

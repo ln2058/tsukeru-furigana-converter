@@ -1,3 +1,25 @@
+/*
+Module: bg-cache
+Purpose: Provide hashing plus IndexedDB/memory caching primitives for background workflows.
+
+Inputs:
+- Cache keys, source text, processed HTML, and timestamps.
+
+Outputs:
+- SHA-256 hashes and cache hit/miss values.
+
+Side Effects:
+- Opens IndexedDB and reads/writes cache entries.
+- Mutates in-memory definition cache map.
+
+Failure Modes:
+- IndexedDB transaction/open failures return safe null/no-op behavior.
+- Crypto API failures propagate from hash operations.
+
+Security Notes:
+- Cache contains locally stored derived page text fragments.
+- TTL limits retention of cached data.
+*/
 // IndexedDB page-cache and in-memory definition cache for the service worker.
 
 const IDB_NAME = 'tsukeru-cache';

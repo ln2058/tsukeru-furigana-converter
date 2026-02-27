@@ -1,3 +1,22 @@
+/*
+Module: utils
+Purpose: Provide shared helpers for kana normalization, escaping, timing, IDs, and safe furigana HTML sanitization.
+
+Inputs:
+- Raw strings, HTML fragments, and timing values.
+
+Outputs:
+- Normalized text, escaped/sanitized HTML, generated IDs, and sleep promises.
+
+Side Effects:
+- None.
+
+Failure Modes:
+- DOM-dependent helpers fail if called in contexts without required DOM APIs.
+
+Security Notes:
+- Sanitizer enforces a strict allowlist to reduce HTML injection risk.
+*/
 // Shared utility functions for all extension contexts.
 // NOTE: escapeHtml and sanitizeSafeFuriganaHtml are DOM-dependent;
 //       they must not be called from the service worker (bg-api.js imports kata2hira only).
