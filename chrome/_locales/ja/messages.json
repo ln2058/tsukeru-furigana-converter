@@ -179,6 +179,9 @@
   "vocab_unknown_source": {
     "message": "不明なソース"
   },
+  "vocab_local_file_source": {
+    "message": "ローカルHTMLファイル"
+  },
   "vocab_listen": {
     "message": "再生"
   },
@@ -338,8 +341,14 @@
   "shortcut_toggle_win_f": {
     "message": "Ctrl+Shift+F で切り替え"
   },
-  "status_open_normal_page": {
-    "message": "通常の http/https ページを開いて再試行してください。"
+  "status_open_supported_page": {
+    "message": "http/https ページまたはローカルの HTML ファイルを開いて再試行してください。"
+  },
+  "status_enable_file_access": {
+    "message": "ローカルファイルで Tsukeru を使うには、拡張機能の詳細画面で「ファイルの URL へのアクセスを許可する」を有効にしてください。"
+  },
+  "status_local_files_not_supported": {
+    "message": "ローカル HTML ファイルを使うには、Chrome または Edge で「ファイルの URL へのアクセスを許可する」を有効にしてください。"
   },
   "status_processing": {
     "message": "処理中..."

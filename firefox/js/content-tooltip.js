@@ -19,6 +19,7 @@ Failure Modes:
 Security Notes:
 - Escapes/sanitizes rendered content before DOM injection.
 - Avoids direct third-party media fetches from page context.
+- Redacts local file paths before saving vocabulary source metadata.
 */
 // ============================================================================
 // content-tooltip.js — Dictionary tooltip, vocabulary saving, TTS, report modal
@@ -39,6 +40,10 @@ function kata2hira(str) {
 function t(key, substitutions, fallback = '') {
   const message = chrome.i18n?.getMessage ? chrome.i18n.getMessage(key, substitutions) : '';
   return message || fallback;
+}
+
+function normalizeVocabularySourceUrl(url = '') {
+  return /^file:\/\//i.test(url) ? 'local-file' : (url || '');
 }
 
 // ── Dictionary tooltip: enable / click handling ───────────────────────────────
@@ -259,7 +264,7 @@ function addTooltipInteractionHandlers() {
         tatoebaEn: tatoebaEnEl ? tatoebaEnEl.textContent.replace(/^- /, '').trim() : null,
         jlpt,
         pos,
-        url: window.location.href,
+        url: normalizeVocabularySourceUrl(window.location.href),
         timestamp: Date.now()
       };
       try {
@@ -813,7 +818,7 @@ async function handleRubyDoubleClick(event) {
     sentence: sentenceContext,
     jlpt: wordInfo.jlpt,
     pos: wordInfo.pos,
-    url: window.location.href,
+    url: normalizeVocabularySourceUrl(window.location.href),
     timestamp: Date.now()
   };
 

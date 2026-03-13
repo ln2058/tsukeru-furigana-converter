@@ -13,7 +13,7 @@ Side Effects:
 - Injects content scripts/CSS, updates popup status UI, and sends live appearance updates.
 
 Failure Modes:
-- Non-http tabs reject apply/clear actions.
+- Unsupported tabs reject apply/clear actions.
 - Injection/messaging failures return status errors.
 
 Security Notes:
@@ -76,8 +76,25 @@ export async function getActiveTab() {
   return tabs?.[0];
 }
 
+// Compatibility export for popup modules that still import the older helper name.
 export function isHttpTab(url = '') {
-  return /^https?:\/\//i.test(url);
+  return isSupportedPageTab(url);
+}
+
+export function isSupportedPageTab(url = '') {
+  return /^(https?|file):\/\//i.test(url);
+}
+
+export function getUnsupportedTabMessage(url = '') {
+  if (!isSupportedPageTab(url)) {
+    return t(
+      'status_open_supported_page',
+      undefined,
+      'Open an http/https page or local HTML file and try again.'
+    );
+  }
+
+  return '';
 }
 
 export function getSelectedHighlightMode() {
@@ -237,8 +254,12 @@ export async function initSettingsForm() {
     };
     await chrome.storage.sync.set(settings);
     const tab = await getActiveTab();
-    if (!tab?.id || !isHttpTab(tab.url)) {
-      setStatus(t('status_open_normal_page', undefined, 'Open a normal http/https page and try again.'), 'error');
+    const unsupportedMessage = getUnsupportedTabMessage(tab?.url || '');
+    if (!tab?.id || unsupportedMessage) {
+      setStatus(
+        unsupportedMessage || t('status_open_supported_page', undefined, 'Open an http/https page or local HTML file and try again.'),
+        'error'
+      );
       return;
     }
     try {
@@ -259,8 +280,12 @@ export async function initSettingsForm() {
 
   async function clearFuriganaFromPage() {
     const tab = await getActiveTab();
-    if (!tab?.id || !isHttpTab(tab.url)) {
-      setStatus(t('status_open_normal_page', undefined, 'Open a normal http/https page and try again.'), 'error');
+    const unsupportedMessage = getUnsupportedTabMessage(tab?.url || '');
+    if (!tab?.id || unsupportedMessage) {
+      setStatus(
+        unsupportedMessage || t('status_open_supported_page', undefined, 'Open an http/https page or local HTML file and try again.'),
+        'error'
+      );
       return;
     }
     try {

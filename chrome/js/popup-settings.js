@@ -13,7 +13,7 @@ Side Effects:
 - Injects content scripts/CSS, mutates popup status UI, and sends live appearance updates.
 
 Failure Modes:
-- Non-http tabs reject apply/clear actions.
+- Unsupported tabs and local files without browser-granted file access reject apply/clear actions.
 - Injection/messaging failures return status errors.
 
 Security Notes:
@@ -78,6 +78,50 @@ export async function getActiveTab() {
 
 export function isHttpTab(url = '') {
   return /^https?:\/\//i.test(url);
+}
+
+export function isFileTab(url = '') {
+  return /^file:\/\//i.test(url);
+}
+
+export function isSupportedPageTab(url = '') {
+  return /^(https?|file):\/\//i.test(url);
+}
+
+export async function hasFileSchemeAccess() {
+  const isAllowed = chrome.extension?.isAllowedFileSchemeAccess;
+  if (typeof isAllowed !== 'function') {
+    return false;
+  }
+
+  return new Promise((resolve) => {
+    try {
+      isAllowed.call(chrome.extension, (allowed) => resolve(Boolean(allowed)));
+    } catch (error) {
+      console.warn('Tsukeru: file access check failed', error);
+      resolve(false);
+    }
+  });
+}
+
+export async function getUnsupportedTabMessage(url = '') {
+  if (!isSupportedPageTab(url)) {
+    return t(
+      'status_open_supported_page',
+      undefined,
+      'Open an http/https page or local HTML file and try again.'
+    );
+  }
+
+  if (isFileTab(url) && !(await hasFileSchemeAccess())) {
+    return t(
+      'status_enable_file_access',
+      undefined,
+      "To use Tsukeru on local files, enable 'Allow access to file URLs' in the extension details page."
+    );
+  }
+
+  return '';
 }
 
 export function getSelectedHighlightMode() {
@@ -225,8 +269,16 @@ export async function initSettingsForm() {
     };
     await chrome.storage.sync.set(settings);
     const tab = await getActiveTab();
-    if (!tab?.id || !isHttpTab(tab.url)) {
-      setStatus(t('status_open_normal_page', undefined, 'Open a normal http/https page and try again.'), 'error');
+    const unsupportedMessage = await getUnsupportedTabMessage(tab?.url || '');
+    if (!tab?.id || unsupportedMessage) {
+      setStatus(
+        unsupportedMessage || t(
+          'status_open_supported_page',
+          undefined,
+          'Open an http/https page or local HTML file and try again.'
+        ),
+        'error'
+      );
       return;
     }
     try {
@@ -247,8 +299,16 @@ export async function initSettingsForm() {
 
   async function clearFuriganaFromPage() {
     const tab = await getActiveTab();
-    if (!tab?.id || !isHttpTab(tab.url)) {
-      setStatus(t('status_open_normal_page', undefined, 'Open a normal http/https page and try again.'), 'error');
+    const unsupportedMessage = await getUnsupportedTabMessage(tab?.url || '');
+    if (!tab?.id || unsupportedMessage) {
+      setStatus(
+        unsupportedMessage || t(
+          'status_open_supported_page',
+          undefined,
+          'Open an http/https page or local HTML file and try again.'
+        ),
+        'error'
+      );
       return;
     }
     try {

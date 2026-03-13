@@ -19,6 +19,7 @@ Failure Modes:
 
 Security Notes:
 - Treat all backend responses as untrusted until sanitized by content scripts.
+- Redacts non-web tab URLs before sending backend metadata.
 - Revoke temporary object URLs after playback attempts.
 */
 // External network requests, furigana pipeline, and audio for the service worker.
@@ -149,6 +150,7 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
   const apiUrl = API_BASE_URL;
   const endpoints = [`${apiUrl}/api/extension/furigana`, `${apiUrl}/furigana/html`];
   let lastError = null;
+  const backendWebsiteUrl = getBackendWebsiteUrl(tabUrl);
 
   for (const endpoint of endpoints) {
     try {
@@ -160,7 +162,8 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
       formData.append('furigana_type', settings.furiganaType || DEFAULT_SETTINGS.furiganaType);
       formData.append('first_occurrence_only', settings.firstOccurrenceOnly ? 'on' : '');
       formData.append('raw_text', textContent);
-      formData.append('website_url', tabUrl || '');
+      // Never leak local filesystem paths or other non-web URLs to the backend.
+      formData.append('website_url', backendWebsiteUrl);
       formData.append('csrf_token', '');
 
       const response = await fetch(endpoint, {
@@ -197,6 +200,10 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
   }
 
   throw lastError || new Error('API request failed');
+}
+
+function getBackendWebsiteUrl(tabUrl = '') {
+  return /^https?:\/\//i.test(tabUrl) ? tabUrl : '';
 }
 
 // Parse the HTML fallback response (used when content-type is not JSON).

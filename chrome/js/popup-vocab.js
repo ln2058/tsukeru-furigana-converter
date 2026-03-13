@@ -19,6 +19,7 @@ Failure Modes:
 Security Notes:
 - Sanitizes/escapes sentence HTML before rendering.
 - Avoids storing secrets and limits exported fields to vocabulary data.
+- Redacts local file source metadata in the UI and exports.
 */
 // Vocabulary tab, vocab mode tab, dictionary helpers, and audio playback.
 import {
@@ -26,12 +27,14 @@ import {
   DICTIONARY_MAX_SENSES,
   DEFINITION_CACHE_TTL,
   getActiveTab,
-  isHttpTab,
+  isSupportedPageTab,
   openReportModal,
   t,
 } from './popup-settings.js';
 
 // ── Shared utilities ──────────────────────────────────────────────────────────
+
+const LOCAL_FILE_SOURCE = 'local-file';
 
 export function generateEntryId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -47,6 +50,30 @@ function formatCountWithNoun(count, singularKey, pluralKey, templateKey, fallbac
 export function getEntryId(item) {
   if (item?.id) return item.id;
   return `${item?.word || ''}::${item?.reading || ''}::${item?.timestamp || ''}::${item?.url || ''}`;
+}
+
+function normalizeVocabularySourceUrl(url = '') {
+  return /^file:\/\//i.test(url) ? LOCAL_FILE_SOURCE : (url || '');
+}
+
+function isWebVocabularySource(url = '') {
+  return /^https?:\/\//i.test(url);
+}
+
+function isLocalVocabularySource(url = '') {
+  return normalizeVocabularySourceUrl(url) === LOCAL_FILE_SOURCE;
+}
+
+function getVocabularySourceLabel(url = '') {
+  if (isLocalVocabularySource(url)) {
+    return t('vocab_local_file_source', undefined, 'Local HTML File');
+  }
+
+  try {
+    return new URL(url).hostname;
+  } catch (e) {
+    return t('vocab_unknown_source', undefined, 'Unknown source');
+  }
 }
 
 export function kata2hira(str) {
@@ -300,13 +327,11 @@ export function createVocabItem(item, index) {
   const jlptClass = item.jlpt ? ` jlpt-${item.jlpt}` : '';
   const posText = item.pos || '';
   const dateStr = new Date(item.timestamp).toLocaleDateString();
-
-  let urlDisplay = '';
-  try {
-    urlDisplay = new URL(item.url).hostname;
-  } catch (e) {
-    urlDisplay = t('vocab_unknown_source', undefined, 'Unknown source');
-  }
+  const normalizedSourceUrl = normalizeVocabularySourceUrl(item.url);
+  const urlDisplay = getVocabularySourceLabel(item.url);
+  const sourceHtml = isWebVocabularySource(normalizedSourceUrl)
+    ? `<a href="${escapeHtml(normalizedSourceUrl)}" class="vocab-url" target="_blank" title="${escapeHtml(normalizedSourceUrl)}">${escapeHtml(urlDisplay)} &middot; ${dateStr}</a>`
+    : `<span class="vocab-url" title="${escapeHtml(urlDisplay)}">${escapeHtml(urlDisplay)} &middot; ${dateStr}</span>`;
 
   const definitionText = getDefinitionText(item);
   const definitionHtml = definitionText ? `<div class="vocab-definition">${escapeHtml(definitionText)}</div>` : '';
@@ -342,7 +367,7 @@ export function createVocabItem(item, index) {
       </div>
     ` : ''}
     <div class="vocab-footer">
-      <a href="${escapeHtml(item.url)}" class="vocab-url" target="_blank" title="${escapeHtml(item.url)}">${escapeHtml(urlDisplay)} &middot; ${dateStr}</a>
+      ${sourceHtml}
       <div style="display:flex;gap:4px;align-items:center;">
         <button class="vocab-action-btn report-btn" title="${escapeHtml(t('report_button_title', undefined, 'Report Wrong Reading'))}" data-word="${escapeHtml(item.word)}" data-reading="${escapeHtml(item.reading)}" data-context="${escapeHtml((item.sentence || '').replace(/<[^>]+>/g, '').substring(0, 100))}">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
@@ -442,7 +467,7 @@ export function exportVocabulary() {
       tatoebaEnglish,
       item.jlpt ? `N${item.jlpt}` : '',
       item.pos || '',
-      item.url,
+      normalizeVocabularySourceUrl(item.url),
       date
     ]);
   });
@@ -574,7 +599,7 @@ export async function initVocabModeTab() {
 
 export async function loadVocabMode() {
   const tab = await getActiveTab();
-  if (!tab?.id || !isHttpTab(tab.url)) {
+  if (!tab?.id || !isSupportedPageTab(tab.url)) {
     vocabModeWords = [];
     filteredVocabModeWords = [];
     renderVocabMode();
@@ -741,7 +766,7 @@ export async function renderVocabMode() {
 export async function scrollToWordOnPage(word) {
   try {
     const tab = await getActiveTab();
-    if (!tab?.id || !isHttpTab(tab.url)) return;
+    if (!tab?.id || !isSupportedPageTab(tab.url)) return;
     await chrome.tabs.sendMessage(tab.id, {
       action: 'scrollToWord',
       word: word.word,
@@ -757,7 +782,7 @@ export async function addToVocabularyFromVocabMode(word, btn) {
   try {
     const tab = await getActiveTab();
     let sentence = '';
-    if (tab?.id && isHttpTab(tab.url)) {
+    if (tab?.id && isSupportedPageTab(tab.url)) {
       try {
         const response = await chrome.tabs.sendMessage(tab.id, {
           action: 'getWordContext',
@@ -779,7 +804,7 @@ export async function addToVocabularyFromVocabMode(word, btn) {
       sentence,
       jlpt: word.jlpt,
       pos: word.pos,
-      url: tab?.url || '',
+      url: normalizeVocabularySourceUrl(tab?.url || ''),
       timestamp: Date.now()
     };
 

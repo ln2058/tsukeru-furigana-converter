@@ -15,7 +15,7 @@ Side Effects:
 
 Failure Modes:
 - Message delivery fails when tabs/content scripts are unavailable.
-- Script/CSS injection can fail on restricted pages.
+- Script/CSS injection can fail on restricted pages or local files without user-enabled file access.
 
 Security Notes:
 - Delegates external network traffic to `bg-api` only.
@@ -35,6 +35,43 @@ const i18nApi = runtimeApi?.i18n;
 function t(key, fallback) {
   const message = i18nApi?.getMessage?.(key);
   return message || fallback;
+}
+
+function isFileTabUrl(url = '') {
+  return /^file:\/\//i.test(url);
+}
+
+function isSupportedTabUrl(url = '') {
+  return /^(https?|file):\/\//i.test(url);
+}
+
+async function hasFileSchemeAccess() {
+  const isAllowed = chrome.extension?.isAllowedFileSchemeAccess;
+  if (typeof isAllowed !== 'function') {
+    return false;
+  }
+
+  return new Promise((resolve) => {
+    try {
+      isAllowed.call(chrome.extension, (allowed) => resolve(Boolean(allowed)));
+    } catch (error) {
+      console.warn('Tsukeru: file access check failed', error);
+      resolve(false);
+    }
+  });
+}
+
+async function getTabAccessIssue(tab) {
+  const url = tab?.url || '';
+  if (!tab?.id || !isSupportedTabUrl(url)) {
+    return 'unsupported';
+  }
+
+  if (isFileTabUrl(url) && !(await hasFileSchemeAccess())) {
+    return 'file-access-disabled';
+  }
+
+  return null;
 }
 
 
@@ -72,12 +109,22 @@ if (chrome.contextMenus) {
   });
 
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+    const accessIssue = await getTabAccessIssue(tab);
+    if (accessIssue) {
+      if (accessIssue === 'file-access-disabled') {
+        console.warn("Tsukeru: Enable 'Allow access to file URLs' to use Tsukeru on local files.");
+      }
+      return;
+    }
+
     if (info.menuItemId === 'applyFurigana') {
       const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
+      await ensureContentScript(tab.id);
       chrome.tabs.sendMessage(tab.id, { action: 'applyFurigana', settings }).catch(err =>
         console.warn('Tsukeru: Target page cannot receive messages. Reload the page.', err)
       );
     } else if (info.menuItemId === 'clearFurigana') {
+      await ensureContentScript(tab.id);
       chrome.tabs.sendMessage(tab.id, { action: 'clearFurigana' }).catch(err =>
         console.warn('Tsukeru: Target page cannot receive messages. Reload the page.', err)
       );
@@ -193,7 +240,13 @@ chrome.commands.onCommand.addListener(async (command) => {
 
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id || !/^https?:\/\//i.test(tab.url || '')) return;
+    const accessIssue = await getTabAccessIssue(tab);
+    if (accessIssue) {
+      if (accessIssue === 'file-access-disabled') {
+        console.warn("Tsukeru: Enable 'Allow access to file URLs' to use Tsukeru on local files.");
+      }
+      return;
+    }
 
     await ensureContentScript(tab.id);
     const state = await chrome.tabs.sendMessage(tab.id, { action: 'getFuriganaState' })

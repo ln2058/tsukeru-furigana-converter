@@ -71,6 +71,7 @@
   "vocab_empty_hint": { "message": "Double-click any word with furigana to save it" },
   "vocab_no_results": { "message": "No results found" },
   "vocab_unknown_source": { "message": "Unknown source" },
+  "vocab_local_file_source": { "message": "Local HTML File" },
   "vocab_listen": { "message": "Listen" },
   "vocab_source_tatoeba": { "message": "(Source: Tatoeba)" },
   "vocab_delete": { "message": "Delete" },
@@ -129,7 +130,9 @@
   "shortcut_toggle_mac_f": { "message": "⌘+Shift+F to toggle" },
   "shortcut_toggle_win_f": { "message": "Ctrl+Shift+F to toggle" },
 
-  "status_open_normal_page": { "message": "Open a normal http/https page and try again." },
+  "status_open_supported_page": { "message": "Open an http/https page or local HTML file and try again." },
+  "status_enable_file_access": { "message": "Chrome and Edge require file access to be enabled for local HTML files." },
+  "status_local_files_not_supported": { "message": "Local HTML file support depends on browser runtime permissions." },
   "status_processing": { "message": "Processing..." },
   "status_furigana_applied": { "message": "Furigana applied" },
   "status_furigana_cleared": { "message": "Furigana cleared" },

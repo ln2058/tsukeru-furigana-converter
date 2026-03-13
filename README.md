@@ -49,6 +49,16 @@ Nothing runs in the background. No text is sent unless you trigger it.
 
 ---
 
+## Local HTML Files
+
+Chrome, Microsoft Edge, and Firefox can apply furigana to saved local HTML files opened with `file://`.
+
+On Chrome and Edge, open the extension details page and enable **Allow access to file URLs** for Tsukeru before using that flow. Firefox supports local HTML files without a separate file-URL toggle.
+
+For privacy, Tsukeru does not send local filesystem paths to the furigana backend. Saved vocabulary from local files also stores a redacted local-file source label instead of the full `file://` path.
+
+---
+
 ## Architecture
 
 Pure Vanilla MV3 with native ES Modules — no bundler, no build step. The source is exactly what runs in the browser, making it straightforward to read and contribute to.
@@ -96,6 +106,7 @@ The extension uses the strictest minimum permissions across all browsers:
 
 - **activeTab & scripting**
   Injects furigana logic only after explicit user action on the active tab. No background scanning occurs.
+  This also covers saved local HTML files. Chrome/Edge require browser-level file URL access to be enabled; Firefox does not use a separate toggle.
 - **storage**
   Stores user settings and optional vocabulary data locally.
 - **contextMenus**

@@ -37,6 +37,10 @@ function t(key, fallback) {
   return message || fallback;
 }
 
+function isSupportedTabUrl(url = '') {
+  return /^(https?|file):\/\//i.test(url);
+}
+
 
 chrome.runtime.onInstalled.addListener(() => {
   // Seed defaults without overwriting existing user settings
@@ -72,12 +76,19 @@ if (chrome.contextMenus) {
   });
 
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+    const url = tab?.url || '';
+    if (!tab?.id || !isSupportedTabUrl(url)) {
+      return;
+    }
+
     if (info.menuItemId === 'applyFurigana') {
       const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
+      await ensureContentScript(tab.id);
       chrome.tabs.sendMessage(tab.id, { action: 'applyFurigana', settings }).catch(err =>
         console.warn('Tsukeru: Target page cannot receive messages. Reload the page.', err)
       );
     } else if (info.menuItemId === 'clearFurigana') {
+      await ensureContentScript(tab.id);
       chrome.tabs.sendMessage(tab.id, { action: 'clearFurigana' }).catch(err =>
         console.warn('Tsukeru: Target page cannot receive messages. Reload the page.', err)
       );
@@ -200,7 +211,10 @@ chrome.commands.onCommand.addListener(async (command) => {
 
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id || !/^https?:\/\//i.test(tab.url || '')) return;
+    const url = tab?.url || '';
+    if (!tab?.id || !isSupportedTabUrl(url)) {
+      return;
+    }
 
     await ensureContentScript(tab.id);
     const state = await chrome.tabs.sendMessage(tab.id, { action: 'getFuriganaState' })
