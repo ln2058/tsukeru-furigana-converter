@@ -73,3 +73,18 @@ export function sanitizeSafeFuriganaHtml(dirtyHtml) {
   Array.from(doc.body.childNodes).forEach(cleanNode);
   return doc.body.innerHTML;
 }
+
+// ── Local file extension helpers ──────────────────────────────────────────────
+// These helpers use only URL and String APIs — no DOM dependency — so they are
+// safe to call from service workers as well as content scripts and popups.
+
+export const SUPPORTED_LOCAL_FILE_EXTENSIONS = ['.html', '.htm', '.xhtml', '.xht', '.xhtm'];
+
+export function hasSupportedLocalFileExtension(url = '') {
+  try {
+    const path = decodeURIComponent(new URL(url).pathname || '').toLowerCase();
+    return SUPPORTED_LOCAL_FILE_EXTENSIONS.some((ext) => path.endsWith(ext));
+  } catch {
+    return false;
+  }
+}

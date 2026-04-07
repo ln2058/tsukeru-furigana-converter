@@ -46,17 +46,18 @@ async function applyFurigana(settings) {
   }
 
   isProcessing = true;
+  const pageRoot = document.body || document.documentElement;
 
   // Soft-hide bypass: if DOM is intact but hidden, and reprocess-critical settings
   // (furiganaType, firstOccurrenceOnly) haven't changed, just reveal the DOM.
-  const softHidden = document.body.classList.contains('tsukeru-furigana-disabled');
+  const softHidden = Boolean(pageRoot?.classList.contains('tsukeru-furigana-disabled'));
   const hasRubyDom = softHidden && document.querySelectorAll('[data-tsukeru-wrapper="1"]').length > 0;
   if (hasRubyDom && lastAppliedSettings) {
     const needsReprocess =
       settings.furiganaType !== lastAppliedSettings.furiganaType ||
       settings.firstOccurrenceOnly !== lastAppliedSettings.firstOccurrenceOnly;
     if (!needsReprocess) {
-      document.body.classList.remove('tsukeru-furigana-disabled');
+      pageRoot?.classList.remove('tsukeru-furigana-disabled');
       isFuriganaActive = true;
       setHighlightMode(settings?.highlightMode || 'off');
       document.documentElement.setAttribute(
@@ -141,7 +142,8 @@ async function applyFurigana(settings) {
 // Soft-hide: preserve the ruby DOM, just visually hide via CSS class.
 // Re-enabling is instant (zero API calls) when settings haven't changed.
 function clearFurigana() {
-  document.body.classList.add('tsukeru-furigana-disabled');
+  const pageRoot = document.body || document.documentElement;
+  pageRoot?.classList.add('tsukeru-furigana-disabled');
   document.documentElement.removeAttribute('data-tsukeru-custom-style');
   hideDefinitionTooltip();
   isFuriganaActive = false;
@@ -170,7 +172,8 @@ function hardClearFurigana() {
   document.querySelectorAll('[data-tsukeru-observed]').forEach(el => {
     el.removeAttribute('data-tsukeru-observed');
   });
-  document.body.classList.remove('tsukeru-furigana-disabled');
+  const pageRoot = document.body || document.documentElement;
+  pageRoot?.classList.remove('tsukeru-furigana-disabled');
   document.documentElement.removeAttribute('data-tsukeru-custom-style');
   originalTextMap = new WeakMap();
   hideDefinitionTooltip();

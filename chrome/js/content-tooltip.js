@@ -535,30 +535,29 @@ function speakWord(word, reading, buttonElement) {
   if (!word) return;
   if (buttonElement) buttonElement.classList.add('speaking');
 
-  const normalizedReading = kata2hira(reading || word || '');
-  const enc = encodeURIComponent;
-  const base = 'https://assets.languagepod101.com/dictionary/japanese/audiomp3.php';
-
-  const urlsToTry = [];
-  if (word && normalizedReading && word !== normalizedReading) {
-    urlsToTry.push(`${base}?kana=${enc(normalizedReading)}&kanji=${enc(word)}`);
-  }
-  urlsToTry.push(`${base}?kana=${enc(normalizedReading)}&kanji=`);
-  if (word) urlsToTry.push(`${base}?kana=&kanji=${enc(word)}`);
-
-  const tryNext = (urls) => {
-    if (!urls.length) return fallbackTTS(word, buttonElement);
-    const [url, ...rest] = urls;
-    chrome.runtime.sendMessage({ action: 'fetchProxyAudio', url }, (response) => {
-      if (!response?.success || !response.dataUrl) return tryNext(rest);
-      const audio = new Audio(response.dataUrl);
-      audio.onended = () => { if (buttonElement) buttonElement.classList.remove('speaking'); };
-      audio.onerror = () => tryNext(rest);
-      audio.play().catch(() => tryNext(rest));
+  chrome.runtime.sendMessage({ action: 'playAudio', word, reading }, (response) => {
+    if (!response?.success || !response.dataUrl) {
+      if (buttonElement) buttonElement.classList.remove('speaking');
+      fallbackTTS(word, buttonElement);
+      return;
+    }
+    // Reject non-audio data URLs to prevent polyglot injection via compromised backend.
+    if (!response.dataUrl.startsWith('data:audio/')) {
+      if (buttonElement) buttonElement.classList.remove('speaking');
+      fallbackTTS(word, buttonElement);
+      return;
+    }
+    const audio = new Audio(response.dataUrl);
+    audio.onended = () => { if (buttonElement) buttonElement.classList.remove('speaking'); };
+    audio.onerror = () => {
+      if (buttonElement) buttonElement.classList.remove('speaking');
+      fallbackTTS(word, buttonElement);
+    };
+    audio.play().catch(() => {
+      if (buttonElement) buttonElement.classList.remove('speaking');
+      fallbackTTS(word, buttonElement);
     });
-  };
-
-  tryNext(urlsToTry);
+  });
 }
 
 function fallbackTTS(word, buttonElement) {

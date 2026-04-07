@@ -130,7 +130,7 @@
   "shortcut_toggle_mac_f": { "message": "⌘+Shift+F to toggle" },
   "shortcut_toggle_win_f": { "message": "Ctrl+Shift+F to toggle" },
 
-  "status_open_supported_page": { "message": "Open an http/https page or local HTML file and try again." },
+  "status_open_supported_page": { "message": "Open an http/https page or a local HTML/XHTML file and try again." },
   "status_enable_file_access": { "message": "To use Tsukeru on local files, enable \"Allow access to file URLs\" in the extension details page." },
   "status_local_files_not_supported": { "message": "Local HTML files require \"Allow access to file URLs\" in Chrome or Edge." },
   "status_processing": { "message": "Processing..." },

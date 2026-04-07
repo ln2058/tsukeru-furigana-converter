@@ -10,11 +10,11 @@ Outputs:
 
 Side Effects:
 - Creates/removes tooltip DOM and listeners.
-- Reads/writes `chrome.storage.local` vocabulary data and uses Firefox direct-audio messaging.
+- Reads/writes `chrome.storage.local` vocabulary data.
 
 Failure Modes:
 - Lookup/audio/report requests can fail and trigger fallback/no-op paths.
-- Direct-audio playback failures fall back to speech synthesis.
+- Audio playback failures fall back to speech synthesis.
 
 Security Notes:
 - Escapes/sanitizes rendered content before DOM injection.
@@ -535,11 +535,28 @@ function speakWord(word, reading, buttonElement) {
   if (!word) return;
   if (buttonElement) buttonElement.classList.add('speaking');
 
-  chrome.runtime.sendMessage({ action: 'playAudioDirect', word, reading }, (response) => {
-    if (buttonElement) buttonElement.classList.remove('speaking');
-    if (!response || !response.success) {
+  chrome.runtime.sendMessage({ action: 'playAudio', word, reading }, (response) => {
+    if (!response?.success || !response.dataUrl) {
+      if (buttonElement) buttonElement.classList.remove('speaking');
       fallbackTTS(word, buttonElement);
+      return;
     }
+    // Reject non-audio data URLs to prevent polyglot injection via compromised backend.
+    if (!response.dataUrl.startsWith('data:audio/')) {
+      if (buttonElement) buttonElement.classList.remove('speaking');
+      fallbackTTS(word, buttonElement);
+      return;
+    }
+    const audio = new Audio(response.dataUrl);
+    audio.onended = () => { if (buttonElement) buttonElement.classList.remove('speaking'); };
+    audio.onerror = () => {
+      if (buttonElement) buttonElement.classList.remove('speaking');
+      fallbackTTS(word, buttonElement);
+    };
+    audio.play().catch(() => {
+      if (buttonElement) buttonElement.classList.remove('speaking');
+      fallbackTTS(word, buttonElement);
+    });
   });
 }
 

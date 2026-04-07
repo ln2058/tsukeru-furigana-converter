@@ -21,13 +21,14 @@ Security Notes:
 - Delegates external network traffic to `bg-api` only.
 - Avoid logging raw user page text in error paths.
 */
-// Background service worker — Chrome message router and command handler.
+// Background script — Firefox message router and command handler.
 // All API/cache logic lives in ./js/bg-api.js and ./js/bg-cache.js.
 import {
   handleFuriganaRequest, lookupDefinition, fetchExampleSentence, fetchKanjiBreakdown,
   handlePlayAudio, handlePlayAudioDirect, handleFetchProxyAudio, handleExportAnkiAudio,
   API_BASE_URL, DEFAULT_SETTINGS,
 } from './js/bg-api.js';
+import { hasSupportedLocalFileExtension } from './js/utils.js';
 
 const runtimeApi = typeof browser !== 'undefined' ? browser : chrome;
 const i18nApi = runtimeApi?.i18n;
@@ -38,7 +39,13 @@ function t(key, fallback) {
 }
 
 function isSupportedTabUrl(url = '') {
-  return /^(https?|file):\/\//i.test(url);
+  if (!/^(https?|file):\/\//i.test(url)) {
+    return false;
+  }
+  if (/^file:\/\//i.test(url)) {
+    return hasSupportedLocalFileExtension(url);
+  }
+  return true;
 }
 
 
@@ -140,13 +147,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.action === 'playAudioDirect') {
-    handlePlayAudioDirect(message.word, message.reading)
-      .then(() => sendResponse({ success: true }))
-      .catch((error) => sendResponse({ success: false, error: error.message }));
-    return true;
-  }
-
   if (message.action === 'playAudio') {
     handlePlayAudio(message.word, message.reading)
       .then((result) => sendResponse({ success: true, ...result }))
@@ -154,7 +154,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.action === 'playAudioDirect') {
+    // Firefox compatibility alias: preserved for older content-script contexts.
+    handlePlayAudioDirect(message.word, message.reading)
+      .then((result) => sendResponse({ success: true, ...result }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
   if (message.action === 'fetchProxyAudio') {
+    try {
+      const parsed = new URL(message.url);
+      if (parsed.protocol !== 'https:') {
+        sendResponse({ success: false, error: 'Disallowed audio protocol' });
+        return true;
+      }
+      if (parsed.hostname !== 'www.ezfurigana.com' && !parsed.hostname.endsWith('.ezfurigana.com')) {
+        sendResponse({ success: false, error: 'Disallowed audio host' });
+        return true;
+      }
+      // Port '' means the URL uses the scheme's default (443 for https).
+      // Reject any explicit non-default port to prevent port-scanning SSRF.
+      if (parsed.port !== '' && parsed.port !== '443') {
+        sendResponse({ success: false, error: 'Disallowed audio port' });
+        return true;
+      }
+    } catch {
+      sendResponse({ success: false, error: 'Invalid URL' });
+      return true;
+    }
     handleFetchProxyAudio(message.url)
       .then((result) => sendResponse({ success: true, ...result }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
@@ -172,13 +200,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === 'reportReadingError') {
+    const { word, reading, context_sentence, suggested_reading, consent_given } = message.payload ?? {};
     fetch(`${API_BASE_URL}/api/report-error`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Source': 'Chrome-Extension-TSUKERU'
+        'X-Source': 'Firefox-Extension-TSUKERU'
       },
-      body: JSON.stringify(message.payload)
+      credentials: 'omit',
+      body: JSON.stringify({ word, reading, context_sentence, suggested_reading, consent_given })
     })
       .then(async (response) => {
         if (response.ok) {
@@ -233,6 +263,25 @@ chrome.commands.onCommand.addListener(async (command) => {
 
 async function ensureContentScript(tabId) {
   if (!chrome.scripting) return;
+
+  // If the content script is already present (manifest auto-injection path),
+  // avoid reinjecting to prevent duplicate CSS insertion.
+  // ⚠️ This error-message check is fragile: browser wording can change across
+  // versions/locales. The guard in content-main.js (window.__TSUKERU_LOADED__)
+  // provides a second line of defense if this check misses.
+  try {
+    await chrome.tabs.sendMessage(tabId, { action: 'getFuriganaState' });
+    return;
+  } catch (error) {
+    const message = String(error?.message || '').toLowerCase();
+    const noReceiver =
+      message.includes('receiving end does not exist') ||
+      message.includes('could not establish connection');
+    if (!noReceiver) {
+      throw error;
+    }
+  }
+
   try {
     await chrome.scripting.insertCSS({ target: { tabId }, files: ['content.css'] });
   } catch (e) {

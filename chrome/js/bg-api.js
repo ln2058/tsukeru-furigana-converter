@@ -145,6 +145,87 @@ export async function handleFuriganaRequest(payload) {
   return { processedHTML: finalHTML };
 }
 
+// ── Extension nonce ───────────────────────────────────────────────────────────
+// A short-lived HMAC token issued by the backend that proves the caller went
+// through the proper nonce-fetch flow. Included in every furigana request so
+// the backend can distinguish genuine extension traffic from raw curl scrapers.
+//
+// Fail-open: if the nonce endpoint is unreachable, _extNonce stays null and
+// requests proceed without a nonce until EXT_REQUIRE_NONCE=true is deployed.
+
+let _extNonce = null;
+let _extNonceExpiry = 0;
+let _getExtNoncePromise = null; // coalesces concurrent callers to a single in-flight fetch
+const _EXT_NONCE_REFRESH_BEFORE_MS = 30_000; // refresh 30s before expiry
+const _EXT_SESSION_ID = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+  ? crypto.randomUUID()
+  : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+
+function _nonceLog(event, detail = {}) {
+  console.info('[tsukeru][nonce]', event, detail);
+}
+
+function _resetExtNonce(reason) {
+  _extNonce = null;
+  _extNonceExpiry = 0;
+  _nonceLog('nonce-reset', { reason, extSessionId: _EXT_SESSION_ID });
+}
+
+_resetExtNonce('service-worker-start');
+
+async function _getExtNonce() {
+  const now = Date.now();
+  if (_extNonce && now < _extNonceExpiry - _EXT_NONCE_REFRESH_BEFORE_MS) {
+    return _extNonce;
+  }
+  // Coalesce concurrent callers: if a fetch is already in-flight, await it.
+  if (_getExtNoncePromise) return _getExtNoncePromise;
+
+  _getExtNoncePromise = (async () => {
+    _resetExtNonce('nonce-refresh-start');
+    _nonceLog('nonce-fetch-start', { extSessionId: _EXT_SESSION_ID });
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/extension/nonce`, {
+        method: 'GET',
+        headers: { 'x-extension-session-id': _EXT_SESSION_ID },
+        credentials: 'omit',
+        mode: 'cors',
+        cache: 'no-store',
+      });
+      if (!res.ok) {
+        _nonceLog('nonce-fetch-failed', { extSessionId: _EXT_SESSION_ID, status: res.status });
+        return null;
+      }
+      const data = await res.json();
+      if (!data?.nonce) {
+        _nonceLog('nonce-fetch-failed', { extSessionId: _EXT_SESSION_ID, reason: 'missing_nonce_field' });
+        return null;
+      }
+      _extNonce = data.nonce;
+      const expiresIn = Number(data.expires_in);
+      _extNonceExpiry = Number.isFinite(expiresIn) && expiresIn > 0
+        ? now + (expiresIn * 1000)
+        : now + 60_000;
+      _nonceLog('nonce-fetch-success', {
+        extSessionId: _EXT_SESSION_ID,
+        expiresInMs: Math.max(_extNonceExpiry - now, 0),
+      });
+      return _extNonce;
+    } catch (err) {
+      _nonceLog('nonce-fetch-failed', {
+        extSessionId: _EXT_SESSION_ID,
+        reason: 'network_exception',
+        errorType: err?.name || 'error',
+      });
+      return null;
+    } finally {
+      _getExtNoncePromise = null;
+    }
+  })();
+
+  return _getExtNoncePromise;
+}
+
 // Low-level API fetch — sends raw textContent and returns { processedHTML }.
 export async function fetchFromAPI(textContent, settings, tabUrl) {
   const apiUrl = API_BASE_URL;
@@ -152,27 +233,67 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
   let lastError = null;
   const backendWebsiteUrl = getBackendWebsiteUrl(tabUrl);
 
+  // let (not const) — nulled out on 403 so the retry fires without a nonce.
+  let nonce = await _getExtNonce();
+
   for (const endpoint of endpoints) {
     try {
-      const formData = new FormData();
-      formData.append('input_mode', 'text');
-      formData.append('engine', 'sudachi');
-      // Always request jlpt_level=5 (max-render: backend annotates all words); JLPT filtering is CSS-driven client-side
-      formData.append('jlpt_level', '5');
-      formData.append('furigana_type', settings.furiganaType || DEFAULT_SETTINGS.furiganaType);
-      formData.append('first_occurrence_only', settings.firstOccurrenceOnly ? 'on' : '');
-      formData.append('raw_text', textContent);
-      // Never leak local filesystem paths or other non-web URLs to the backend.
-      formData.append('website_url', backendWebsiteUrl);
-      formData.append('csrf_token', '');
+      // Build FormData as a closure so the retry below can re-invoke it after
+      // nonce is cleared, without duplicating the field list.
+      const buildFormData = () => {
+        const fd = new FormData();
+        fd.append('input_mode', 'text');
+        fd.append('engine', 'sudachi');
+        // Always request jlpt_level=5 (max-render: backend annotates all words); JLPT filtering is CSS-driven client-side
+        fd.append('jlpt_level', '5');
+        fd.append('furigana_type', settings.furiganaType || DEFAULT_SETTINGS.furiganaType);
+        fd.append('first_occurrence_only', settings.firstOccurrenceOnly ? 'on' : '');
+        fd.append('raw_text', textContent);
+        // Never leak local filesystem paths or other non-web URLs to the backend.
+        fd.append('website_url', backendWebsiteUrl);
+        fd.append('csrf_token', '');
+        // Include nonce when available; backend verifies if present, ignores if absent
+        // until EXT_REQUIRE_NONCE=true is deployed server-side.
+        if (nonce) fd.append('ext_nonce', nonce);
+        return fd;
+      };
 
-      const response = await fetch(endpoint, {
+      let response = await fetch(endpoint, {
         method: 'POST',
-        body: formData,
+        body: buildFormData(),
+        headers: { 'x-extension-session-id': _EXT_SESSION_ID },
         credentials: 'omit',
         mode: 'cors',
       });
+
+      // Nonce self-heal: a 403 on the extension endpoint almost always means the
+      // cached nonce is stale (server key rotation, service-worker restart after a
+      // redeploy, IP change). Clear the in-memory nonce and retry once without it.
+      // EXT_REQUIRE_NONCE=false ensures a nonce-free request is accepted.
+      // Only applies to the dedicated extension endpoint — the HTML fallback has no
+      // CORS headers so a 403 there would produce a network error, not an HTTP 403.
+      if (response.status === 403 && nonce && endpoint.includes('/api/extension/')) {
+        _resetExtNonce('furigana-403');
+        nonce = await _getExtNonce();
+        _nonceLog('nonce-refresh-after-403', {
+          extSessionId: _EXT_SESSION_ID,
+          refreshed: Boolean(nonce),
+        });
+        response = await fetch(endpoint, {
+          method: 'POST',
+          body: buildFormData(),
+          headers: { 'x-extension-session-id': _EXT_SESSION_ID },
+          credentials: 'omit',
+          mode: 'cors',
+        });
+      }
+
       if (!response.ok) {
+        if (endpoint.includes('/api/extension/') && (response.status === 401 || response.status === 403)) {
+          lastError = new Error(`Extension auth failed: ${response.status}`);
+          console.error('Tsukeru extension auth failure', endpoint, response.status, response.statusText);
+          break;
+        }
         lastError = new Error(`API request failed: ${response.status} ${response.statusText}`);
         console.error('Tsukeru backend error', endpoint, response.status, response.statusText);
         continue;
@@ -206,22 +327,48 @@ function getBackendWebsiteUrl(tabUrl = '') {
   return /^https?:\/\//i.test(tabUrl) ? tabUrl : '';
 }
 
-// Parse the HTML fallback response (used when content-type is not JSON).
-// extractViaRegex removed — DOMParser is available in Chrome 96+ service workers.
+function extractElementInnerHtmlById(htmlText, id) {
+  const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(
+    `<([a-zA-Z0-9:-]+)\\b[^>]*\\bid=["']${escapedId}["'][^>]*>([\\s\\S]*?)<\\/\\1>`,
+    'i'
+  );
+  const match = htmlText.match(pattern);
+  return match?.[2]?.trim() || '';
+}
+
+// Parse HTML fallback responses when backend does not return JSON.
+// Service-worker environments can lack DOMParser, so include a regex fallback.
 function extractProcessedHtml(htmlText) {
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlText, 'text/html');
-    const preview = doc.querySelector('#normalPreview');
-    if (preview && preview.innerHTML.trim()) return preview.innerHTML;
-    const resultSection = doc.querySelector('#result');
-    if (resultSection && resultSection.innerHTML.trim()) return resultSection.innerHTML;
-    const bodyContent = doc.body?.innerHTML?.trim();
-    if (bodyContent) return bodyContent;
-  } catch (err) {
-    console.error('Failed to parse backend response:', err);
+  if (typeof htmlText !== 'string' || !htmlText.trim()) return null;
+
+  if (typeof DOMParser !== 'undefined') {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlText, 'text/html');
+      const preview = doc.querySelector('#normalPreview');
+      if (preview && preview.innerHTML.trim()) return preview.innerHTML;
+      const resultSection = doc.querySelector('#result');
+      if (resultSection && resultSection.innerHTML.trim()) return resultSection.innerHTML;
+      const bodyContent = doc.body?.innerHTML?.trim();
+      if (bodyContent) return bodyContent;
+    } catch (err) {
+      console.error('Failed to parse backend response via DOMParser:', err);
+    }
   }
-  return null;
+
+  const preview = extractElementInnerHtmlById(htmlText, 'normalPreview');
+  if (preview) return preview;
+
+  const resultSection = extractElementInnerHtmlById(htmlText, 'result');
+  if (resultSection) return resultSection;
+
+  const bodyMatch = htmlText.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i);
+  const bodyContent = bodyMatch?.[1]?.trim();
+  if (bodyContent) return bodyContent;
+
+  const trimmed = htmlText.trim();
+  return trimmed || null;
 }
 
 export async function lookupDefinition(word) {
@@ -334,7 +481,19 @@ export async function handlePlayAudio(word, reading) {
 }
 
 export async function handleFetchProxyAudio(url) {
-  const response = await fetch(url);
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    throw new Error('Invalid URL');
+  }
+  if (parsedUrl.protocol !== 'https:') throw new Error('Disallowed audio protocol');
+  if (parsedUrl.hostname !== 'www.ezfurigana.com' && !parsedUrl.hostname.endsWith('.ezfurigana.com')) {
+    throw new Error('Disallowed audio host');
+  }
+  if (parsedUrl.port !== '' && parsedUrl.port !== '443') throw new Error('Disallowed audio port');
+
+  const response = await fetch(parsedUrl.toString());
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const blob = await response.blob();
   return new Promise((resolve, reject) => {

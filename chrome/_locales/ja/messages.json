@@ -342,7 +342,7 @@
     "message": "Ctrl+Shift+F で切り替え"
   },
   "status_open_supported_page": {
-    "message": "http/https ページまたはローカルの HTML ファイルを開いて再試行してください。"
+    "message": "http/https ページまたはローカルの HTML/XHTML ファイルを開いて再試行してください。"
   },
   "status_enable_file_access": {
     "message": "ローカルファイルで Tsukeru を使うには、拡張機能の詳細画面で「ファイルの URL へのアクセスを許可する」を有効にしてください。"

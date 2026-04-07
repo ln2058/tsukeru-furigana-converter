@@ -21,6 +21,7 @@ Security Notes:
 - Keeps settings/state local to extension storage APIs.
 */
 // Settings constants, shared utilities, report modal — imported by all popup modules.
+import { hasSupportedLocalFileExtension } from './utils.js';
 
 export const DEFAULT_SETTINGS = {
   jlptLevel: 5,
@@ -82,15 +83,29 @@ export function isHttpTab(url = '') {
 }
 
 export function isSupportedPageTab(url = '') {
-  return /^(https?|file):\/\//i.test(url);
+  if (!/^(https?|file):\/\//i.test(url)) {
+    return false;
+  }
+  if (/^file:\/\//i.test(url)) {
+    return hasSupportedLocalFileExtension(url);
+  }
+  return true;
 }
 
 export function getUnsupportedTabMessage(url = '') {
-  if (!isSupportedPageTab(url)) {
+  if (/^file:\/\//i.test(url) && !hasSupportedLocalFileExtension(url)) {
     return t(
       'status_open_supported_page',
       undefined,
-      'Open an http/https page or local HTML file and try again.'
+      'Open an http/https page or a local HTML/XHTML file and try again.'
+    );
+  }
+
+  if (!/^(https?|file):\/\//i.test(url)) {
+    return t(
+      'status_open_supported_page',
+      undefined,
+      'Open an http/https page or a local HTML/XHTML file and try again.'
     );
   }
 
@@ -104,16 +119,33 @@ export function getSelectedHighlightMode() {
 }
 
 export async function ensureContentScript(tabId) {
-  if (chrome.scripting) {
-    try {
-      await chrome.scripting.insertCSS({ target: { tabId }, files: ['content.css'] });
-    } catch (e) {
-      console.warn('insertCSS failed (may be fine):', e);
+  if (!chrome.scripting) return;
+
+  // Manifest auto-injects content scripts on supported pages.
+  // Probe first so popup-driven apply does not double-inject and redeclare consts.
+  // ⚠️ This error-message check is fragile: browser wording can change across
+  // versions/locales. The guard in content-main.js (window.__TSUKERU_LOADED__)
+  // provides a second line of defense if this check misses.
+  try {
+    await chrome.tabs.sendMessage(tabId, { action: 'getFuriganaState' });
+    return;
+  } catch (error) {
+    const message = String(error?.message || '').toLowerCase();
+    const noReceiver =
+      message.includes('receiving end does not exist') ||
+      message.includes('could not establish connection');
+    if (!noReceiver) {
+      throw error;
     }
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ['js/content-dom.js', 'js/content-tooltip.js', 'js/content-main.js']
-    });
+  }
+
+  try {
+    await chrome.scripting.insertCSS({ target: { tabId }, files: ['content.css'] });
+  } catch (e) {
+    console.warn('insertCSS failed (may be fine):', e);
+  }
+  for (const file of ['js/content-dom.js', 'js/content-tooltip.js', 'js/content-main.js']) {
+    await chrome.scripting.executeScript({ target: { tabId }, files: [file] });
   }
 }
 

@@ -118,6 +118,16 @@ function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function getElementTagNameLower(node) {
+  if (!node) return '';
+  const tagName = node.localName || node.tagName || '';
+  return String(tagName).toLowerCase();
+}
+
+function getDocumentProcessingRoot() {
+  return document.body || document.documentElement || null;
+}
+
 function sanitizeHtmlFragment(html) {
   if (typeof html !== 'string' || !html) return '';
 
@@ -125,7 +135,7 @@ function sanitizeHtmlFragment(html) {
   template.innerHTML = html;
 
   const fragment = document.createDocumentFragment();
-  const allowedTags = new Set(['RUBY', 'RT', 'MARK', 'SPAN']);
+  const allowedTags = new Set(['ruby', 'rt', 'mark', 'span']);
 
   const isAllowedAttribute = (name) => {
     return name === 'class' || name.startsWith('data-');
@@ -141,7 +151,9 @@ function sanitizeHtmlFragment(html) {
       return;
     }
 
-    if (!allowedTags.has(node.tagName)) {
+    const nodeTag = getElementTagNameLower(node);
+
+    if (!allowedTags.has(nodeTag)) {
       const frag = document.createDocumentFragment();
       while (node.firstChild) {
         sanitizeNode(node.firstChild, frag);
@@ -151,12 +163,12 @@ function sanitizeHtmlFragment(html) {
     }
 
     // Only allow SPAN elements that are backend kana-word spans (must carry data-jlpt)
-    if (node.tagName === 'SPAN' && !node.hasAttribute('data-jlpt')) {
+    if (nodeTag === 'span' && !node.hasAttribute('data-jlpt')) {
       parent.appendChild(document.createTextNode(node.textContent || ''));
       return;
     }
 
-    const clean = document.createElement(node.tagName.toLowerCase());
+    const clean = document.createElement(nodeTag);
     for (const attr of Array.from(node.attributes)) {
       if (isAllowedAttribute(attr.name)) {
         clean.setAttribute(attr.name, attr.value);
@@ -256,7 +268,8 @@ function isProcessableTextNode(node) {
 
 // ── Text node collection ──────────────────────────────────────────────────────
 
-function collectTextNodes(rootNode = document.body) {
+function collectTextNodes(rootNode = getDocumentProcessingRoot()) {
+  if (!rootNode) return [];
   const walker = document.createTreeWalker(
     rootNode,
     NodeFilter.SHOW_TEXT,
@@ -631,7 +644,8 @@ function startWatchingDynamicContent(settings) {
   if (mutationObserver) return;
 
   const siteConfig = SITE_CONFIGS[currentSite] || SITE_CONFIGS.default;
-  const container = document.querySelector(siteConfig.containerSelector) || document.body;
+  const container = document.querySelector(siteConfig.containerSelector) || getDocumentProcessingRoot();
+  if (!container) return;
 
   mutationObserver = new MutationObserver((mutations) => {
     clearTimeout(debounceTimer);

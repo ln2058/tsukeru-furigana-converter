@@ -130,7 +130,7 @@
   "shortcut_toggle_mac_f": { "message": "⌘+Shift+F to toggle" },
   "shortcut_toggle_win_f": { "message": "Ctrl+Shift+F to toggle" },
 
-  "status_open_supported_page": { "message": "Open an http/https page or local HTML file and try again." },
+  "status_open_supported_page": { "message": "Open an http/https page or a local HTML/XHTML file and try again." },
   "status_enable_file_access": { "message": "Chrome and Edge require file access to be enabled for local HTML files." },
   "status_local_files_not_supported": { "message": "Local HTML file support depends on browser runtime permissions." },
   "status_processing": { "message": "Processing..." },
