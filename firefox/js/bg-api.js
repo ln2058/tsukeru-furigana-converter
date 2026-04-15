@@ -394,10 +394,14 @@ export async function lookupDefinition(word) {
     `${API_BASE_URL}/api/word-definition/${encodeURIComponent(term)}`
   ];
   let lastError = null;
+  const nonce = await _getExtNonce();
 
   for (const endpoint of endpoints) {
     try {
-      const response = await fetch(endpoint, {
+      const url = new URL(endpoint);
+      if (nonce) url.searchParams.set('ext_nonce', nonce);
+      const hadNonce = url.searchParams.has('ext_nonce');
+      const response = await fetch(url.toString(), {
         method: 'GET',
         credentials: 'omit',
         mode: 'cors',
@@ -407,7 +411,9 @@ export async function lookupDefinition(word) {
         continue;
       }
       const data = await response.json();
-      definitionCache.set(term, { data, timestamp: now });
+      if (hadNonce) {
+        definitionCache.set(term, { data, timestamp: now });
+      }
       return data;
     } catch (err) {
       lastError = err;
@@ -423,7 +429,10 @@ export async function fetchExampleSentence(word) {
   const term = (word || '').trim();
   if (!term) throw new Error('No word provided');
 
-  const response = await fetch(`${API_BASE_URL}/api/example-sentence/${encodeURIComponent(term)}`, {
+  const nonce = await _getExtNonce();
+  const url = new URL(`${API_BASE_URL}/api/example-sentence/${encodeURIComponent(term)}`);
+  if (nonce) url.searchParams.set('ext_nonce', nonce);
+  const response = await fetch(url.toString(), {
     method: 'GET',
     credentials: 'omit',
     mode: 'cors',
@@ -436,7 +445,10 @@ export async function fetchKanjiBreakdown(word) {
   const term = (word || '').trim();
   if (!term) throw new Error('No word provided');
 
-  const response = await fetch(`${API_BASE_URL}/api/kanji-breakdown/${encodeURIComponent(term)}`, {
+  const nonce = await _getExtNonce();
+  const url = new URL(`${API_BASE_URL}/api/kanji-breakdown/${encodeURIComponent(term)}`);
+  if (nonce) url.searchParams.set('ext_nonce', nonce);
+  const response = await fetch(url.toString(), {
     method: 'GET',
     credentials: 'omit',
     mode: 'cors',
