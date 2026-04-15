@@ -30,7 +30,7 @@ Security Notes:
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const TOKEN_PREFIX = '__TSUKERU_SPLIT__';
-const MAX_BATCH_CHARS = 15000;
+const MAX_BATCH_BYTES = 40000;
 const REQUEST_DELAY_MS = 200;
 const DICTIONARY_MAX_SENSES = 3;
 
@@ -339,8 +339,9 @@ function buildBatches(nodes) {
   let currentNodes = [];
   let currentMarkers = [];
   let parts = [];
-  let charCount = 0;
+  let byteCount = 0;
   let batchIndex = 0;
+  const encoder = new TextEncoder();
 
   const flush = () => {
     if (!currentNodes.length) return;
@@ -352,7 +353,7 @@ function buildBatches(nodes) {
     currentNodes = [];
     currentMarkers = [];
     parts = [];
-    charCount = 0;
+    byteCount = 0;
     batchIndex += 1;
   };
 
@@ -366,9 +367,9 @@ function buildBatches(nodes) {
 
     currentNodes.push(node);
     currentMarkers.push(marker);
-    charCount += text.length;
+    byteCount += encoder.encode(text).length + marker.length; // marker is ASCII
 
-    if (charCount >= MAX_BATCH_CHARS) {
+    if (byteCount >= MAX_BATCH_BYTES) {
       flush();
     }
   }
