@@ -31,8 +31,18 @@ Security Notes:
 
 const TOKEN_PREFIX = '__TSUKERU_SPLIT__';
 const MAX_BATCH_BYTES = 40000;
-const REQUEST_DELAY_MS = 200;
+const MIN_DELAY_MS = 200;
+const MAX_DELAY_MS = 2000;
 const DICTIONARY_MAX_SENSES = 3;
+
+/**
+ * Returns an inter-batch delay in ms, scaled linearly with batch byte utilization.
+ * A near-empty batch → MIN_DELAY_MS (200ms); a full batch → MAX_DELAY_MS (2000ms).
+ */
+function batchDelay(byteCount) {
+  const ratio = Math.min(byteCount / MAX_BATCH_BYTES, 1);
+  return Math.round(MIN_DELAY_MS + ratio * (MAX_DELAY_MS - MIN_DELAY_MS));
+}
 
 const EXCLUDED_TEXT_PARENT_TAGS = [
   'script', 'style', 'noscript', 'iframe', 'object', 'embed',
@@ -349,6 +359,7 @@ function buildBatches(nodes) {
       nodes: currentNodes,
       markers: currentMarkers,
       payload: parts.join(''),
+      byteCount,
     });
     currentNodes = [];
     currentMarkers = [];
@@ -708,7 +719,7 @@ function startYoutubeCaptionsObserver(settings) {
         }
 
         if (i < batches.length - 1) {
-          await sleep(REQUEST_DELAY_MS);
+          await sleep(batchDelay(batch.byteCount));
         }
       }
     } catch (err) {
@@ -825,7 +836,7 @@ async function processVisibleElements(elements, settings) {
       }
 
       if (i < batches.length - 1) {
-        await sleep(REQUEST_DELAY_MS);
+        await sleep(batchDelay(batch.byteCount));
       }
     }
   } catch (err) {
@@ -907,7 +918,7 @@ async function processMutations(mutations, settings) {
       }
 
       if (i < batches.length - 1) {
-        await sleep(REQUEST_DELAY_MS);
+        await sleep(batchDelay(batch.byteCount));
       }
     }
   } catch (err) {
