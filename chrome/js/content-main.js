@@ -108,7 +108,7 @@ async function applyFurigana(settings) {
       applyBatchResult(batch, response.processedHTML);
 
       if (i < batches.length - 1) {
-        await sleep(REQUEST_DELAY_MS);
+        await sleep(batchDelay(batch.byteCount));
       }
     }
 
