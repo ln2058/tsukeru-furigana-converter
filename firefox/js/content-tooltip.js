@@ -36,7 +36,6 @@ Security Notes:
 function kata2hira(str) {
   return (str || '').replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
 }
-
 function t(key, substitutions, fallback = '') {
   const message = chrome.i18n?.getMessage ? chrome.i18n.getMessage(key, substitutions) : '';
   return message || fallback;
@@ -72,6 +71,11 @@ function handleDictionaryClick(event) {
   // ORPHAN CHECK: If the extension was reloaded, this script context is dead.
   if (!chrome.runtime?.id) {
     document.removeEventListener('click', handleDictionaryClick, true);
+    return;
+  }
+
+  if (!isFuriganaActive) {
+    hideDefinitionTooltip();
     return;
   }
 
@@ -236,6 +240,7 @@ function addTooltipInteractionHandlers() {
           await removeFromVocabulary(word);
           saveBtn.classList.remove('saved');
           saveBtn.title = t('content_save_word', undefined, 'Save word');
+          await refreshSavedVocabularyHighlights();
         } catch (err) {
           console.error('Tsukeru: unsave failed', err);
         }
@@ -272,6 +277,7 @@ function addTooltipInteractionHandlers() {
         await saveToVocabulary(entry);
         saveBtn.classList.add('saved');
         saveBtn.title = t('content_saved', undefined, 'Saved!');
+        await refreshSavedVocabularyHighlights();
         showVocabSavedToast(word);
       } catch (err) {
         console.error('Tsukeru: save from tooltip failed', err);
@@ -741,7 +747,7 @@ function ensureContentReportModal() {
         word,
         reading,
         context_sentence: context,
-        suggested_reading: correction || null,
+        correct_reading: correction || null,
         consent_given: !!context
       }
     }, (response) => {
@@ -842,9 +848,8 @@ async function handleRubyDoubleClick(event) {
   try {
     await attachDefinitionToEntry(entry);
     await saveToVocabulary(entry);
+    await refreshSavedVocabularyHighlights();
     showVocabSavedToast(wordInfo.surface || wordInfo.word);
-    targetEl.classList.add('vocab-saved');
-    setTimeout(() => targetEl.classList.remove('vocab-saved'), 2000);
   } catch (err) {
     console.error('Tsukeru: failed to save vocabulary entry', err);
   }
@@ -865,6 +870,66 @@ async function attachDefinitionToEntry(entry) {
     }
   } catch (err) {
     console.warn('Tsukeru: could not attach dictionary data to vocab entry', err);
+  }
+}
+
+function getVocabularyMatchKeys(item = {}) {
+  return {
+    word: String(item.word || '').trim(),
+    surface: String(item.surface || '').trim(),
+    reading: String(item.reading || '').trim(),
+    surfaceReading: String(item.surfaceReading || '').trim(),
+  };
+}
+
+function getRubyMatchKeys(ruby) {
+  if (!ruby) return {};
+  const rtText = ruby.querySelector('rt')?.textContent || '';
+  const baseText = ruby.textContent.replace(rtText, '').trim();
+  return {
+    dictForm: String(ruby.dataset.dictForm || '').trim(),
+    surface: String(ruby.dataset.surface || '').trim(),
+    dictReading: String(ruby.dataset.dictReading || '').trim(),
+    reading: String(ruby.dataset.reading || '').trim(),
+    rtText: String(rtText || '').trim(),
+    baseText: String(baseText || '').trim(),
+  };
+}
+
+function setSavedVocabularyClass(savedWords, savedPairs) {
+  document.querySelectorAll('ruby[data-surface], ruby[data-dict-form], span[data-jlpt]').forEach((el) => {
+    const keys = getRubyMatchKeys(el);
+    const standaloneMatch = savedWords.has(keys.dictForm) || savedWords.has(keys.surface) || savedWords.has(keys.baseText);
+    const pairMatch =
+      savedPairs.has(`${keys.dictForm}|${keys.dictReading}`) ||
+      savedPairs.has(`${keys.dictForm}|${keys.reading}`) ||
+      savedPairs.has(`${keys.surface}|${keys.dictReading}`) ||
+      savedPairs.has(`${keys.surface}|${keys.reading}`) ||
+      savedPairs.has(`${keys.dictForm}|${keys.rtText}`) ||
+      savedPairs.has(`${keys.surface}|${keys.rtText}`) ||
+      savedPairs.has(`${keys.dictForm}|${keys.baseText}`) ||
+      savedPairs.has(`${keys.surface}|${keys.baseText}`);
+    el.classList.toggle('vocab-saved', standaloneMatch || pairMatch);
+  });
+}
+
+async function refreshSavedVocabularyHighlights() {
+  try {
+    const { vocabulary = [] } = await chrome.storage.local.get(['vocabulary']);
+    const savedWords = new Set();
+    const savedPairs = new Set();
+    vocabulary.forEach((item) => {
+      const { word, surface, reading, surfaceReading } = getVocabularyMatchKeys(item);
+      if (word) savedWords.add(word);
+      if (surface) savedWords.add(surface);
+      if (word && reading) savedPairs.add(`${word}|${reading}`);
+      if (surface && reading) savedPairs.add(`${surface}|${reading}`);
+      if (word && surfaceReading) savedPairs.add(`${word}|${surfaceReading}`);
+      if (surface && surfaceReading) savedPairs.add(`${surface}|${surfaceReading}`);
+    });
+    setSavedVocabularyClass(savedWords, savedPairs);
+  } catch (err) {
+    console.warn('Tsukeru: failed to refresh saved vocabulary highlights', err);
   }
 }
 
@@ -932,31 +997,6 @@ function showVocabSavedToast(word) {
     z-index: 2147483647;
     animation: slideInRight 0.2s ease;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  `;
-  document.body.appendChild(toast);
-
-  setTimeout(() => {
-    toast.style.animation = 'slideInRight 0.2s ease reverse';
-    setTimeout(() => toast.remove(), 200);
-  }, 1500);
-}
-
-function showToast(message) {
-  const toast = document.createElement('div');
-  toast.textContent = message;
-  toast.style.cssText = `
-    position: fixed;
-    bottom: 16px;
-    right: 16px;
-    background: #1e293b;
-    color: white;
-    padding: 10px 16px;
-    border-radius: 6px;
-    font-family: system-ui, -apple-system, sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    z-index: 2147483647;
-    animation: slideInRight 0.2s ease;
   `;
   document.body.appendChild(toast);
 

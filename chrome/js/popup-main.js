@@ -90,6 +90,11 @@ document.getElementById('extReportSubmit').addEventListener('click', () => {
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 
+function getEzfuriganaHomeUrl() {
+  const lang = (chrome.i18n?.getUILanguage?.() || '').toLowerCase();
+  return lang.startsWith('ja') ? 'https://www.ezfurigana.com/jp' : 'https://www.ezfurigana.com/';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   applyI18nToPopupDom();
 
@@ -101,6 +106,11 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       reviewLink.title = t('header_title_review_chrome', undefined, 'Review on Chrome Web Store');
     }
+  }
+
+  const ezfuriganaLink = document.getElementById('header-ezfurigana-link');
+  if (ezfuriganaLink) {
+    ezfuriganaLink.href = getEzfuriganaHomeUrl();
   }
 
   const shortcutText = document.getElementById('shortcut-text');

@@ -2,8 +2,8 @@
   <img src="chrome/icons/icon128.png" alt="Tsukeru Logo" width="128">
   <h1>Tsukeru – Furigana Converter</h1>
   <p>Chrome/Edge + Firefox Extension</p>
-  <a href="https://www.buymeacoffee.com/riamua" target="_blank">
-    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 44px !important;width: 158px !important;">
+  <a href="https://ko-fi.com/riamua" target="_blank">
+    <img src="https://storage.ko-fi.com/cdn/kofi_button_stroke.png" alt="Support on Ko-fi" style="height: 44px !important;width: 158px !important;">
   </a>
 </div>
 
@@ -81,6 +81,42 @@ For more details, see the full [privacy policy](https://www.ezfurigana.com/priva
 
 - `chrome`: MV3 build for Chrome and Microsoft Edge
 - `firefox`: MV3 build for Firefox
+
+## Staging / Debug Builds
+
+Generate local staging extension folders that send backend requests to `https://staging.ezfurigana.com` instead of production. Source files remain untouched.
+
+```bash
+node scripts/build-staging-extensions.js
+```
+
+This creates `dist/chrome-staging/` and `dist/firefox-staging/` (gitignored).
+
+To load:
+
+- **Chrome/Edge**: Open `chrome://extensions`, enable Developer mode, click **Load unpacked**, select `dist/chrome-staging/`.
+- **Firefox**: Open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on**, select `dist/firefox-staging/manifest.json`.
+
+Verify requests target staging by checking the Network panel or service worker logs.
+
+### GitHub-Current Staging Build
+
+Generate staging extension folders from the GitHub-current version (`origin/main`), not from your local working tree. This is useful for testing the current published code against the staging backend.
+
+```bash
+$env:TSUKERU_STAGING_BASIC_USER = "liam"
+$env:TSUKERU_STAGING_BASIC_PASS = "your-staging-password"
+node scripts/build-github-staging-extensions.js
+```
+
+This creates `dist/chrome-staging-github/` and `dist/firefox-staging-github/` (gitignored). These come from `origin/main`, not your local files.
+
+To load:
+
+- **Chrome/Edge**: Open `chrome://extensions`, enable Developer mode, click **Load unpacked**, select `dist/chrome-staging-github/`.
+- **Firefox**: Open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on**, select `dist/firefox-staging-github/manifest.json`.
+
+To override the git ref, set `TSUKERU_GITHUB_STAGING_REF` (e.g., `origin/develop`).
 
 ## Locale Validation
 

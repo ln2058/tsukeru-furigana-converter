@@ -14,6 +14,7 @@ Side Effects:
 
 Failure Modes:
 - Invalid selectors, DOM race conditions, and batch marker mismatches.
+- Rate-limit failures surface as visible toasts and retry via sendFuriganaWithRateLimitRetry.
 - Partial dynamic processing failures are logged and skipped.
 
 Security Notes:
@@ -705,13 +706,10 @@ function startYoutubeCaptionsObserver(settings) {
       const batches = buildBatches(nodes);
       for (let i = 0; i < batches.length; i++) {
         const batch = batches[i];
-        const response = await chrome.runtime.sendMessage({
-          action: 'processFurigana',
-          payload: {
-            textContent: batch.payload,
-            settings,
-            tabUrl: window.location.href,
-          },
+        const response = await sendFuriganaWithRateLimitRetry({
+          textContent: batch.payload,
+          settings,
+          tabUrl: window.location.href,
         });
 
         if (response?.success && response.processedHTML) {
@@ -723,7 +721,9 @@ function startYoutubeCaptionsObserver(settings) {
         }
       }
     } catch (err) {
-      console.error('Tsukeru: YouTube captions processing failed', err);
+      if (!err.rateLimitType) {
+        console.error('Tsukeru: YouTube captions processing failed', err);
+      }
     }
   };
 
@@ -822,13 +822,10 @@ async function processVisibleElements(elements, settings) {
     const batches = buildBatches(newNodes);
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i];
-      const response = await chrome.runtime.sendMessage({
-        action: 'processFurigana',
-        payload: {
-          textContent: batch.payload,
-          settings,
-          tabUrl: window.location.href,
-        },
+      const response = await sendFuriganaWithRateLimitRetry({
+        textContent: batch.payload,
+        settings,
+        tabUrl: window.location.href,
       });
 
       if (response?.success && response.processedHTML) {
@@ -840,7 +837,9 @@ async function processVisibleElements(elements, settings) {
       }
     }
   } catch (err) {
-    console.error('Tsukeru: failed to process visible elements', err);
+    if (!err.rateLimitType) {
+      console.error('Tsukeru: failed to process visible elements', err);
+    }
   }
 }
 
@@ -904,13 +903,10 @@ async function processMutations(mutations, settings) {
     const batches = buildBatches(uniqueNodes);
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i];
-      const response = await chrome.runtime.sendMessage({
-        action: 'processFurigana',
-        payload: {
-          textContent: batch.payload,
-          settings,
-          tabUrl: window.location.href,
-        },
+      const response = await sendFuriganaWithRateLimitRetry({
+        textContent: batch.payload,
+        settings,
+        tabUrl: window.location.href,
       });
 
       if (response?.success && response.processedHTML) {
@@ -922,7 +918,9 @@ async function processMutations(mutations, settings) {
       }
     }
   } catch (err) {
-    console.error('Tsukeru: failed to process dynamic content', err);
+    if (!err.rateLimitType) {
+      console.error('Tsukeru: failed to process dynamic content', err);
+    }
   } finally {
     uniqueNodes.forEach(node => {
       processingQueue.delete(node);

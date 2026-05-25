@@ -24,7 +24,7 @@ Security Notes:
 
 const IDB_NAME = 'tsukeru-cache';
 const IDB_STORE = 'furigana';
-const IDB_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+const IDB_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 export async function sha256Hash(message) {
   const msgBuffer = new TextEncoder().encode(message);

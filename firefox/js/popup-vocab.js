@@ -508,16 +508,25 @@ export async function exportAnkiAudio() {
       altReadings: ''
     }));
     const result = await chrome.runtime.sendMessage({ action: 'exportAnkiAudio', payload });
-    if (!result.success) throw new Error(result.error || t('vocab_export_failed_short', undefined, 'Export failed'));
+    if (!result.success) {
+      const err = new Error(result.error || t('vocab_export_failed_short', undefined, 'Export failed'));
+      err.rateLimitType = result.rateLimitType;
+      err.retryAfter = result.retryAfter;
+      throw err;
+    }
     const link = document.createElement('a');
     link.href = result.dataUrl;
     link.download = `tsukeru_anki_${Date.now()}.zip`;
     link.click();
   } catch (err) {
-    const fallback = t('vocab_export_failed_short', undefined, 'Export failed');
-    alert(t('vocab_export_failed_with_reason', [err.message || fallback], `Export failed: ${err.message || fallback}`));
+    if (err.rateLimitType === 'audio_export' && err.retryAfter != null) {
+      alert(t('vocab_audio_export_rate_limited', [String(err.retryAfter)], `Audio export is temporarily limited. Try again in ${err.retryAfter}s.`));
+    } else {
+      const fallback = t('vocab_export_failed_short', undefined, 'Export failed');
+      alert(t('vocab_export_failed_with_reason', [err.message || fallback], `Export failed: ${err.message || fallback}`));
+    }
   } finally {
-    btn.textContent = t('vocab_export_audio', undefined, '+ Audio');
+    btn.textContent = t('vocab_export_audio', undefined, 'Export Anki + Audio');
     btn.disabled = false;
   }
 }

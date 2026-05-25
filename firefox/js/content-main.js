@@ -15,7 +15,7 @@ Side Effects:
 
 Failure Modes:
 - Concurrent apply requests are ignored while processing.
-- Runtime messaging/API failures surface as logged errors and user alerts.
+- Runtime messaging/API failures surface as logged errors and toast notifications via shared retry helpers.
 
 Security Notes:
 - Sends only required text payloads to background processing.
@@ -25,8 +25,10 @@ Security Notes:
 // content-main.js — Core furigana logic, state initialization, message router
 //
 // This file is loaded LAST in the content_scripts chain, after:
-//   js/content-dom.js      (utilities, observers, HTML processing)
-//   js/content-tooltip.js  (dictionary tooltip, vocab saving)
+//   js/content-ui.js        (toast helpers)
+//   js/content-rate-limit.js (retry helper)
+//   js/content-dom.js       (utilities, observers, HTML processing)
+//   js/content-tooltip.js   (dictionary tooltip, vocab saving)
 //
 // Guard pattern: state variables and the message listener are initialized
 // only once per page context. Functions (applyFurigana etc.) are defined
@@ -38,6 +40,23 @@ Security Notes:
 function t(key, substitutions, fallback = '') {
   const message = chrome.i18n?.getMessage ? chrome.i18n.getMessage(key, substitutions) : '';
   return message || fallback;
+}
+
+function getUserFacingApplyError(error) {
+  const rawMessage = String(error?.message || '').trim();
+  if (/(auth|nonce|401|403)/i.test(rawMessage)) {
+    return t(
+      'content_toast_connection_error',
+      undefined,
+      'Tsukeru had trouble connecting. Please try again in a moment.'
+    );
+  }
+
+  return rawMessage || t(
+    'content_toast_generic_error',
+    undefined,
+    'Tsukeru could not finish this page. Please reload and try again.'
+  );
 }
 
 async function applyFurigana(settings) {
@@ -59,6 +78,7 @@ async function applyFurigana(settings) {
     if (!needsReprocess) {
       pageRoot?.classList.remove('tsukeru-furigana-disabled');
       isFuriganaActive = true;
+      refreshSavedVocabularyHighlights();
       setHighlightMode(settings?.highlightMode || 'off');
       document.documentElement.setAttribute(
         'data-tsukeru-custom-style',
@@ -92,18 +112,11 @@ async function applyFurigana(settings) {
     const batches = buildBatches(textNodes);
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i];
-      const response = await chrome.runtime.sendMessage({
-        action: 'processFurigana',
-        payload: {
-          textContent: batch.payload,
-          settings,
-          tabUrl: window.location.href,
-        },
+      const response = await sendFuriganaWithRateLimitRetry({
+        textContent: batch.payload,
+        settings,
+        tabUrl: window.location.href,
       });
-
-      if (!response || !response.success || !response.processedHTML) {
-        throw new Error(response?.error || t('content_error_backend_empty', undefined, 'Backend returned an empty response'));
-      }
 
       applyBatchResult(batch, response.processedHTML);
 
@@ -116,6 +129,7 @@ async function applyFurigana(settings) {
     lastAppliedSettings = { ...settings };
 
     enableDictionaryPopups();
+    refreshSavedVocabularyHighlights();
 
     if (settings.watchDynamic) {
       startWatchingDynamicContent(settings);
@@ -132,9 +146,14 @@ async function applyFurigana(settings) {
 
   } catch (error) {
     console.error('Error applying furigana:', error);
-    alert(t('content_apply_failed_with_reason', [error.message], `Failed to apply furigana: ${error.message}`));
-    setHighlightMode('off');
+    if (error.rateLimitType) {
+      // Toast already guaranteed visible by sendFuriganaWithRateLimitRetry.
+    } else {
+      showToast(getUserFacingApplyError(error), { type: 'error', duration: 8000 });
+      setHighlightMode('off');
+    }
   } finally {
+    // Toasts manage their own lifetime; do not dismiss them here.
     isProcessing = false;
   }
 }

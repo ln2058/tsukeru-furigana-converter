@@ -100,7 +100,7 @@ body {
   color: #eab308;
 }
 
-.header-link-icon.coffee-icon:hover {
+.header-link-icon.kofi-icon:hover {
   color: #d97706;
 }
 
@@ -110,6 +110,15 @@ body {
   opacity: 1;
   margin-left: 4px;
   user-select: none;
+}
+
+.header-logo-link {
+  cursor: pointer;
+  margin-left: 4px;
+}
+
+.header-logo-link:hover {
+  color: var(--text);
 }
 
 .content {

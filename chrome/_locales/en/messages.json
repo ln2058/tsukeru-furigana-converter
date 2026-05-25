@@ -20,14 +20,17 @@
   "header_title_view_source": {
     "message": "View Source on GitHub"
   },
-  "header_title_buy_coffee": {
-    "message": "Buy Me a Coffee"
+  "header_title_support_kofi": {
+    "message": "Support on Ko-fi"
   },
   "header_title_review_chrome": {
     "message": "Review on Chrome Web Store"
   },
   "header_title_review_edge": {
     "message": "Review on Edge Add-ons Store"
+  },
+  "header_title_open_ezfurigana": {
+    "message": "Open EZFurigana"
   },
   "tab_saved": {
     "message": "Saved"
@@ -159,7 +162,7 @@
     "message": "Export Anki"
   },
   "vocab_export_audio": {
-    "message": "+ Audio"
+    "message": "Export Anki + Audio"
   },
   "vocab_clear": {
     "message": "Clear"
@@ -205,6 +208,9 @@
   },
   "vocab_export_failed_with_reason": {
     "message": "Export failed: $1"
+  },
+  "vocab_audio_export_rate_limited": {
+    "message": "Audio export is temporarily limited. Try again in $1s."
   },
   "vocab_clear_confirm": {
     "message": "Clear all $1 vocabulary items?"
@@ -382,6 +388,38 @@
   },
   "errorUnexpectedShort": {
     "message": "Unexpected error. Please try again."
+  },
+  "rate_limit_toast_request_count": {
+    "message": "Processing paused. Retrying in $1s.",
+    "description": "Toast shown when request-count rate limit is hit"
+  },
+  "rate_limit_toast_char_rate": {
+    "message": "Processing paused. Retrying in $1s.",
+    "description": "Toast shown when char burst rate limit is hit"
+  },
+  "rate_limit_toast_hourly": {
+    "message": "You have processed a lot of text recently. Please try again later.",
+    "description": "Toast shown when hourly char budget is exhausted"
+  },
+  "rate_limit_toast_daily": {
+    "message": "Daily text limit reached. Please try again tomorrow.",
+    "description": "Toast shown when daily char budget is exhausted"
+  },
+  "rate_limit_toast_nonce": {
+    "message": "Tsukeru had trouble connecting. Please try again in a moment.",
+    "description": "Toast shown when extension connection protection is temporarily unavailable"
+  },
+  "rate_limit_toast_retry_exhausted": {
+    "message": "Tsukeru is still busy. Please try again later.",
+    "description": "Toast shown after automatic retry attempts are exhausted"
+  },
+  "content_toast_connection_error": {
+    "message": "Tsukeru had trouble connecting. Please try again in a moment.",
+    "description": "Toast shown when an auth or connection-protection error prevents applying furigana"
+  },
+  "content_toast_generic_error": {
+    "message": "Tsukeru could not finish this page. Please reload and try again.",
+    "description": "Toast shown when applying furigana fails without a clearer user-facing reason"
   },
   "word_singular": {
     "message": "word"

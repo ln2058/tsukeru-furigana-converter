@@ -7,10 +7,10 @@ Inputs:
 - Network responses from EZFurigana API endpoints.
 
 Outputs:
-- Processed furigana HTML, lookup payloads, and base64 data URLs.
+- Processed furigana HTML, lookup payloads, base64 data URLs, and structured rate-limit metadata for furigana retries.
 
 Side Effects:
-- Performs network fetches and enforces in-memory rate limiting.
+- Performs network fetches, enforces in-memory rate limiting, and tracks nonce rate-limit state for furigana requests.
 - Reads/writes cached furigana fragments through `bg-cache`.
 
 Failure Modes:
@@ -84,6 +84,7 @@ export async function handleFuriganaRequest(payload) {
 
   // Settings suffix shared by all chunks (JLPT excluded — filtered client-side via CSS)
   const settingsSuffix = `|${settings.furiganaType || 'hiragana'}|${settings.firstOccurrenceOnly ? '1' : '0'}`;
+  let nonceRateLimit = null;
 
   // ── Step 1: Dismantle the payload into per-node chunks ────────────────────
   const chunks = dismantlePayload(textContent);
@@ -91,7 +92,10 @@ export async function handleFuriganaRequest(payload) {
   // No markers: unusual edge case — rate-check the whole payload and fetch raw.
   if (!chunks.length) {
     if (!checkCharRateLimit(textContent.length)) {
-      throw new Error(`Rate limit exceeded: max ${RATE_LIMIT_MAX_CHARS} characters per ${RATE_LIMIT_WINDOW_MS / 1000}s`);
+      const error = new Error(`Rate limit exceeded: max ${RATE_LIMIT_MAX_CHARS} characters per ${RATE_LIMIT_WINDOW_MS / 1000}s`);
+      error.rateLimitType = 'char_rate';
+      error.retryAfter = RATE_LIMIT_WINDOW_MS / 1000;
+      throw error;
     }
     return fetchFromAPI(textContent, settings, tabUrl);
   }
@@ -121,11 +125,15 @@ export async function handleFuriganaRequest(payload) {
   if (missingChunks.length > 0) {
     const missingChars = missingChunks.reduce((sum, c) => sum + c.text.length, 0);
     if (!checkCharRateLimit(missingChars)) {
-      throw new Error(`Rate limit exceeded: max ${RATE_LIMIT_MAX_CHARS} characters per ${RATE_LIMIT_WINDOW_MS / 1000}s`);
+      const error = new Error(`Rate limit exceeded: max ${RATE_LIMIT_MAX_CHARS} characters per ${RATE_LIMIT_WINDOW_MS / 1000}s`);
+      error.rateLimitType = 'char_rate';
+      error.retryAfter = RATE_LIMIT_WINDOW_MS / 1000;
+      throw error;
     }
 
     const missingPayload = missingChunks.map(c => c.marker + c.text).join('');
     const result = await fetchFromAPI(missingPayload, settings, tabUrl);
+    if (result.nonceRateLimit) nonceRateLimit = result.nonceRateLimit;
 
     const parsedChunks = dismantlePayload(result.processedHTML);
     const parsedMap = new Map(parsedChunks.map(c => [c.marker, c.text]));
@@ -142,7 +150,7 @@ export async function handleFuriganaRequest(payload) {
 
   // ── Step 4: Reassemble with the exact current markers ────────────────────
   const finalHTML = chunks.map(c => c.marker + (c.processedHtml ?? c.text)).join('');
-  return { processedHTML: finalHTML };
+  return { processedHTML: finalHTML, ...(nonceRateLimit && { nonceRateLimit }) };
 }
 
 // ── Extension nonce ───────────────────────────────────────────────────────────
@@ -156,6 +164,7 @@ export async function handleFuriganaRequest(payload) {
 let _extNonce = null;
 let _extNonceExpiry = 0;
 let _getExtNoncePromise = null; // coalesces concurrent callers to a single in-flight fetch
+let _nonceRateLimitState = null;
 const _EXT_NONCE_REFRESH_BEFORE_MS = 30_000; // refresh 30s before expiry
 const _EXT_SESSION_ID = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
   ? crypto.randomUUID()
@@ -193,6 +202,17 @@ async function _getExtNonce() {
         cache: 'no-store',
       });
       if (!res.ok) {
+        if (res.status === 429) {
+          const body = await res.json().catch(() => ({}));
+          const retryAfterHeader = Number.parseInt(res.headers.get('Retry-After') || '', 10);
+          const retryAfter = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+            ? Math.min(retryAfterHeader, 86400)
+            : 60;
+          _nonceRateLimitState = {
+            rateLimitType: body?.rate_limit_type || 'nonce',
+            retryAfter,
+          };
+        }
         _nonceLog('nonce-fetch-failed', { extSessionId: _EXT_SESSION_ID, status: res.status });
         return null;
       }
@@ -202,6 +222,7 @@ async function _getExtNonce() {
         return null;
       }
       _extNonce = data.nonce;
+      _nonceRateLimitState = null;
       const expiresIn = Number(data.expires_in);
       _extNonceExpiry = Number.isFinite(expiresIn) && expiresIn > 0
         ? now + (expiresIn * 1000)
@@ -226,6 +247,14 @@ async function _getExtNonce() {
   return _getExtNoncePromise;
 }
 
+async function _getExtNonceForFurigana() {
+  _nonceRateLimitState = null;
+  const nonce = await _getExtNonce();
+  const rateLimit = _nonceRateLimitState;
+  _nonceRateLimitState = null;
+  return { nonce, rateLimit };
+}
+
 // Low-level API fetch — sends raw textContent and returns { processedHTML }.
 export async function fetchFromAPI(textContent, settings, tabUrl) {
   const apiUrl = API_BASE_URL;
@@ -233,8 +262,9 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
   let lastError = null;
   const backendWebsiteUrl = getBackendWebsiteUrl(tabUrl);
 
-  // let (not const) — nulled out on 403 so the retry fires without a nonce.
-  let nonce = await _getExtNonce();
+  let nonceResult = await _getExtNonceForFurigana();
+  let nonce = nonceResult.nonce;
+  let nonceRateLimit = nonceResult.rateLimit;
 
   for (const endpoint of endpoints) {
     try {
@@ -274,7 +304,9 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
       // CORS headers so a 403 there would produce a network error, not an HTTP 403.
       if (response.status === 403 && nonce && endpoint.includes('/api/extension/')) {
         _resetExtNonce('furigana-403');
-        nonce = await _getExtNonce();
+        nonceResult = await _getExtNonceForFurigana();
+        nonce = nonceResult.nonce;
+        if (nonceResult.rateLimit) nonceRateLimit = nonceResult.rateLimit;
         _nonceLog('nonce-refresh-after-403', {
           extSessionId: _EXT_SESSION_ID,
           refreshed: Boolean(nonce),
@@ -294,6 +326,17 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
           console.error('Tsukeru extension auth failure', endpoint, response.status, response.statusText);
           break;
         }
+        if (response.status === 429) {
+          const body = await response.json().catch(() => ({}));
+          const retryAfterHeader = Number.parseInt(response.headers.get('Retry-After') || '', 10);
+          const retryAfter = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+            ? Math.min(retryAfterHeader, 86400)
+            : 60;
+          const error = new Error(body.error || 'Rate limit exceeded');
+          error.rateLimitType = body.rate_limit_type || 'unknown';
+          error.retryAfter = retryAfter;
+          throw error;
+        }
         lastError = new Error(`API request failed: ${response.status} ${response.statusText}`);
         console.error('Tsukeru backend error', endpoint, response.status, response.statusText);
         continue;
@@ -312,10 +355,13 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
 
       if (!processedHTML) { lastError = new Error('Could not read processed HTML from backend response.'); continue; }
 
-      return { processedHTML };
+      return { processedHTML, ...(nonceRateLimit && { nonceRateLimit }) };
     } catch (err) {
       lastError = err;
       console.error('Tsukeru fetch exception', endpoint, err);
+      if (err.rateLimitType) {
+        break;
+      }
       continue;
     }
   }
@@ -476,8 +522,27 @@ export async function handlePlayAudio(word, reading) {
     urlsToTry.push(`${base}?kana=&kanji=${enc(word)}`);
   }
 
+  let waitedOnRateLimit = false;
   for (const audioUrl of urlsToTry) {
     const response = await fetch(audioUrl);
+    if (response.status === 429) {
+      const body = await response.json().catch(() => ({}));
+      const retryAfterHeader = Number.parseInt(response.headers.get('Retry-After') || '', 10);
+      const retryAfter = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+        ? Math.min(retryAfterHeader, 86400)
+        : 1;
+      const rateLimitType = body?.rate_limit_type || 'audio_cold_fetch';
+      const err = new Error(body?.error || 'Audio rate limited');
+      err.rateLimitType = rateLimitType;
+      err.retryAfter = retryAfter;
+      // Wait at most 1 second once for a cold-fetch slot; beyond that, fall back to TTS.
+      if (!waitedOnRateLimit && retryAfter <= 1) {
+        waitedOnRateLimit = true;
+        await new Promise(r => setTimeout(r, retryAfter * 1000));
+        continue;
+      }
+      throw err;
+    }
     if (!response.ok) continue;
     const blob = await response.blob();
     if (blob.size < 100) continue; // reject JP101's 52-byte empty placeholder audio
@@ -529,7 +594,20 @@ export async function handleExportAnkiAudio(payload) {
     credentials: 'omit',
     mode: 'cors',
   });
-  if (!response.ok) throw new Error(`Export failed: ${response.status} ${response.statusText}`);
+  if (!response.ok) {
+    if (response.status === 429) {
+      const body = await response.json().catch(() => ({}));
+      const retryAfterHeader = Number.parseInt(response.headers.get('Retry-After') || '', 10);
+      const retryAfter = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+        ? Math.min(retryAfterHeader, 86400)
+        : 60;
+      const err = new Error(body?.error || 'Export rate limited');
+      err.rateLimitType = body?.rate_limit_type || 'audio_export';
+      err.retryAfter = retryAfter;
+      throw err;
+    }
+    throw new Error(`Export failed: ${response.status} ${response.statusText}`);
+  }
   const blob = await response.blob();
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

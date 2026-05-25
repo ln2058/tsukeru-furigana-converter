@@ -91,6 +91,11 @@ document.getElementById('extReportSubmit').addEventListener('click', () => {
 
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 
+function getEzfuriganaHomeUrl() {
+  const lang = (chrome.i18n?.getUILanguage?.() || '').toLowerCase();
+  return lang.startsWith('ja') ? 'https://www.ezfurigana.com/jp' : 'https://www.ezfurigana.com/';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   applyI18nToPopupDom();
 
@@ -103,6 +108,11 @@ document.addEventListener('DOMContentLoaded', () => {
       reviewLink.href = 'https://addons.mozilla.org/en-US/firefox/addon/tsukeru-for-ezfurigana/';
       reviewLink.title = 'Review on Firefox Add-ons';
     }
+  }
+
+  const ezfuriganaLink = document.getElementById('header-ezfurigana-link');
+  if (ezfuriganaLink) {
+    ezfuriganaLink.href = getEzfuriganaHomeUrl();
   }
 
   const shortcutText = document.getElementById('shortcut-text');

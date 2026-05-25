@@ -171,7 +171,14 @@ export async function ensureContentScript(tabId) {
   } catch (e) {
     console.warn('insertCSS failed (may be fine):', e);
   }
-  for (const file of ['js/content-dom.js', 'js/content-tooltip.js', 'js/content-main.js']) {
+  // Inject the split content scripts in manifest dependency order.
+  for (const file of [
+    'js/content-ui.js',
+    'js/content-rate-limit.js',
+    'js/content-dom.js',
+    'js/content-tooltip.js',
+    'js/content-main.js',
+  ]) {
     await chrome.scripting.executeScript({ target: { tabId }, files: [file] });
   }
 }

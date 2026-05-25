@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_manifest_name__",
-  "version": "3.3.2",
+  "version": "3.3.3",
   "description": "__MSG_manifest_description__",
   "default_locale": "en",
   "permissions": [
@@ -37,6 +37,8 @@
         "<all_urls>"
       ],
       "js": [
+        "js/content-ui.js",
+        "js/content-rate-limit.js",
         "js/content-dom.js",
         "js/content-tooltip.js",
         "js/content-main.js"

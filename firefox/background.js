@@ -7,7 +7,7 @@ Inputs:
 - Message actions and payloads from popup/content scripts.
 
 Outputs:
-- Async message responses and tab-level apply/clear toggles.
+- Async message responses, rate-limit metadata propagation, and tab-level apply/clear toggles.
 
 Side Effects:
 - Seeds and reads `chrome.storage.sync` defaults.
@@ -112,7 +112,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then((result) => sendResponse({ success: true, ...result }))
       .catch((error) => {
         console.error('Furigana request failed', error);
-        sendResponse({ success: false, error: error.message });
+        sendResponse({
+          success: false,
+          error: error.message,
+          ...(error.rateLimitType && { rateLimitType: error.rateLimitType }),
+          ...(error.retryAfter != null && { retryAfter: error.retryAfter }),
+        });
       });
     return true; // Keep the message channel open for async response
   }
@@ -150,7 +155,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'playAudio') {
     handlePlayAudio(message.word, message.reading)
       .then((result) => sendResponse({ success: true, ...result }))
-      .catch((error) => sendResponse({ success: false, error: error.message }));
+      .catch((error) => sendResponse({
+        success: false,
+        error: error.message,
+        ...(error.rateLimitType && { rateLimitType: error.rateLimitType }),
+        ...(error.retryAfter != null && { retryAfter: error.retryAfter }),
+      }));
     return true;
   }
 
@@ -194,13 +204,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then((result) => sendResponse({ success: true, ...result }))
       .catch((error) => {
         console.error('Anki audio export failed', error);
-        sendResponse({ success: false, error: error.message });
+        sendResponse({
+          success: false,
+          error: error.message,
+          ...(error.rateLimitType && { rateLimitType: error.rateLimitType }),
+          ...(error.retryAfter != null && { retryAfter: error.retryAfter }),
+        });
       });
     return true;
   }
 
   if (message.action === 'reportReadingError') {
-    const { word, reading, context_sentence, suggested_reading, consent_given } = message.payload ?? {};
+    const {
+      word,
+      reading,
+      context_sentence,
+      correct_reading,
+      suggested_reading,
+      consent_given
+    } = message.payload ?? {};
+    const normalizedCorrectReading = correct_reading || suggested_reading || null;
     fetch(`${API_BASE_URL}/api/report-error`, {
       method: 'POST',
       headers: {
@@ -208,7 +231,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         'X-Source': 'Firefox-Extension-TSUKERU'
       },
       credentials: 'omit',
-      body: JSON.stringify({ word, reading, context_sentence, suggested_reading, consent_given })
+      body: JSON.stringify({
+        word,
+        reading,
+        context_sentence,
+        correct_reading: normalizedCorrectReading,
+        consent_given
+      })
     })
       .then(async (response) => {
         if (response.ok) {
@@ -287,10 +316,16 @@ async function ensureContentScript(tabId) {
   } catch (e) {
     // Ignore if already injected or not permitted.
   }
-  // Inject the split content scripts in dependency order.
+  // Inject the split content scripts in manifest dependency order.
   // The guard in content-main.js (window.__TSUKERU_LOADED__) prevents
   // double-initialization if the manifest already auto-injected them.
-  for (const file of ['js/content-dom.js', 'js/content-tooltip.js', 'js/content-main.js']) {
+  for (const file of [
+    'js/content-ui.js',
+    'js/content-rate-limit.js',
+    'js/content-dom.js',
+    'js/content-tooltip.js',
+    'js/content-main.js',
+  ]) {
     try {
       await chrome.scripting.executeScript({ target: { tabId }, files: [file] });
     } catch (e) {

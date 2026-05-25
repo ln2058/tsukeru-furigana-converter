@@ -465,7 +465,8 @@
 }
 
 /* Vocabulary saved animation */
-:root[data-tsukeru-custom-style="on"] ruby.vocab-saved {
+:root[data-tsukeru-custom-style="on"] ruby.vocab-saved,
+:root[data-tsukeru-custom-style="on"] span.vocab-saved {
   animation: vocabSavedPulse 0.5s ease;
   background-color: rgba(16, 185, 129, 0.15) !important;
 }
