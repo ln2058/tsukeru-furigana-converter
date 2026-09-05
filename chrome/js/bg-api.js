@@ -7,14 +7,16 @@ Inputs:
 - Network responses from EZFurigana API endpoints.
 
 Outputs:
-- Processed furigana HTML, lookup payloads, base64 data URLs, and structured rate-limit metadata for furigana retries.
+- Processed furigana HTML, reading-aware dictionary/enrichment payloads, base64 data URLs, and structured error metadata.
 
 Side Effects:
-- Performs network fetches, enforces in-memory rate limiting, and tracks nonce rate-limit state for furigana requests.
+- Performs network fetches, enforces in-memory rate limiting, and coalesces nonce acquisition/recovery across API requests.
+- Shares logical dictionary lookups and bounds completed in-memory dictionary results.
 - Reads/writes cached furigana fragments through `bg-cache`.
 
 Failure Modes:
-- Network/API failures, malformed responses, and rate-limit rejections.
+- Network/API failures, malformed responses, nonce retry exhaustion, and rate-limit rejections.
+- A rejected shared dictionary lookup propagates to all joined callers and can be retried later.
 - Missing required payload fields produce thrown errors.
 
 Security Notes:
@@ -40,6 +42,19 @@ export const DEFAULT_SETTINGS = {
 const RATE_LIMIT_WINDOW_MS = 10_000;
 const RATE_LIMIT_MAX_CHARS = 50_000;
 const rateLimitBuckets = [];
+const BACKGROUND_DEFINITION_CACHE_MAX_ENTRIES = 200;
+const definitionInFlightCache = new Map();
+
+function pruneDefinitionCache(now = Date.now()) {
+  for (const [key, entry] of definitionCache.entries()) {
+    if (now - entry.timestamp >= DEFINITION_CACHE_TTL) definitionCache.delete(key);
+  }
+  while (definitionCache.size > BACKGROUND_DEFINITION_CACHE_MAX_ENTRIES) {
+    const oldestKey = definitionCache.keys().next().value;
+    if (oldestKey === undefined) break;
+    definitionCache.delete(oldestKey);
+  }
+}
 
 function checkCharRateLimit(nextLen) {
   const now = Date.now();
@@ -165,6 +180,7 @@ let _extNonce = null;
 let _extNonceExpiry = 0;
 let _getExtNoncePromise = null; // coalesces concurrent callers to a single in-flight fetch
 let _nonceRateLimitState = null;
+let _nonceLastError = null;
 const _EXT_NONCE_REFRESH_BEFORE_MS = 30_000; // refresh 30s before expiry
 const _EXT_SESSION_ID = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
   ? crypto.randomUUID()
@@ -192,6 +208,7 @@ async function _getExtNonce() {
 
   _getExtNoncePromise = (async () => {
     _resetExtNonce('nonce-refresh-start');
+    _nonceLastError = null;
     _nonceLog('nonce-fetch-start', { extSessionId: _EXT_SESSION_ID });
     try {
       const res = await fetch(`${API_BASE_URL}/api/extension/nonce`, {
@@ -202,15 +219,12 @@ async function _getExtNonce() {
         cache: 'no-store',
       });
       if (!res.ok) {
+        const body = await parseErrorBody(res);
+        _nonceLastError = createApiError(res, body, 'Extension nonce request failed');
         if (res.status === 429) {
-          const body = await res.json().catch(() => ({}));
-          const retryAfterHeader = Number.parseInt(res.headers.get('Retry-After') || '', 10);
-          const retryAfter = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
-            ? Math.min(retryAfterHeader, 86400)
-            : 60;
           _nonceRateLimitState = {
             rateLimitType: body?.rate_limit_type || 'nonce',
-            retryAfter,
+            retryAfter: _nonceLastError.retryAfter ?? 60,
           };
         }
         _nonceLog('nonce-fetch-failed', { extSessionId: _EXT_SESSION_ID, status: res.status });
@@ -218,10 +232,12 @@ async function _getExtNonce() {
       }
       const data = await res.json();
       if (!data?.nonce) {
+        _nonceLastError = new Error('Extension nonce response was missing a nonce');
         _nonceLog('nonce-fetch-failed', { extSessionId: _EXT_SESSION_ID, reason: 'missing_nonce_field' });
         return null;
       }
       _extNonce = data.nonce;
+      _nonceLastError = null;
       _nonceRateLimitState = null;
       const expiresIn = Number(data.expires_in);
       _extNonceExpiry = Number.isFinite(expiresIn) && expiresIn > 0
@@ -233,6 +249,7 @@ async function _getExtNonce() {
       });
       return _extNonce;
     } catch (err) {
+      _nonceLastError = err instanceof Error ? err : new Error('Extension nonce request failed');
       _nonceLog('nonce-fetch-failed', {
         extSessionId: _EXT_SESSION_ID,
         reason: 'network_exception',
@@ -417,90 +434,227 @@ function extractProcessedHtml(htmlText) {
   return trimmed || null;
 }
 
-export async function lookupDefinition(word) {
-  const term = (word || '').trim();
-  if (!term) throw new Error('No word provided');
+const MAX_API_ERROR_TEXT_LENGTH = 300;
+const MAX_RETRY_AFTER_SECONDS = 86400;
+const SUPPORTED_LOOKUP_READING_TYPES = new Set(['hiragana', 'katakana', 'romaji']);
 
-  const now = Date.now();
+function safeErrorText(value) {
+  if (typeof value !== 'string') return '';
+  return value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, MAX_API_ERROR_TEXT_LENGTH);
+}
 
-  // Evict expired entries to prevent indefinite memory growth
-  for (const [key, entry] of definitionCache.entries()) {
-    if (now - entry.timestamp >= DEFINITION_CACHE_TTL) {
-      definitionCache.delete(key);
-    }
+function getErrorBodyText(body) {
+  if (!body || typeof body !== 'object') return '';
+  for (const key of ['error', 'detail', 'message']) {
+    const value = safeErrorText(body[key]);
+    if (value) return value;
   }
+  return '';
+}
 
-  const cached = definitionCache.get(term);
-  if (cached && now - cached.timestamp < DEFINITION_CACHE_TTL) {
-    return cached.data;
+async function parseErrorBody(response) {
+  try {
+    const body = await response.json();
+    return body && typeof body === 'object' && !Array.isArray(body) ? body : {};
+  } catch (_) {
+    return {};
   }
+}
 
-  const endpoints = [
-    `${API_BASE_URL}/api/extension/word-definition?word=${encodeURIComponent(term)}`,
-    `${API_BASE_URL}/api/word-definition/${encodeURIComponent(term)}`
-  ];
-  let lastError = null;
+function getRetryAfter(response, body) {
+  const headerValue = Number.parseInt(response?.headers?.get?.('Retry-After') || '', 10);
+  const bodyValue = Number(body?.retry_after ?? body?.retryAfter);
+  const value = Number.isFinite(headerValue) && headerValue > 0 ? headerValue : bodyValue;
+  return Number.isFinite(value) && value > 0 ? Math.min(Math.floor(value), MAX_RETRY_AFTER_SECONDS) : null;
+}
+
+function createApiError(response, body = {}, fallbackMessage = 'API request failed') {
+  const status = Number(response?.status) || 0;
+  const backendText = getErrorBodyText(body);
+  const statusText = safeErrorText(response?.statusText);
+  const message = backendText || (status ? `${fallbackMessage}: ${status}${statusText ? ` ${statusText}` : ''}` : fallbackMessage);
+  const error = new Error(message);
+  error.status = status;
+  error.httpStatus = status;
+  if (backendText) error.backendError = backendText;
+  const rateLimitType = safeErrorText(body?.rate_limit_type || body?.rateLimitType)
+    || (status === 429 ? 'unknown' : '');
+  const retryAfter = getRetryAfter(response, body);
+  if (rateLimitType) error.rateLimitType = rateLimitType;
+  if (retryAfter != null) error.retryAfter = retryAfter;
+  else if (status === 429) error.retryAfter = 60;
+  return error;
+}
+
+function isRecognizedNonceFailure(body) {
+  const text = ['error', 'detail', 'message']
+    .map((key) => safeErrorText(body?.[key]))
+    .filter(Boolean)
+    .join(' ');
+  return text.includes('Invalid or expired nonce') || text.includes('Nonce required');
+}
+
+function normalizeLookupValue(value, label) {
+  if (typeof value !== 'string') throw new Error(`${label} must be a string`);
+  const trimmed = value.trim();
+  if (!trimmed) throw new Error(`${label} must not be empty`);
+  if (Array.from(trimmed).length > 64) throw new Error(`${label} is too long`);
+  return trimmed;
+}
+
+export function normalizeDefinitionLookupArgs(word, reading, readingType) {
+  const term = normalizeLookupValue(word, 'Word');
+  if (reading !== undefined && typeof reading !== 'string') throw new Error('Reading must be a string');
+  if (readingType !== undefined && typeof readingType !== 'string') throw new Error('Reading type must be a string');
+  const normalizedReading = (reading || '').trim();
+  if (Array.from(normalizedReading).length > 64) throw new Error('Reading is too long');
+  const normalizedReadingType = (readingType || '').trim().toLowerCase();
+  if (normalizedReadingType && !SUPPORTED_LOOKUP_READING_TYPES.has(normalizedReadingType)) {
+    throw new Error('Unsupported reading type');
+  }
+  return {
+    word: term,
+    reading: normalizedReading,
+    readingType: normalizedReading ? normalizedReadingType : ''
+  };
+}
+
+export function getDefinitionCacheKey(word, reading = '', readingType = '') {
+  return JSON.stringify([
+    String(word || '').trim(),
+    String(reading || '').trim(),
+    String(readingType || '').trim().toLowerCase()
+  ]);
+}
+
+function buildDefinitionUrl(path, args) {
+  const url = new URL(`${API_BASE_URL}${path}`);
+  url.searchParams.set('word', args.word);
+  if (args.reading) url.searchParams.set('reading', args.reading);
+  if (args.reading && args.readingType) url.searchParams.set('reading_type', args.readingType);
+  return url;
+}
+
+function buildLegacyDefinitionUrl(args) {
+  const url = new URL(`${API_BASE_URL}/api/word-definition/${encodeURIComponent(args.word)}`);
+  if (args.reading) url.searchParams.set('reading', args.reading);
+  if (args.reading && args.readingType) url.searchParams.set('reading_type', args.readingType);
+  return url;
+}
+
+async function getNonceForApiRequest() {
   const nonce = await _getExtNonce();
+  if (!nonce && _nonceLastError?.rateLimitType) throw _nonceLastError;
+  return nonce;
+}
 
-  for (const endpoint of endpoints) {
+async function refreshNonceForApiRequest(staleNonce) {
+  // A concurrent caller may already have installed a newer nonce. Reuse it
+  // instead of clearing valid state or starting another refresh.
+  if (_extNonce && _extNonce !== staleNonce) return _extNonce;
+  if (_extNonce === staleNonce) _resetExtNonce('api-nonce-403');
+  const nonce = await _getExtNonce();
+  if (!nonce) throw _nonceLastError || new Error('Extension nonce refresh failed');
+  return nonce;
+}
+
+async function requestExtensionJsonWithNonce(url, nonce, retryState) {
+  const requestUrl = new URL(url.toString());
+  if (nonce) requestUrl.searchParams.set('ext_nonce', nonce);
+
+  let response;
+  try {
+    response = await fetch(requestUrl.toString(), {
+      method: 'GET',
+      headers: { 'x-extension-session-id': _EXT_SESSION_ID },
+      credentials: 'omit',
+      mode: 'cors',
+    });
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('API request failed');
+  }
+
+  if (response.ok) {
     try {
-      const url = new URL(endpoint);
-      if (nonce) url.searchParams.set('ext_nonce', nonce);
-      const hadNonce = url.searchParams.has('ext_nonce');
-      const response = await fetch(url.toString(), {
-        method: 'GET',
-        credentials: 'omit',
-        mode: 'cors',
-      });
-      if (!response.ok) {
-        lastError = new Error(`API request failed: ${response.status} ${response.statusText}`);
-        continue;
-      }
-      const data = await response.json();
-      if (hadNonce) {
-        definitionCache.set(term, { data, timestamp: now });
-      }
-      return data;
-    } catch (err) {
-      lastError = err;
-      console.error('Definition fetch exception', endpoint, err);
-      continue;
+      return await response.json();
+    } catch (_) {
+      throw createApiError(response, {}, 'API response was not valid JSON');
     }
   }
 
-  throw lastError || new Error('Definition lookup failed');
+  const body = await parseErrorBody(response);
+  if (response.status === 403 && nonce && !retryState.nonceRetryUsed && isRecognizedNonceFailure(body)) {
+    retryState.nonceRetryUsed = true;
+    const refreshedNonce = await refreshNonceForApiRequest(nonce);
+    return requestExtensionJsonWithNonce(url, refreshedNonce, retryState);
+  }
+
+  throw createApiError(response, body);
+}
+
+export async function requestExtensionJson(url, options = {}) {
+  const retryState = options.retryState || { nonceRetryUsed: false };
+  const nonce = await getNonceForApiRequest();
+  return requestExtensionJsonWithNonce(new URL(url.toString()), nonce, retryState);
+}
+
+function assertDefinitionPayload(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data) || !Array.isArray(data.entries)) {
+    throw new Error('Definition response was malformed');
+  }
+  return data;
+}
+
+function assertJsonObject(data, label) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error(`${label} response was malformed`);
+  }
+  return data;
+}
+
+export async function lookupDefinition(word, reading, readingType) {
+  const args = normalizeDefinitionLookupArgs(word, reading, readingType);
+  const cacheKey = getDefinitionCacheKey(args.word, args.reading, args.readingType);
+  pruneDefinitionCache();
+
+  const cached = definitionCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < DEFINITION_CACHE_TTL) return cached.data;
+
+  const sharedRequest = definitionInFlightCache.get(cacheKey);
+  if (sharedRequest) return sharedRequest;
+
+  const request = (async () => {
+    const retryState = { nonceRetryUsed: false };
+    let data;
+    try {
+      data = assertDefinitionPayload(await requestExtensionJson(buildDefinitionUrl('/api/extension/word-definition', args), { retryState }));
+    } catch (error) {
+      if (error.status !== 404 && error.status !== 405) throw error;
+      data = assertDefinitionPayload(await requestExtensionJson(buildLegacyDefinitionUrl(args), { retryState }));
+    }
+    definitionCache.set(cacheKey, { data, timestamp: Date.now() });
+    pruneDefinitionCache();
+    return data;
+  })();
+
+  definitionInFlightCache.set(cacheKey, request);
+  try {
+    return await request;
+  } finally {
+    if (definitionInFlightCache.get(cacheKey) === request) definitionInFlightCache.delete(cacheKey);
+  }
 }
 
 export async function fetchExampleSentence(word) {
-  const term = (word || '').trim();
-  if (!term) throw new Error('No word provided');
-
-  const nonce = await _getExtNonce();
+  const term = normalizeLookupValue(word, 'Word');
   const url = new URL(`${API_BASE_URL}/api/example-sentence/${encodeURIComponent(term)}`);
-  if (nonce) url.searchParams.set('ext_nonce', nonce);
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    credentials: 'omit',
-    mode: 'cors',
-  });
-  if (!response.ok) throw new Error(`API request failed: ${response.status} ${response.statusText}`);
-  return await response.json();
+  return assertJsonObject(await requestExtensionJson(url), 'Example sentence');
 }
 
 export async function fetchKanjiBreakdown(word) {
-  const term = (word || '').trim();
-  if (!term) throw new Error('No word provided');
-
-  const nonce = await _getExtNonce();
+  const term = normalizeLookupValue(word, 'Word');
   const url = new URL(`${API_BASE_URL}/api/kanji-breakdown/${encodeURIComponent(term)}`);
-  if (nonce) url.searchParams.set('ext_nonce', nonce);
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    credentials: 'omit',
-    mode: 'cors',
-  });
-  if (!response.ok) throw new Error(`API request failed: ${response.status} ${response.statusText}`);
-  return await response.json();
+  return assertJsonObject(await requestExtensionJson(url), 'Kanji breakdown');
 }
 
 export async function handlePlayAudio(word, reading) {

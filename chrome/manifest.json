@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_manifest_name__",
-  "version": "3.3.3",
+  "version": "3.4.0",
   "description": "__MSG_manifest_description__",
   "default_locale": "en",
   "permissions": [
@@ -40,6 +40,7 @@
         "js/content-ui.js",
         "js/content-rate-limit.js",
         "js/content-dom.js",
+        "js/tooltip-async-state.js",
         "js/content-tooltip.js",
         "js/content-main.js"
       ],

@@ -9,8 +9,8 @@ Outputs:
 - SHA-256 hashes and cache hit/miss values.
 
 Side Effects:
-- Opens IndexedDB and reads/writes cache entries.
-- Mutates in-memory definition cache map.
+- Reuses one recoverable IndexedDB connection for cache reads/writes.
+- Mutates bounded in-memory definition cache state.
 
 Failure Modes:
 - IndexedDB transaction/open failures return safe null/no-op behavior.
@@ -25,6 +25,8 @@ Security Notes:
 const IDB_NAME = 'tsukeru-cache';
 const IDB_STORE = 'furigana';
 const IDB_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+let cacheDb = null;
+let cacheDbPromise = null;
 
 export async function sha256Hash(message) {
   const msgBuffer = new TextEncoder().encode(message);
@@ -33,26 +35,98 @@ export async function sha256Hash(message) {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+function resetCacheDB(db) {
+  if (!db || cacheDb !== db) return;
+  cacheDb = null;
+  cacheDbPromise = null;
+  try { db.close(); } catch (_) { /* already closed */ }
+}
+
 function openCacheDB() {
-  return new Promise((resolve, reject) => {
+  if (cacheDb) return Promise.resolve(cacheDb);
+  if (cacheDbPromise) return cacheDbPromise;
+
+  let opening;
+  opening = new Promise((resolve, reject) => {
     const req = indexedDB.open(IDB_NAME, 1);
-    req.onupgradeneeded = (e) => { e.target.result.createObjectStore(IDB_STORE); };
-    req.onsuccess = (e) => resolve(e.target.result);
-    req.onerror = (e) => reject(e.target.error);
+    req.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+    };
+    req.onsuccess = (event) => {
+      const db = event.target.result;
+      cacheDb = db;
+      db.onversionchange = () => resetCacheDB(db);
+      db.onclose = () => resetCacheDB(db);
+      if (cacheDbPromise === opening) cacheDbPromise = null;
+      resolve(db);
+    };
+    req.onerror = (event) => {
+      if (cacheDbPromise === opening) cacheDbPromise = null;
+      reject(event.target.error);
+    };
   });
+  cacheDbPromise = opening;
+  return opening;
+}
+
+async function deleteExpiredCacheEntry(key) {
+  try {
+    const db = await openCacheDB();
+    await new Promise((resolve) => {
+      let tx;
+      try {
+        tx = db.transaction(IDB_STORE, 'readwrite');
+        const store = tx.objectStore(IDB_STORE);
+        const request = store.get(key);
+        request.onsuccess = () => {
+          const current = request.result;
+          if (current && Date.now() - current.timestamp > IDB_CACHE_TTL) store.delete(key);
+        };
+        request.onerror = () => resetCacheDB(db);
+        tx.oncomplete = resolve;
+        tx.onerror = () => { resetCacheDB(db); resolve(); };
+        tx.onabort = () => { resetCacheDB(db); resolve(); };
+      } catch (_) {
+        resetCacheDB(db);
+        resolve();
+      }
+    });
+  } catch (_) { /* expired cleanup is a nonfatal cache optimization */ }
 }
 
 export async function cacheGet(key) {
   try {
     const db = await openCacheDB();
     return new Promise((resolve) => {
-      const req = db.transaction(IDB_STORE, 'readonly').objectStore(IDB_STORE).get(key);
+      let tx;
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+      try {
+        tx = db.transaction(IDB_STORE, 'readonly');
+      } catch (_) {
+        resetCacheDB(db);
+        finish(null);
+        return;
+      }
+      const req = tx.objectStore(IDB_STORE).get(key);
       req.onsuccess = () => {
         const entry = req.result;
-        if (!entry || Date.now() - entry.timestamp > IDB_CACHE_TTL) return resolve(null);
-        resolve(entry.html);
+        if (!entry) return finish(null);
+        if (Date.now() - entry.timestamp > IDB_CACHE_TTL) {
+          finish(null);
+          void deleteExpiredCacheEntry(key);
+          return;
+        }
+        finish(entry.html);
       };
-      req.onerror = () => resolve(null);
+      req.onerror = () => { resetCacheDB(db); finish(null); };
+      tx.onerror = () => { resetCacheDB(db); finish(null); };
+      tx.onabort = () => { resetCacheDB(db); finish(null); };
     });
   } catch { return null; }
 }
@@ -61,10 +135,18 @@ export async function cacheSet(key, html) {
   try {
     const db = await openCacheDB();
     return new Promise((resolve) => {
-      const tx = db.transaction(IDB_STORE, 'readwrite');
+      let tx;
+      try {
+        tx = db.transaction(IDB_STORE, 'readwrite');
+      } catch (_) {
+        resetCacheDB(db);
+        resolve();
+        return;
+      }
       tx.objectStore(IDB_STORE).put({ html, timestamp: Date.now() }, key);
       tx.oncomplete = () => resolve();
-      tx.onerror = () => resolve();
+      tx.onerror = () => { resetCacheDB(db); resolve(); };
+      tx.onabort = () => { resetCacheDB(db); resolve(); };
     });
   } catch { /* ignore */ }
 }

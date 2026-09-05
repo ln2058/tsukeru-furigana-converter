@@ -7,179 +7,138 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="header">
-    <div class="header-left">
-      <div class="header-title-row">
+  <header class="header">
+    <div class="brand-lockup">
+      <a id="header-ezfurigana-link" href="https://www.ezfurigana.com/" target="_blank" rel="noopener noreferrer" class="brand-logo" data-i18n-title="header_title_open_ezfurigana" data-i18n-aria-label="header_title_open_ezfurigana">
+        <img src="icons/icon48.png" class="header-icon" alt="Tsukeru icon">
+      </a>
+      <div class="brand-copy">
         <h1>Tsukeru</h1>
         <span class="by-label" data-i18n="header_by_label">by EZFurigana</span>
       </div>
-      <a href="https://ko-fi.com/riamua" target="_blank" class="header-support-text" data-i18n="header_support_text">
-        Help support new features! ♥
-      </a>
     </div>
     <div class="header-right">
-      <a href="https://github.com/ln2058/tsukeru-furigana-converter" target="_blank" title="View Source on GitHub" class="header-link-icon" data-i18n-title="header_title_view_source">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.418 22 12c0-5.523-4.477-10-10-10z"></path>
-        </svg>
+      <a href="https://github.com/ln2058/tsukeru-furigana-converter" target="_blank" rel="noopener noreferrer" class="header-link-icon" data-i18n-title="header_title_view_source" data-i18n-aria-label="header_title_view_source" aria-label="View Source on GitHub">
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.418 22 12c0-5.523-4.477-10-10-10z"></path></svg>
       </a>
-      <a id="header-review-link" href="https://chromewebstore.google.com/detail/tsukeru-for-ezfurigana/lmfkndmjigoadbmidhlenapakagnbkpc/reviews" target="_blank" title="Leave a Review" class="header-link-icon star-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-        </svg>
+      <a id="header-review-link" href="https://chromewebstore.google.com/detail/tsukeru-for-ezfurigana/lmfkndmjigoadbmidhlenapakagnbkpc/reviews" target="_blank" rel="noopener noreferrer" class="header-link-icon star-icon" data-i18n-title="header_title_review_chrome" data-i18n-aria-label="header_title_review_chrome" aria-label="Review on Chrome Web Store">
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
       </a>
-      <a href="https://ko-fi.com/riamua" target="_blank" title="Support on Ko-fi" class="header-link-icon kofi-icon" data-i18n-title="header_title_support_kofi">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
-          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
-          <line x1="6" y1="1" x2="6" y2="4"></line>
-          <line x1="10" y1="1" x2="10" y2="4"></line>
-          <line x1="14" y1="1" x2="14" y2="4"></line>
-        </svg>
+      <a href="https://ko-fi.com/riamua" target="_blank" rel="noopener noreferrer" class="header-link-icon coffee-icon" data-i18n-title="header_title_support_kofi" data-i18n-aria-label="header_title_support_kofi" aria-label="Support on Ko-fi">
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
       </a>
-      <a id="header-ezfurigana-link" href="https://www.ezfurigana.com/" target="_blank" rel="noopener noreferrer" class="header-link-icon header-logo-link" data-i18n-title="header_title_open_ezfurigana"><img src="icons/icon48.png" class="header-icon" alt="Tsukeru icon"></a>
     </div>
-  </div>
+  </header>
 
-  <!-- Tab Navigation -->
-  <div class="tab-navigation">
+  <nav class="tab-navigation" aria-label="Tsukeru sections">
     <div class="tab-nav-inner">
       <button class="tab-btn active" data-tab="vocabulary" data-i18n="tab_saved">Saved</button>
-      <button class="tab-btn" data-tab="vocabmode" data-i18n="tab_vocab_mode">Vocab Mode</button>
+      <button class="tab-btn" data-tab="vocabmode" data-i18n="tab_vocab_mode">Page words</button>
       <button class="tab-btn" data-tab="settings" data-i18n="tab_settings">Settings</button>
     </div>
-  </div>
+  </nav>
 
-  <div class="content">
-    <!-- Settings Tab -->
-    <div class="tab-content" id="settings-tab">
-    <div class="settings-section">
-      <div class="section-title" data-i18n="settings_section_furigana_appearance">Furigana Appearance</div>
-
-      <div class="setting-group">
-        <div class="appearance-row">
-          <label for="rubySize" data-i18n="settings_label_size">Size</label>
-          <div class="range-wrap">
-            <input type="range" id="rubySize" min="0.4" max="1.0" step="0.05">
-            <span class="range-value" id="rubySizeValue"></span>
-          </div>
-        </div>
-        <div class="appearance-row">
-          <label for="rubyColor" data-i18n="settings_label_color">Color</label>
-          <input type="color" id="rubyColor">
-        </div>
-        <div class="appearance-row">
-          <label for="rubyWeight" data-i18n="settings_label_weight">Weight</label>
-          <select id="rubyWeight" style="width: auto; flex: 1;">
-            <option value="normal" data-i18n="settings_option_weight_normal">Normal</option>
-            <option value="bold" data-i18n="settings_option_weight_bold">Bold</option>
+  <main class="content">
+    <section class="tab-content" id="settings-tab">
+      <section class="settings-section">
+        <h2 class="section-title" data-i18n="settings_section_reading">Reading</h2>
+        <div class="setting-group">
+          <label for="furiganaType" data-i18n="settings_label_reading_type">Reading type</label>
+          <select id="furiganaType">
+            <option value="hiragana" data-i18n="settings_option_reading_hiragana">ひらがな (Hiragana)</option>
+            <option value="katakana" data-i18n="settings_option_reading_katakana">カタカナ (Katakana)</option>
+            <option value="romaji" data-i18n="settings_option_reading_romaji">Romaji</option>
           </select>
         </div>
-      </div>
-    </div>
-    <div class="settings-section">
-      <div class="section-title" data-i18n="settings_section_furigana_options">Furigana Options</div>
-
-      <div class="setting-group">
-        <div class="checkbox-wrapper">
-          <input type="checkbox" id="watchDynamic">
-          <label for="watchDynamic" data-i18n="settings_watch_dynamic">Enable on dynamic sites (YouTube, X.com)</label>
+        <div class="setting-group">
+          <label for="jlptLevel" data-i18n="settings_label_jlpt_level_filter">JLPT level filter</label>
+          <select id="jlptLevel">
+            <option value="5" data-i18n="settings_option_jlpt_n5">N5 (Beginner)</option>
+            <option value="4" data-i18n="settings_option_jlpt_n4">N4</option>
+            <option value="3" data-i18n="settings_option_jlpt_n3">N3</option>
+            <option value="2" data-i18n="settings_option_jlpt_n2">N2</option>
+            <option value="1" data-i18n="settings_option_jlpt_n1">N1 (Advanced)</option>
+          </select>
         </div>
-      </div>
-
-      <div class="setting-group">
-        <div class="checkbox-wrapper">
-          <input type="checkbox" id="removeCustomStyling">
-          <label for="removeCustomStyling" data-i18n="settings_remove_custom_styling">Remove custom styling</label>
-        </div>
-      </div>
-
-      <div class="setting-group">
-        <label for="jlptLevel" data-i18n="settings_label_jlpt_level_filter">JLPT Level Filter</label>
-        <select id="jlptLevel">
-          <option value="5" data-i18n="settings_option_jlpt_n5">N5 (Beginner)</option>
-          <option value="4" data-i18n="settings_option_jlpt_n4">N4</option>
-          <option value="3" data-i18n="settings_option_jlpt_n3">N3</option>
-          <option value="2" data-i18n="settings_option_jlpt_n2">N2</option>
-          <option value="1" data-i18n="settings_option_jlpt_n1">N1 (Advanced)</option>
-        </select>
-      </div>
-
-      <div class="setting-group">
-        <label for="furiganaType" data-i18n="settings_label_reading_type">Reading Type</label>
-        <select id="furiganaType">
-          <option value="hiragana" data-i18n="settings_option_reading_hiragana">ひらがな (Hiragana)</option>
-          <option value="katakana" data-i18n="settings_option_reading_katakana">カタカナ (Katakana)</option>
-          <option value="romaji" data-i18n="settings_option_reading_romaji">Romaji</option>
-        </select>
-      </div>
-
-      <div class="setting-group">
-        <div class="checkbox-wrapper">
+        <label class="checkbox-wrapper" for="firstOccurrenceOnly">
           <input type="checkbox" id="firstOccurrenceOnly">
-          <label for="firstOccurrenceOnly" data-i18n="settings_first_occurrence_only">First occurrence only</label>
-        </div>
-      </div>
+          <span data-i18n="settings_first_occurrence_only">First occurrence only</span>
+        </label>
+      </section>
 
-      <div class="setting-group">
-        <label data-i18n="settings_label_highlight_mode">Highlight mode</label>
-        <div class="radio-group">
-          <label class="radio-option">
-            <input type="radio" name="highlightMode" value="off" checked>
-            <span data-i18n="settings_highlight_off">Off</span>
-          </label>
-          <label class="radio-option">
-            <input type="radio" name="highlightMode" value="pos">
-            <span data-i18n="settings_highlight_pos">POS colors</span>
-          </label>
-          <label class="radio-option">
-            <input type="radio" name="highlightMode" value="jlpt">
-            <span data-i18n="settings_highlight_jlpt">JLPT colors</span>
-          </label>
+      <section class="settings-section">
+        <h2 class="section-title" data-i18n="settings_section_appearance">Appearance</h2>
+        <div class="settings-preview" aria-live="polite">
+          <div class="preview-label" data-i18n="settings_preview_label">Preview</div>
+          <div class="preview-sample" id="rubyPreview"><ruby>漢字<rt id="rubyPreviewReading">かんじ</rt></ruby></div>
         </div>
-        <details class="legend-details">
-          <summary data-i18n="settings_color_legend">Color legend</summary>
-          <div class="highlight-legend">
-            <div class="legend-row">
-              <span class="legend-label" data-i18n="settings_legend_jlpt">JLPT:</span>
-              <span class="legend-chip" style="background:#d1fae5;color:#065f46;">N5</span>
-              <span class="legend-chip" style="background:#ccfbf1;color:#0f766e;">N4</span>
-              <span class="legend-chip" style="background:#bfdbfe;color:#1d4ed8;">N3</span>
-              <span class="legend-chip" style="background:#fde68a;color:#92400e;">N2</span>
-              <span class="legend-chip" style="background:#fecdd3;color:#9f1239;">N1</span>
-            </div>
-            <div class="legend-row">
-              <span class="legend-label" data-i18n="settings_legend_pos">POS:</span>
-              <span class="legend-chip" style="background:#e0f2fe;color:#1d4ed8;" data-i18n="settings_pos_noun">Noun</span>
-              <span class="legend-chip" style="background:#fee2e2;color:#b91c1c;" data-i18n="settings_pos_verb">Verb</span>
-              <span class="legend-chip" style="background:#fef9c3;color:#92400e;" data-i18n="settings_pos_adj">Adj</span>
-              <span class="legend-chip" style="background:#ede9fe;color:#6b21a8;" data-i18n="settings_pos_adv">Adv</span>
-              <span class="legend-chip" style="background:#dcfce7;color:#166534;" data-i18n="settings_pos_particle">Particle</span>
-              <span class="legend-chip" style="background:#e5e7eb;color:#111827;" data-i18n="settings_pos_other">Other</span>
+        <div class="setting-group">
+          <div class="appearance-row">
+            <label for="rubySize" data-i18n="settings_label_size">Size</label>
+            <div class="range-wrap">
+              <input type="range" id="rubySize" min="0.4" max="1.0" step="0.05">
+              <output class="range-value" id="rubySizeValue" for="rubySize"></output>
             </div>
           </div>
-        </details>
-      </div>
-
-    </div>
-    </div>
-    <!-- End Settings Tab -->
-
-    <!-- Vocab Mode Tab -->
-    <div class="tab-content" id="vocabmode-tab">
-      <div class="vocabmode-header">
-        <div class="vocabmode-stats">
-          <span id="vocabmodeCount">0 words on page</span>
+          <div class="appearance-row">
+            <label for="rubyColor" data-i18n="settings_label_color">Color</label>
+            <input type="color" id="rubyColor">
+          </div>
+          <div class="appearance-row">
+            <label for="rubyWeight" data-i18n="settings_label_weight">Weight</label>
+            <select id="rubyWeight">
+              <option value="normal" data-i18n="settings_option_weight_normal">Normal</option>
+              <option value="bold" data-i18n="settings_option_weight_bold">Bold</option>
+            </select>
+          </div>
         </div>
+        <div class="setting-group">
+          <div class="field-label" data-i18n="settings_label_highlight_mode">Highlight mode</div>
+          <div class="radio-group">
+            <label class="radio-option"><input type="radio" name="highlightMode" value="off" checked><span data-i18n="settings_highlight_off">Off</span></label>
+            <label class="radio-option"><input type="radio" name="highlightMode" value="pos"><span data-i18n="settings_highlight_pos">POS colors</span></label>
+            <label class="radio-option"><input type="radio" name="highlightMode" value="jlpt"><span data-i18n="settings_highlight_jlpt">JLPT colors</span></label>
+          </div>
+          <details class="legend-details">
+            <summary data-i18n="settings_color_legend">Color legend</summary>
+            <div class="highlight-legend">
+              <div class="legend-row">
+                <span class="legend-label" data-i18n="settings_legend_jlpt">JLPT:</span>
+                <span class="legend-chip n5">N5</span><span class="legend-chip n4">N4</span><span class="legend-chip n3">N3</span><span class="legend-chip n2">N2</span><span class="legend-chip n1">N1</span>
+              </div>
+              <div class="legend-row">
+                <span class="legend-label" data-i18n="settings_legend_pos">POS:</span>
+                <span class="legend-chip noun" data-i18n="settings_pos_noun">Noun</span><span class="legend-chip verb" data-i18n="settings_pos_verb">Verb</span><span class="legend-chip adj" data-i18n="settings_pos_adj">Adj</span><span class="legend-chip adv" data-i18n="settings_pos_adv">Adv</span><span class="legend-chip particle" data-i18n="settings_pos_particle">Particle</span><span class="legend-chip other" data-i18n="settings_pos_other">Other</span>
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h2 class="section-title" data-i18n="settings_section_page_behavior">Page behaviour</h2>
+        <label class="checkbox-wrapper" for="watchDynamic">
+          <input type="checkbox" id="watchDynamic">
+          <span data-i18n="settings_watch_dynamic">Enable on dynamic sites (YouTube, X.com)</span>
+        </label>
+        <label class="checkbox-wrapper" for="removeCustomStyling">
+          <input type="checkbox" id="removeCustomStyling">
+          <span data-i18n="settings_remove_custom_styling">Remove custom styling</span>
+        </label>
+      </section>
+    </section>
+
+    <section class="tab-content" id="vocabmode-tab">
+      <div class="vocabmode-header">
+        <div class="vocabmode-stats"><span id="vocabmodeCount">0 words on page</span></div>
         <button id="refreshVocabmodeBtn" class="vocab-action-btn" data-i18n="vocabmode_refresh">Refresh</button>
       </div>
-
       <div class="vm-controls">
         <div class="vm-top-bar">
-          <input type="text" id="vocabmodeSearch" class="vm-search" placeholder="Search words…" data-i18n-placeholder="vocabmode_search_placeholder">
-          <button id="vmSortBtn" class="vm-sort-btn" title="Cycle sort order" data-i18n-title="vocabmode_sort_cycle_title">⏱ Appearance</button>
+          <input type="text" id="vocabmodeSearch" class="vm-search" placeholder="Search words..." data-i18n-placeholder="vocabmode_search_placeholder">
+          <button id="vmSortBtn" class="vm-sort-btn" title="Cycle sort order" data-i18n-title="vocabmode_sort_cycle_title">Appearance</button>
         </div>
-        <div class="vm-jlpt-pills">
+        <div class="vm-jlpt-pills" aria-label="JLPT filter">
           <button class="vm-jlpt-pill active" data-jlpt="all" data-i18n="vocabmode_filter_all">All</button>
           <button class="vm-jlpt-pill n5" data-jlpt="5">N5</button>
           <button class="vm-jlpt-pill n4" data-jlpt="4">N4</button>
@@ -188,83 +147,41 @@
           <button class="vm-jlpt-pill n1" data-jlpt="1">N1</button>
         </div>
       </div>
-
       <div id="vocabmodeList" class="vm-list"></div>
       <div class="vocabmode-empty" id="vocabmodeEmpty">
         <div class="vocab-empty-text" data-i18n="vocabmode_empty_text">No words found</div>
         <div class="vocab-empty-hint" data-i18n="vocabmode_empty_hint">Apply furigana to the page first</div>
       </div>
-    </div>
-    <!-- End Vocab Mode Tab -->
+    </section>
 
-    <!-- Vocabulary Tab -->
-    <div class="tab-content active" id="vocabulary-tab">
+    <section class="tab-content active" id="vocabulary-tab">
       <div class="vocab-header">
-        <div class="vocab-stats">
-          <span id="vocabCount">0 saved</span>
-        </div>
-        <button id="exportVocabBtn" class="vocab-action-btn" data-i18n="vocab_export_anki">Export Anki</button>
-        <button id="exportAudioBtn" class="vocab-action-btn audio" data-i18n="vocab_export_audio">Export Anki + Audio</button>
+        <div class="vocab-stats"><span id="vocabCount">0 saved</span></div>
+        <details class="export-disclosure">
+          <summary data-i18n="vocab_export_menu">Export</summary>
+          <div class="export-menu">
+            <button id="exportVocabBtn" class="vocab-action-btn" data-i18n="vocab_export_anki">Export Anki</button>
+            <button id="exportAudioBtn" class="vocab-action-btn audio" data-i18n="vocab_export_audio">Export Anki + Audio</button>
+          </div>
+        </details>
         <button id="clearVocabBtn" class="vocab-action-btn danger" data-i18n="vocab_clear">Clear</button>
       </div>
+      <div class="vocab-search"><input type="text" id="vocabSearch" placeholder="Search..." data-i18n-placeholder="vocab_search_placeholder"></div>
+      <div class="vocab-list" id="vocabList"><div class="vocab-empty"><div class="vocab-empty-text" data-i18n="vocab_empty_text">No vocabulary saved yet</div><div class="vocab-empty-hint" data-i18n="vocab_empty_hint">Double-click any word with furigana to save it</div></div></div>
+      <div class="vocab-pagination"><button id="vocabShowMoreBtn" class="secondary" data-i18n="vocab_show_more" hidden>Show more</button></div>
+    </section>
+  </main>
 
-      <div class="vocab-search">
-        <input type="text" id="vocabSearch" placeholder="Search..." data-i18n-placeholder="vocab_search_placeholder">
-      </div>
-
-      <div class="vocab-list" id="vocabList">
-        <div class="vocab-empty">
-          <div class="vocab-empty-text" data-i18n="vocab_empty_text">No vocabulary saved yet</div>
-          <div class="vocab-empty-hint" data-i18n="vocab_empty_hint">Double-click any word with furigana to save it</div>
-        </div>
-      </div>
-    </div>
-    <!-- End Vocabulary Tab -->
-  </div>
-
-  <div class="actions">
-    <div class="actions-row">
-      <button id="applyBtn" style="flex:2" data-i18n="actions_apply">Apply</button>
-      <button id="clearBtn" class="secondary" style="flex:1" data-i18n="actions_clear">Clear</button>
-    </div>
+  <footer class="actions">
+    <div class="actions-row"><button id="applyBtn" data-i18n="actions_apply">Apply</button><button id="clearBtn" class="secondary" data-i18n="actions_clear">Clear</button></div>
     <div id="shortcut-text" class="shortcut-text">Ctrl+Shift+Z to toggle</div>
-    <div class="status" id="status"></div>
-  </div>
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+  </footer>
 
-  <!-- Report Wrong Reading Modal -->
-  <div id="extReportModal" class="ext-report-modal hidden">
+  <div id="extReportModal" class="ext-report-modal hidden" role="dialog" aria-modal="true" aria-labelledby="extReportTitle">
     <div class="ext-report-modal-content">
-      <div class="ext-report-header">
-        <span class="ext-report-title">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
-            <line x1="4" y1="22" x2="4" y2="15"></line>
-          </svg>
-          <span data-i18n="report_modal_title">Report Reading</span>
-        </span>
-        <button id="extReportClose" class="ext-report-close">&times;</button>
-      </div>
-      <div class="ext-report-body">
-        <div id="extReportError" class="ext-report-msg error hidden"></div>
-        <div id="extReportSuccess" class="ext-report-msg success hidden"></div>
-        <div class="ext-report-field">
-          <label data-i18n="report_label_word">Word</label>
-          <input type="text" id="extReportWord" readonly>
-        </div>
-        <div class="ext-report-field">
-          <label data-i18n="report_label_current_reading_wrong">Current Reading (wrong)</label>
-          <input type="text" id="extReportReading" readonly>
-        </div>
-        <div class="ext-report-field">
-          <label data-i18n="report_label_context">Context</label>
-          <textarea id="extReportContext" rows="2" readonly></textarea>
-        </div>
-        <div class="ext-report-field">
-          <label data-i18n="report_label_correct_reading_optional">Correct Reading (optional)</label>
-          <input type="text" id="extReportCorrect" placeholder="Enter correction..." data-i18n-placeholder="report_correct_placeholder">
-        </div>
-        <button id="extReportSubmit" class="ext-report-submit" data-i18n="report_submit_button">Submit Report</button>
-      </div>
+      <div class="ext-report-header"><span class="ext-report-title" id="extReportTitle"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg><span data-i18n="report_modal_title">Report Reading</span></span><button id="extReportClose" class="ext-report-close" aria-label="Close" data-i18n-aria-label="content_close">&times;</button></div>
+      <div class="ext-report-body"><div id="extReportError" class="ext-report-msg error hidden" role="alert"></div><div id="extReportSuccess" class="ext-report-msg success hidden" role="status"></div><div class="ext-report-field"><label for="extReportWord" data-i18n="report_label_word">Word</label><input type="text" id="extReportWord" readonly></div><div class="ext-report-field"><label for="extReportReading" data-i18n="report_label_current_reading_wrong">Current Reading (wrong)</label><input type="text" id="extReportReading" readonly></div><div class="ext-report-field"><label for="extReportContext" data-i18n="report_label_context">Context</label><textarea id="extReportContext" rows="2" readonly></textarea></div><div class="ext-report-field"><label for="extReportCorrect" data-i18n="report_label_correct_reading_optional">Correct Reading (optional)</label><input type="text" id="extReportCorrect" placeholder="Enter correction..." data-i18n-placeholder="report_correct_placeholder"></div><button id="extReportSubmit" class="ext-report-submit" data-i18n="report_submit_button">Submit Report</button></div>
     </div>
   </div>
 

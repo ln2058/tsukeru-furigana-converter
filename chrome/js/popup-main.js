@@ -103,8 +103,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (navigator.userAgent.toLowerCase().includes('edg/')) {
       reviewLink.href = 'https://microsoftedge.microsoft.com/addons/detail/tsukeru-for-ezfurigana/cdlcehkdgoaboeapgjdhnklgicmiknia';
       reviewLink.title = t('header_title_review_edge', undefined, 'Review on Edge Add-ons Store');
+      reviewLink.setAttribute('aria-label', reviewLink.title);
     } else {
       reviewLink.title = t('header_title_review_chrome', undefined, 'Review on Chrome Web Store');
+      reviewLink.setAttribute('aria-label', reviewLink.title);
     }
   }
 

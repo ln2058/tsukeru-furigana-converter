@@ -17,6 +17,8 @@ Side Effects:
 
 Failure Modes:
 - Messaging failures propagate to the caller.
+- A caller-provided validity predicate can cancel stale work before a request or retry.
+- Operation-owned AbortSignals cancel retry backoff promptly.
 - Unknown rate-limit types surface a generic warning toast before throwing.
 
 Security Notes:
@@ -25,15 +27,56 @@ Security Notes:
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function sendFuriganaWithRateLimitRetry(payload, maxRetries = 3) {
+function createRetryCancellationError() {
+  const error = new Error('Furigana processing cancelled');
+  error.cancelled = true;
+  return error;
+}
+
+function delayWithAbort(ms, signal) {
+  if (!signal) return delay(ms);
+  if (signal.aborted) return Promise.reject(createRetryCancellationError());
+  return new Promise((resolve, reject) => {
+    let timer = null;
+    const onAbort = () => {
+      if (timer !== null) clearTimeout(timer);
+      timer = null;
+      signal.removeEventListener('abort', onAbort);
+      reject(createRetryCancellationError());
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+    if (signal.aborted) {
+      onAbort();
+      return;
+    }
+    timer = setTimeout(() => {
+      timer = null;
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+  });
+}
+
+async function sendFuriganaWithRateLimitRetry(payload, maxRetries = 3, isValid = () => true, signal = null) {
+  if (typeof maxRetries === 'function') {
+    isValid = maxRetries;
+    maxRetries = 3;
+  }
+
+  const assertValid = () => {
+    if (signal?.aborted || isValid() === false) throw createRetryCancellationError();
+  };
+
   const RETRYABLE_TYPES = ['request_count', 'char_rate'];
   let retries = 0;
 
   while (true) {
+    assertValid();
     const response = await chrome.runtime.sendMessage({
       action: 'processFurigana',
       payload,
     });
+    assertValid();
 
     if (response?.nonceRateLimit) {
       showRateLimitToast(
@@ -54,7 +97,13 @@ async function sendFuriganaWithRateLimitRetry(payload, maxRetries = 3) {
       retries += 1;
       const retryAfter = response.retryAfter || 60;
       const toastId = showRateLimitToast(response.rateLimitType, retryAfter);
-      await delay(retryAfter * 1000);
+      try {
+        await delayWithAbort(retryAfter * 1000, signal);
+      } catch (error) {
+        dismissToast(toastId);
+        throw error;
+      }
+      assertValid();
       dismissToast(toastId);
       continue;
     }

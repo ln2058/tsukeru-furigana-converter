@@ -1,6 +1,6 @@
 {
   "manifest_name": {
-    "message": "Tsukeru ふりがな変換",
+    "message": "ふりがな変換 Tsukeru",
     "description": "拡張機能の表示名"
   },
   "manifest_description": {
@@ -20,11 +20,23 @@
   "header_title_view_source": {
     "message": "GitHubでソースを見る"
   },
+  "utility_source": {
+    "message": "ソース"
+  },
+  "utility_review": {
+    "message": "レビュー"
+  },
+  "utility_support": {
+    "message": "サポート"
+  },
   "header_title_support_kofi": {
     "message": "Ko-fiでサポート"
   },
   "header_title_review_chrome": {
     "message": "Chrome ウェブストアでレビュー"
+  },
+  "header_title_review_firefox": {
+    "message": "Firefox アドオンでレビュー"
   },
   "header_title_review_edge": {
     "message": "Edge アドオン ストアでレビュー"
@@ -36,13 +48,25 @@
     "message": "保存済み"
   },
   "tab_vocab_mode": {
-    "message": "単語モード"
+    "message": "ページの単語"
   },
   "tab_settings": {
     "message": "設定"
   },
   "settings_section_furigana_appearance": {
     "message": "ふりがな表示"
+  },
+  "settings_section_reading": {
+    "message": "読み"
+  },
+  "settings_section_appearance": {
+    "message": "表示"
+  },
+  "settings_section_page_behavior": {
+    "message": "ページの動作"
+  },
+  "settings_preview_label": {
+    "message": "プレビュー"
   },
   "settings_label_size": {
     "message": "サイズ"
@@ -116,6 +140,27 @@
   "settings_color_legend": {
     "message": "色の凡例"
   },
+  "settings_color_slate": {
+    "message": "スレート"
+  },
+  "settings_color_red": {
+    "message": "赤"
+  },
+  "settings_color_blue": {
+    "message": "青"
+  },
+  "settings_color_green": {
+    "message": "緑"
+  },
+  "settings_color_amber": {
+    "message": "アンバー"
+  },
+  "settings_color_purple": {
+    "message": "紫"
+  },
+  "settings_color_white": {
+    "message": "白"
+  },
   "settings_legend_jlpt": {
     "message": "JLPT:"
   },
@@ -161,6 +206,9 @@
   "vocab_export_anki": {
     "message": "Ankiエクスポート"
   },
+  "vocab_export_menu": {
+    "message": "エクスポート"
+  },
   "vocab_export_audio": {
     "message": "音声付きAnki"
   },
@@ -178,6 +226,9 @@
   },
   "vocab_no_results": {
     "message": "検索結果がありません"
+  },
+  "vocab_show_more": {
+    "message": "さらに表示"
   },
   "vocab_unknown_source": {
     "message": "不明なソース"
@@ -270,16 +321,25 @@
     "message": "意味が見つかりません"
   },
   "content_alt_readings_count": {
-    "message": "→ 別の読み ($1)"
+    "message": "別の読み ($1)"
   },
   "content_more_count": {
     "message": "さらに$1件"
   },
   "content_example_sentence_count": {
-    "message": "→ 例文 ($1)"
+    "message": "例文 ($1)"
+  },
+  "content_example_section": {
+    "message": "例文"
+  },
+  "content_kanji_section": {
+    "message": "漢字の詳細"
+  },
+  "content_section_unavailable": {
+    "message": "現在利用できません"
   },
   "content_kanji_count": {
-    "message": "→ 漢字 ($1)"
+    "message": "漢字 ($1)"
   },
   "content_save_word": {
     "message": "単語を保存"
@@ -362,6 +422,9 @@
   "status_furigana_applied": {
     "message": "ふりがなを適用しました"
   },
+  "status_waiting_for_content": {
+    "message": "ページコンテンツを待機中..."
+  },
   "status_furigana_cleared": {
     "message": "ふりがなをクリアしました"
   },
@@ -434,16 +497,16 @@
     "message": "ページ内 $1 $2"
   },
   "vm_sort_occurrence": {
-    "message": "⏱ 出現順"
+    "message": "出現順"
   },
   "vm_sort_frequency": {
-    "message": "📊 頻度順"
+    "message": "頻度順"
   },
   "vm_sort_word": {
-    "message": "🔤 五十音順"
+    "message": "五十音順"
   },
   "vm_sort_jlpt": {
-    "message": "🎓 JLPT順"
+    "message": "JLPT順"
   },
   "vm_saved": {
     "message": "保存済み"

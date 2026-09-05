@@ -1,20 +1,20 @@
 /*
 Module: content-main
-Purpose: Coordinate furigana apply/clear lifecycle and route content-script message actions.
+Purpose: Coordinate eager and viewport-limited furigana apply/clear lifecycles and route content-script message actions.
 
 Inputs:
 - Popup/background message actions and persisted settings payloads.
-- DOM helper functions and runtime state flags.
+- DOM helper functions, runtime state flags, and the lazy tooltip coordinator dependency.
 
 Outputs:
 - Action responses and page furigana state transitions.
 
 Side Effects:
 - Toggles page classes/attributes/styles and shared runtime globals.
-- Starts/stops observers, dictionary popup behavior, and live appearance updates.
+- Starts/stops observers, long-page block state, dictionary popup behavior, lazy tooltip lookup sessions, and live appearance updates.
 
 Failure Modes:
-- Concurrent apply requests are ignored while processing.
+- Concurrent apply requests are ignored while an operation token is active; stale viewport work is cancelled cooperatively.
 - Runtime messaging/API failures surface as logged errors and toast notifications via shared retry helpers.
 
 Security Notes:
@@ -28,6 +28,7 @@ Security Notes:
 //   js/content-ui.js        (toast helpers)
 //   js/content-rate-limit.js (retry helper)
 //   js/content-dom.js       (utilities, observers, HTML processing)
+//   js/tooltip-async-state.js (lazy tooltip request coordination)
 //   js/content-tooltip.js   (dictionary tooltip, vocab saving)
 //
 // Guard pattern: state variables and the message listener are initialized
@@ -59,12 +60,24 @@ function getUserFacingApplyError(error) {
   );
 }
 
-async function applyFurigana(settings) {
-  if (isProcessing) {
-    return;
-  }
+function invalidateContentLifecycle() {
+  activeApplyOperation?.controller.abort();
+  lifecycleGeneration += 1;
+  cleanupPending = false;
+  activeApplyOperation = null;
+}
 
-  isProcessing = true;
+function isCurrentApplyOperation(operation) {
+  return Boolean(
+    operation &&
+    activeApplyOperation === operation &&
+    operation.generation === lifecycleGeneration
+  );
+}
+
+async function applyFurigana(settings) {
+  if (activeApplyOperation) return;
+
   const pageRoot = document.body || document.documentElement;
 
   // Soft-hide bypass: if DOM is intact but hidden, and reprocess-critical settings
@@ -76,16 +89,50 @@ async function applyFurigana(settings) {
       settings.furiganaType !== lastAppliedSettings.furiganaType ||
       settings.firstOccurrenceOnly !== lastAppliedSettings.firstOccurrenceOnly;
     if (!needsReprocess) {
-      pageRoot?.classList.remove('tsukeru-furigana-disabled');
-      isFuriganaActive = true;
-      refreshSavedVocabularyHighlights();
-      setHighlightMode(settings?.highlightMode || 'off');
-      document.documentElement.setAttribute(
-        'data-tsukeru-custom-style',
-        settings?.removeCustomStyling ? 'off' : 'on'
-      );
-      document.documentElement.setAttribute('data-tsukeru-jlpt', String(settings?.jlptLevel ?? 5));
-      isProcessing = false;
+      const operation = {
+        token: Symbol('apply'),
+        generation: lifecycleGeneration,
+        controller: new AbortController(),
+      };
+      activeApplyOperation = operation;
+      try {
+        pageRoot?.classList.remove('tsukeru-furigana-disabled');
+        isFuriganaActive = true;
+        setHighlightMode(settings?.highlightMode || 'off');
+        document.documentElement.setAttribute(
+          'data-tsukeru-custom-style',
+          settings?.removeCustomStyling ? 'off' : 'on'
+        );
+        document.documentElement.setAttribute('data-tsukeru-jlpt', String(settings?.jlptLevel ?? 5));
+        let revealPending = false;
+        if (wasLongPage) {
+          const siteConfig = SITE_CONFIGS[currentSite] || SITE_CONFIGS.default;
+          const revealRoot = getConfiguredContainer(siteConfig);
+          if (siteConfig.useIntersectionObserver && !revealRoot) {
+            longPageMode = true;
+            viewportProcessingPending = true;
+            longPageFirstWorkState = 'pending';
+            revealPending = true;
+            startLongPageProcessing(settings);
+          } else {
+            const plan = collectLongPagePlan(revealRoot || pageRoot);
+            installLongPagePlan(plan, { force: true, rootNode: revealRoot || pageRoot });
+          }
+          await refreshSavedVocabularyHighlights();
+          startLongPageProcessing(settings);
+        } else if (settings.watchDynamic) {
+          refreshSavedVocabularyHighlights();
+          startWatchingDynamicContent(settings);
+          const siteConfig = SITE_CONFIGS[currentSite] || SITE_CONFIGS.default;
+          if (siteConfig.useIntersectionObserver) startIntersectionObserver(settings);
+        } else {
+          refreshSavedVocabularyHighlights();
+        }
+        if (currentSite === 'youtube') startYoutubeCaptionsObserver(settings);
+        return { pending: revealPending };
+      } finally {
+        if (activeApplyOperation === operation) activeApplyOperation = null;
+      }
       return;
     }
   }
@@ -93,6 +140,15 @@ async function applyFurigana(settings) {
   if (isFuriganaActive || softHidden) {
     hardClearFurigana();
   }
+
+  const operation = {
+    token: Symbol('apply'),
+    generation: lifecycleGeneration,
+    controller: new AbortController(),
+  };
+  activeApplyOperation = operation;
+  const isValid = () => isCurrentApplyOperation(operation);
+
   setHighlightMode(settings?.highlightMode || 'off');
   document.documentElement.setAttribute(
     'data-tsukeru-custom-style',
@@ -104,26 +160,87 @@ async function applyFurigana(settings) {
   document.documentElement.setAttribute('data-tsukeru-jlpt', String(settings?.jlptLevel ?? 5));
 
   try {
-    const textNodes = collectTextNodes();
+    const siteConfig = SITE_CONFIGS[currentSite] || SITE_CONFIGS.default;
+    const processingRoot = getConfiguredContainer(siteConfig);
+    if (siteConfig.useIntersectionObserver && !processingRoot) {
+      isFuriganaActive = true;
+      lastAppliedSettings = { ...settings };
+      longPageMode = true;
+      wasLongPage = true;
+      viewportProcessingPending = true;
+      longPageFirstWorkState = 'pending';
+      enableDictionaryPopups();
+      await refreshSavedVocabularyHighlights();
+      if (!isValid()) return;
+      startLongPageProcessing(settings);
+      if (currentSite === 'youtube') startYoutubeCaptionsObserver(settings);
+      return { pending: true };
+    }
+
+    const discovery = await collectInitialDiscovery(processingRoot || pageRoot, {
+      signal: operation.controller.signal,
+      isCurrent: isValid,
+      viewportModeKnown: Boolean(siteConfig.useIntersectionObserver),
+    });
+    const longPagePlan = discovery.plan;
+    if (!longPagePlan.blocks.length) {
+      throw new Error(t('content_error_no_text_found', undefined, 'No text content found on page'));
+    }
+
+    if (shouldUseViewportProcessing(longPagePlan, siteConfig)) {
+      installLongPagePlan(longPagePlan, {
+        force: Boolean(siteConfig.useIntersectionObserver),
+        rootNode: processingRoot || pageRoot,
+      });
+      isFuriganaActive = true;
+      lastAppliedSettings = { ...settings };
+      enableDictionaryPopups();
+      await refreshSavedVocabularyHighlights();
+      if (!isValid()) return;
+      startLongPageProcessing(settings);
+      return;
+    }
+
+    const textNodes = discovery.textNodes
+      .filter((node) => node.isConnected !== false && isProcessableTextNode(node));
     if (!textNodes.length) {
       throw new Error(t('content_error_no_text_found', undefined, 'No text content found on page'));
     }
 
     const batches = buildBatches(textNodes);
     for (let i = 0; i < batches.length; i++) {
+      if (!isValid()) return;
       const batch = batches[i];
-      const response = await sendFuriganaWithRateLimitRetry({
-        textContent: batch.payload,
-        settings,
-        tabUrl: window.location.href,
-      });
+      if (batch.oversizedNode) {
+        operation.isCurrent = isValid;
+        await processOversizedNode(batch, settings, operation);
+      } else {
+        const response = await sendFuriganaWithRateLimitRetry({
+          textContent: batch.payload,
+          settings,
+          tabUrl: window.location.href,
+        }, 3, isValid, operation.controller.signal);
 
-      applyBatchResult(batch, response.processedHTML);
+        if (!isValid()) return;
+        await applyBatchResult(
+          batch,
+          response.processedHTML,
+          true,
+          false,
+          (node, index) => isValid() && isBatchTargetCurrent(batch, index),
+          {
+            signal: operation.controller.signal,
+            operationIsCurrent: isValid,
+          }
+        );
+      }
 
       if (i < batches.length - 1) {
-        await sleep(batchDelay(batch.byteCount));
+        await delayWithAbort(batchDelay(batch.byteCount), operation.controller.signal);
       }
     }
+
+    if (!isValid()) return;
 
     isFuriganaActive = true;
     lastAppliedSettings = { ...settings };
@@ -145,6 +262,7 @@ async function applyFurigana(settings) {
     }
 
   } catch (error) {
+    if (!isValid() || error.cancelled) return;
     console.error('Error applying furigana:', error);
     if (error.rateLimitType) {
       // Toast already guaranteed visible by sendFuriganaWithRateLimitRetry.
@@ -154,13 +272,16 @@ async function applyFurigana(settings) {
     }
   } finally {
     // Toasts manage their own lifetime; do not dismiss them here.
-    isProcessing = false;
+    if (activeApplyOperation === operation) activeApplyOperation = null;
   }
 }
 
 // Soft-hide: preserve the ruby DOM, just visually hide via CSS class.
 // Re-enabling is instant (zero API calls) when settings haven't changed.
 function clearFurigana() {
+  const interruptedApply = Boolean(activeApplyOperation);
+  invalidateContentLifecycle();
+  if (interruptedApply) lastAppliedSettings = null;
   const pageRoot = document.body || document.documentElement;
   pageRoot?.classList.add('tsukeru-furigana-disabled');
   document.documentElement.removeAttribute('data-tsukeru-custom-style');
@@ -169,11 +290,13 @@ function clearFurigana() {
   stopWatchingDynamicContent();
   stopIntersectionObserver();
   stopYoutubeCaptionsObserver();
+  clearLongPageRuntime({ retainClassification: true });
   setHighlightMode('off');
 }
 
 // Full DOM teardown — used before re-applying with changed settings.
 function hardClearFurigana() {
+  invalidateContentLifecycle();
   const wrappers = document.querySelectorAll('[data-tsukeru-wrapper="1"]');
   wrappers.forEach((wrapper) => {
     const originalText = originalTextMap.get(wrapper)
@@ -200,9 +323,11 @@ function hardClearFurigana() {
   lastAppliedSettings = null;
   processedNodes = new WeakSet();
   processingQueue.clear();
+  clearDefinitionCaches();
   stopWatchingDynamicContent();
   stopIntersectionObserver();
   stopYoutubeCaptionsObserver();
+  clearLongPageRuntime();
   setHighlightMode('off');
 }
 
@@ -215,28 +340,56 @@ if (!window.__TSUKERU_LOADED__) {
   window.__TSUKERU_LOADED__ = true;
 
   // Shared state — var declarations hoist to global scope in plain scripts
-  var isProcessing = false;
+  var lifecycleGeneration = 0;
+  var activeApplyOperation = null;
   var isFuriganaActive = false;
   var lastAppliedSettings = null;
   var mutationObserver = null;
   var intersectionObserver = null;
-  var intersectionObserverInterval = null;
+  var containerDiscoveryPollTimer = null;
+  var containerDiscoveryObserver = null;
+  var dynamicContainer = null;
+  var dynamicPendingTargets = new Set();
+  var dynamicDrainTimer = null;
+  var dynamicDrainContainer = null;
+  var dynamicProcessingOperation = null;
+  var dynamicSettings = null;
+  var observedIntersectionElements = new Set();
   var youtubeCaptionObserver = null;
   var youtubeCaptionRetryTimer = null;
   var processedNodes = new WeakSet();
-  var debounceTimer = null;
-  var processingQueue = new Set();
+  var processingQueue = new Map();
+  var youtubeCaptionTimer = null;
+  var youtubeCaptionProcessingOperation = null;
+  var youtubeCaptionPending = false;
+  var youtubeCaptionContainer = null;
+  var youtubeCaptionSettings = null;
   var currentSite = detectSite();        // detectSite() defined in content-dom.js
   var currentHighlightMode = 'off';
   var dictionaryTooltip = null;
   var dictionaryEventsBound = false;
   var definitionCache = new Map();
+  var definitionPendingCache = new Map();
+  var definitionCacheGeneration = 0;
   var originalTextMap = new WeakMap();
+  var longPageMode = false;
+  var wasLongPage = false;
+  var longPageBlocks = [];
+  var longPageBlockByElement = new WeakMap();
+  var longPagePlanRoot = null;
+  var viewportVisibleBlocks = new Set();
+  var viewportNearbyBlocks = new Set();
+  var longPageFirstWorkState = 'idle';
+  var longPageBatchSerial = 0;
+  var cleanupPending = false;
+  var viewportProcessingPending = false;
+  var savedVocabularyWords = new Set();
+  var savedVocabularyPairs = new Set();
 
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'applyFurigana') {
       applyFurigana(request.settings)
-        .then(() => sendResponse({ ok: true }))
+        .then((result) => sendResponse({ ok: true, pending: Boolean(result?.pending) }))
         .catch((error) => sendResponse({ ok: false, error: error.message }));
       return true;
     }

@@ -40,12 +40,14 @@ Save words directly from the tooltip into a built-in vocabulary list. Export to 
 
 ## How It Works
 
-Clicking "Apply Furigana" extracts visible Japanese text from the active tab. The text is sent to the EZFurigana backend, which returns ruby-annotated HTML. The extension sanitizes and injects the annotations back into the page.
+Clicking "Apply Furigana" extracts Japanese text from the active tab. On short pages, processing may finish eagerly. On long ordinary pages, Tsukeru sends only the visible paragraphs and a generous area above and below the viewport first; additional blocks are processed as you scroll them into that buffer. The text is sent to the EZFurigana backend, which returns ruby-annotated HTML. The extension sanitizes and injects the annotations back into the page.
+
+Page words reflects the portions processed so far and grows as later sections are annotated. Opening or refreshing Page words does not trigger full-page annotation, and unseen long-page content is not processed in the background.
 
 You can also toggle furigana on/off with a keyboard shortcut:
 **`Ctrl+Shift+Z`** on Chrome/Edge or **`Ctrl+Shift+F`** on Firefox (Mac: `⌘+Shift+Z` or `⌘+Shift+F`).
 
-Nothing runs in the background. No text is sent unless you trigger it.
+Nothing runs before you trigger it. No text is sent unless you explicitly apply furigana, and long-page processing remains limited to the current viewport buffer while you use the page.
 
 ---
 
@@ -141,7 +143,7 @@ If it fails, fix missing/extra keys or malformed placeholders before loading the
 The extension uses the strictest minimum permissions across all browsers:
 
 - **activeTab & scripting**
-  Injects furigana logic only after explicit user action on the active tab. No background scanning occurs.
+  Injects furigana logic only after explicit user action on the active tab. Long pages are indexed structurally after Apply, but unseen text is not sent or annotated in the background.
   This also covers saved local HTML files. Chrome/Edge require browser-level file URL access to be enabled; Firefox does not use a separate toggle.
 - **storage**
   Stores user settings and optional vocabulary data locally.

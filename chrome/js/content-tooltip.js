@@ -1,20 +1,22 @@
 /*
 Module: content-tooltip
-Purpose: Manage dictionary tooltip UI, word interactions, reporting, and vocabulary capture on pages.
+Purpose: Manage the instrument-styled dictionary tooltip, lazy enrichment, word interactions, reporting, vocabulary capture, and scoped saved-word highlighting on pages.
 
 Inputs:
-- Pointer/selection events, ruby metadata, and background lookup/audio responses.
+- Pointer/selection events, wrapper metadata, reading-aware background lookup/audio responses, and the shared lazy-state coordinator.
 
 Outputs:
 - Tooltip rendering updates, saved vocabulary entries, and report payload messages.
 
 Side Effects:
-- Creates/removes tooltip DOM and listeners.
+- Creates/removes tooltip DOM, fixed-position listeners, and disclosure state.
 - Reads/writes `chrome.storage.local` vocabulary data.
+- Excludes tooltip-owned metadata from page-word double-click capture and saved-word highlighting.
 
 Failure Modes:
-- Lookup/audio/report requests can fail and trigger fallback/no-op paths.
+- Lookup/audio/report/enrichment requests can fail with preserved runtime status/rate-limit metadata and trigger fallback/no-op paths; stale or dismissed responses are ignored.
 - Missing metadata prevents save/play actions for a target word.
+- Completed dictionary results are TTL-bound and size-bounded; shared in-flight requests are retained only until settlement.
 
 Security Notes:
 - Escapes/sanitizes rendered content before DOM injection.
@@ -28,7 +30,8 @@ Security Notes:
 //   dictionaryTooltip, dictionaryEventsBound, definitionCache
 // References functions from content-dom.js:
 //   escapeHtml, sanitizeHtmlFragment, cleanHTML, buildCenteredSnippet,
-//   generateEntryId, sleep
+//   generateEntryId, sleep, resolveAnalysisWordElement, getAnalysisWordData,
+//   getAnalysisWordElements
 // ============================================================================
 
 // ── Kata-to-Hira conversion ───────────────────────────────────────────────────
@@ -39,6 +42,20 @@ function kata2hira(str) {
 function t(key, substitutions, fallback = '') {
   const message = chrome.i18n?.getMessage ? chrome.i18n.getMessage(key, substitutions) : '';
   return message || fallback;
+}
+
+function createRuntimeResponseError(response, fallbackMessage) {
+  const error = new Error(
+    typeof response?.error === 'string' && response.error
+      ? response.error
+      : fallbackMessage
+  );
+  for (const field of ['status', 'httpStatus', 'rateLimitType', 'retryAfter']) {
+    if (response?.[field] !== undefined && response?.[field] !== null) {
+      error[field] = response[field];
+    }
+  }
+  return error;
 }
 
 function normalizeVocabularySourceUrl(url = '') {
@@ -56,13 +73,28 @@ function enableDictionaryPopups() {
   if (document.__tsukeruDblClickHandler__) {
     document.removeEventListener('dblclick', document.__tsukeruDblClickHandler__, true);
   }
+  if (document.__tsukeruScrollHandler__) {
+    window.removeEventListener('scroll', document.__tsukeruScrollHandler__, true);
+  }
+  if (document.__tsukeruResizeHandler__) {
+    window.removeEventListener('resize', document.__tsukeruResizeHandler__);
+  }
 
   document.__tsukeruClickHandler__ = handleDictionaryClick;
   document.__tsukeruDblClickHandler__ = handleRubyDoubleClick;
 
   document.addEventListener('click', handleDictionaryClick, true);
   document.addEventListener('dblclick', handleRubyDoubleClick, true);
-  window.addEventListener('resize', hideDefinitionTooltip, { passive: true });
+  document.__tsukeruScrollHandler__ = (event) => {
+    const target = event.target;
+    if (dictionaryTooltip && target && typeof target.nodeType === 'number' && dictionaryTooltip.contains(target)) {
+      return;
+    }
+    hideDefinitionTooltip();
+  };
+  document.__tsukeruResizeHandler__ = hideDefinitionTooltip;
+  window.addEventListener('scroll', document.__tsukeruScrollHandler__, { capture: true, passive: true });
+  window.addEventListener('resize', document.__tsukeruResizeHandler__, { passive: true });
   // dictionaryEventsBound is a var global from content-main.js
   dictionaryEventsBound = true;
 }
@@ -83,7 +115,7 @@ function handleDictionaryClick(event) {
     return;
   }
 
-  const targetEl = event.target.closest('ruby, span[data-jlpt]');
+  const targetEl = resolveAnalysisWordElement(event.target);
   if (!targetEl) {
     hideDefinitionTooltip();
     return;
@@ -102,24 +134,18 @@ function handleDictionaryClick(event) {
 
 // ── Word info extraction ──────────────────────────────────────────────────────
 
-function extractWordInfo(ruby) {
-  const readingFromAttrs = ruby.dataset.dictReading || ruby.dataset.reading || '';
-  const readingFromRt = ruby.querySelector('rt')?.textContent || '';
-  const surfaceReading = ruby.dataset.reading || readingFromRt;
-  const surface = ruby.dataset.surface || ruby.querySelector('rb')?.textContent || ruby.textContent.replace(readingFromRt, '');
-  const word = ruby.dataset.dictForm || ruby.dataset.surface || surface || '';
-  const reading = readingFromAttrs || readingFromRt;
-
-  const altReadingsStr = ruby.dataset.altReadings || '';
-
+function extractWordInfo(target) {
+  const info = getAnalysisWordData(target);
   return {
-    word: (word || '').trim(),
-    reading: (reading || '').trim(),
-    surface: (surface || '').trim(),
-    surfaceReading: (surfaceReading || '').trim(),
-    jlpt: ruby.dataset.jlpt || '',
-    pos: ruby.dataset.pos || '',
-    altReadings: altReadingsStr.split(',').map(r => r.trim()).filter(Boolean)
+    word: info.word || '',
+    reading: info.reading || '',
+    surface: info.surface || '',
+    surfaceReading: info.surfaceReading || '',
+    lookupReading: info.lookupReading || '',
+    lookupReadingType: info.lookupReadingType || '',
+    jlpt: info.jlpt || '',
+    pos: info.pos || '',
+    altReadings: info.altReadings || []
   };
 }
 
@@ -130,24 +156,33 @@ async function showDefinitionTooltip(ruby, wordInfo) {
 
   tooltip._lookupVersion = (tooltip._lookupVersion || 0) + 1;
   const myToken = tooltip._lookupVersion;
+  if (!tooltip._asyncCoordinator && window.TsukeruTooltipAsyncState?.createTooltipAsyncCoordinator) {
+    tooltip._asyncCoordinator = window.TsukeruTooltipAsyncState.createTooltipAsyncCoordinator();
+  }
+  tooltip._asyncCoordinator?.reset(wordInfo.word);
 
   tooltip.dataset.word = wordInfo.word;
   tooltip._activeRuby = ruby;
-  tooltip.innerHTML = getTooltipLoadingHtml(wordInfo.word);
+  tooltip._activeWordInfo = wordInfo;
+  tooltip.innerHTML = getTooltipLoadingHtml(wordInfo);
 
   positionTooltip(ruby, tooltip);
   tooltip.classList.add('show');
   addTooltipInteractionHandlers();
 
   try {
-    const definitionData = await lookupDefinition(wordInfo.word);
-    if (tooltip._lookupVersion !== myToken) return;
+    const definitionData = await lookupDefinition(
+      wordInfo.word,
+      wordInfo.lookupReading,
+      wordInfo.lookupReadingType
+    );
+    if (tooltip._lookupVersion !== myToken || tooltip.dataset.word !== wordInfo.word) return;
     renderDefinitionTooltip(tooltip, wordInfo, definitionData);
   } catch (err) {
-    if (tooltip._lookupVersion !== myToken) return;
+    if (tooltip._lookupVersion !== myToken || tooltip.dataset.word !== wordInfo.word) return;
     console.error('Tsukeru: dictionary lookup failed', err);
     tooltip.innerHTML = getTooltipErrorHtml(
-      wordInfo.word,
+      wordInfo,
       t('content_error_loading_definition', undefined, 'Error loading definition')
     );
     addTooltipInteractionHandlers();
@@ -173,39 +208,46 @@ function ensureDictionaryTooltip() {
 
 function hideDefinitionTooltip() {
   if (dictionaryTooltip) {
+    dictionaryTooltip._lookupVersion = (dictionaryTooltip._lookupVersion || 0) + 1;
+    dictionaryTooltip._asyncCoordinator?.invalidate();
     dictionaryTooltip.classList.remove('show');
     dictionaryTooltip.innerHTML = '';
+    dictionaryTooltip.dataset.word = '';
+    dictionaryTooltip._activeRuby = null;
+    dictionaryTooltip._activeWordInfo = null;
   }
 }
 
 function positionTooltip(ruby, tooltip) {
+  if (!ruby || !tooltip) return;
   const rect = ruby.getBoundingClientRect();
-  const tooltipWidth = 320;
-  const tooltipHeight = 380;
-  const padding = 10;
+  const padding = 12;
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
+  const maxWidth = Math.max(0, viewportWidth - padding * 2);
+  tooltip.style.maxWidth = `${maxWidth}px`;
+  tooltip.style.left = `${padding}px`;
+  tooltip.style.top = `${padding}px`;
+  tooltip.style.transform = 'none';
 
-  let left = rect.left + rect.width / 2;
-  let transform = 'translateX(-50%)';
+  const measured = tooltip.getBoundingClientRect();
+  const tooltipWidth = Math.min(measured.width || 320, maxWidth);
+  const tooltipHeight = Math.min(measured.height || 200, Math.max(0, viewportHeight - padding * 2));
+  const anchorCenter = rect.left + rect.width / 2;
+  const left = Math.min(
+    Math.max(anchorCenter - tooltipWidth / 2, padding),
+    Math.max(padding, viewportWidth - tooltipWidth - padding)
+  );
+  const roomBelow = viewportHeight - rect.bottom - padding;
+  const roomAbove = rect.top - padding;
+  const placeAbove = roomBelow < tooltipHeight && roomAbove >= tooltipHeight;
+  const top = placeAbove
+    ? rect.top - padding
+    : Math.min(Math.max(rect.bottom + padding, padding), Math.max(padding, viewportHeight - tooltipHeight - padding));
 
-  if (left + tooltipWidth / 2 > viewportWidth - padding) {
-    left = viewportWidth - tooltipWidth - padding;
-    transform = 'translateX(0)';
-  } else if (left - tooltipWidth / 2 < padding) {
-    left = padding;
-    transform = 'translateX(0)';
-  }
-
-  let top = rect.bottom + padding;
-  if (top + tooltipHeight > viewportHeight - padding && rect.top - tooltipHeight - padding > 0) {
-    top = rect.top - padding;
-    transform += ' translateY(-100%)';
-  }
-
-  tooltip.style.left = `${left + window.scrollX}px`;
-  tooltip.style.top = `${top + window.scrollY}px`;
-  tooltip.style.transform = transform;
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+  tooltip.style.transform = placeAbove ? 'translateY(-100%)' : 'none';
 }
 
 // ── Tooltip interaction handlers ──────────────────────────────────────────────
@@ -234,13 +276,16 @@ function addTooltipInteractionHandlers() {
       e.stopPropagation();
       const word = tooltip.dataset.word;
       if (!word) return;
+      const requestVersion = tooltip._lookupVersion;
 
       if (saveBtn.classList.contains('saved')) {
         try {
           await removeFromVocabulary(word);
+          // Highlight refresh belongs to the page state, not the tooltip instance.
+          await refreshSavedVocabularyHighlights();
+          if (!isCurrentTooltipLookup(tooltip, requestVersion, word)) return;
           saveBtn.classList.remove('saved');
           saveBtn.title = t('content_save_word', undefined, 'Save word');
-          await refreshSavedVocabularyHighlights();
         } catch (err) {
           console.error('Tsukeru: unsave failed', err);
         }
@@ -248,12 +293,13 @@ function addTooltipInteractionHandlers() {
       }
 
       const reading = tooltip.querySelector('.tsukeru-reading-text')?.textContent?.trim() || '';
+      const activeInfo = tooltip._activeWordInfo || (tooltip._activeRuby ? extractWordInfo(tooltip._activeRuby) : {});
       const jlptRaw = tooltip.querySelector('.tsukeru-badge-jlpt')?.textContent?.replace('N', '').trim();
       const jlpt = jlptRaw ? Number(jlptRaw) : null;
       const pos = tooltip.querySelector('.tsukeru-badge-pos')?.textContent?.trim() || null;
       let sentence = tooltip._activeRuby ? extractSentenceContext(tooltip._activeRuby) : '';
       if (sentence) {
-        const stripped = sentence.replace(/<[^>]*>/gm, '');
+        const stripped = getPlainTextFromHtml(sentence);
         if (stripped.length <= (word + reading).length + 2) sentence = '';
       }
       const tatoebaJpEl = tooltip.querySelector('.tsukeru-example-jp');
@@ -262,8 +308,8 @@ function addTooltipInteractionHandlers() {
         id: generateEntryId(),
         word,
         reading,
-        surface: word,
-        surfaceReading: reading,
+        surface: activeInfo.surface || word,
+        surfaceReading: activeInfo.surfaceReading || reading,
         sentence,
         tatoebaJp: tatoebaJpEl ? tatoebaJpEl.innerHTML : null,
         tatoebaEn: tatoebaEnEl ? tatoebaEnEl.textContent.replace(/^- /, '').trim() : null,
@@ -273,11 +319,16 @@ function addTooltipInteractionHandlers() {
         timestamp: Date.now()
       };
       try {
-        await attachDefinitionToEntry(entry);
+        await attachDefinitionToEntry(entry, {
+          lookupReading: activeInfo.lookupReading,
+          readingType: activeInfo.lookupReadingType
+        });
         await saveToVocabulary(entry);
+        // Keep page highlights accurate even if the tooltip was dismissed or replaced.
+        await refreshSavedVocabularyHighlights();
+        if (!isCurrentTooltipLookup(tooltip, requestVersion, word)) return;
         saveBtn.classList.add('saved');
         saveBtn.title = t('content_saved', undefined, 'Saved!');
-        await refreshSavedVocabularyHighlights();
         showVocabSavedToast(word);
       } catch (err) {
         console.error('Tsukeru: save from tooltip failed', err);
@@ -289,7 +340,9 @@ function addTooltipInteractionHandlers() {
       try {
         const word = tooltip.dataset.word;
         if (!word) return;
+        const requestVersion = tooltip._lookupVersion;
         const { vocabulary = [] } = await chrome.storage.local.get(['vocabulary']);
+        if (!isCurrentTooltipLookup(tooltip, requestVersion, word)) return;
         if (vocabulary.some(v => v.word === word)) {
           saveBtn.classList.add('saved');
           saveBtn.title = t('content_already_saved', undefined, 'Already saved');
@@ -305,7 +358,7 @@ function addTooltipInteractionHandlers() {
       const word = reportBtn.dataset.word;
       const reading = reportBtn.dataset.reading;
       let sentence = tooltip._activeRuby ? extractSentenceContext(tooltip._activeRuby) : '';
-      if (sentence) sentence = sentence.replace(/<[^>]*>/gm, '').substring(0, 200);
+      if (sentence) sentence = getPlainTextFromHtml(sentence).substring(0, 200);
 
       const modal = ensureContentReportModal();
       document.getElementById('tsukeru-crm-word').value = word;
@@ -320,41 +373,118 @@ function addTooltipInteractionHandlers() {
     };
   }
 
-  const altToggle = tooltip.querySelector('.tsukeru-alt-readings-toggle');
-  if (altToggle) {
+  tooltip.querySelectorAll('.tsukeru-alt-readings-toggle').forEach((altToggle) => {
     altToggle.onclick = (e) => {
       e.stopPropagation();
       const targetId = altToggle.dataset.target;
       const content = document.getElementById(targetId);
       const arrow = altToggle.querySelector('.tsukeru-alt-arrow');
       if (content) {
-        if (content.style.display === 'none') {
-          content.style.display = 'flex';
-          if (arrow) arrow.style.transform = 'rotate(180deg)';
-        } else {
-          content.style.display = 'none';
-          if (arrow) arrow.style.transform = 'rotate(0deg)';
-        }
+        const expanded = content.classList.contains('tsukeru-hidden');
+        content.classList.toggle('tsukeru-hidden', !expanded);
+        altToggle.setAttribute('aria-expanded', String(expanded));
+        if (arrow) arrow.classList.toggle('tsukeru-rotate-180', expanded);
+        requestAnimationFrame(() => positionTooltip(tooltip._activeRuby, tooltip));
       }
     };
-  }
+  });
+
+  bindTooltipDisclosureHandlers(tooltip);
+}
+
+function isCurrentTooltipLookup(tooltip, version, word) {
+  return Boolean(
+    tooltip &&
+    tooltip.classList.contains('show') &&
+    tooltip._lookupVersion === version &&
+    tooltip.dataset.word === word
+  );
+}
+
+function setTooltipSectionExpanded(section, expanded) {
+  if (!section) return;
+  const toggle = section.querySelector('.tsukeru-dropdown-toggle');
+  const content = section.querySelector('.tsukeru-dropdown-content');
+  const arrow = section.querySelector('.tsukeru-dropdown-arrow');
+  section.dataset.expanded = String(expanded);
+  if (toggle) toggle.setAttribute('aria-expanded', String(expanded));
+  if (content) content.classList.toggle('tsukeru-hidden', !expanded);
+  if (arrow) arrow.classList.toggle('tsukeru-rotate-180', expanded);
+}
+
+function bindTooltipDisclosureHandlers(tooltip) {
+  tooltip.querySelectorAll('.tsukeru-dropdown-toggle').forEach((toggle) => {
+    toggle.onclick = (event) => {
+      event.stopPropagation();
+      const section = toggle.closest('.tsukeru-async-section');
+      if (!section) return;
+      const expanded = section.dataset.expanded === 'true';
+      setTooltipSectionExpanded(section, !expanded);
+      if (!expanded && section.dataset.state === 'idle') {
+        if (section.dataset.section === 'example') {
+          loadExampleSentence(tooltip.dataset.word);
+        } else if (section.dataset.section === 'kanji') {
+          loadKanjiBreakdown(tooltip.dataset.word);
+        }
+      }
+      requestAnimationFrame(() => positionTooltip(tooltip._activeRuby, tooltip));
+    };
+  });
 }
 
 // ── Tooltip HTML builders ─────────────────────────────────────────────────────
 
-function getTooltipLoadingHtml(word) {
+function normalizeTooltipWordInfo(wordInfo) {
+  if (typeof wordInfo === 'string') return { word: wordInfo, reading: '', jlpt: '', pos: '', altReadings: [] };
+  return wordInfo || { word: '', reading: '', jlpt: '', pos: '', altReadings: [] };
+}
+
+function getTooltipMetadata(wordInfo) {
+  const info = normalizeTooltipWordInfo(wordInfo);
+  const rawJlpt = String(info.jlpt || '').trim();
+  const jlpt = /^[1-5]$/.test(rawJlpt) ? rawJlpt : '';
+  const pos = String(info.pos || '').split(',')[0].trim();
+  const posCategory = normalizeTooltipPosCategory(pos);
+  return { jlpt, pos, posCategory };
+}
+
+function normalizeTooltipPosCategory(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!normalized) return 'other';
+  if (/\b(auxiliary\s+)?verb\b/.test(normalized)) return 'verb';
+  if (/\b(adjective|adj|na-adj|i-adj)\b/.test(normalized)) return 'adjective';
+  if (/\b(noun|pronoun)\b/.test(normalized)) return 'noun';
+  if (/\bparticle\b/.test(normalized)) return 'particle';
+  if (/\badverb\b/.test(normalized)) return 'adverb';
+  return 'other';
+}
+
+function renderTooltipHeaderHtml(wordInfo, controlsHtml = '') {
+  const info = normalizeTooltipWordInfo(wordInfo);
+  const { jlpt, pos, posCategory } = getTooltipMetadata(info);
+  const badges = `${jlpt ? `<span class="tooltip-badge tooltip-jlpt-badge tsukeru-badge-jlpt" data-jlpt="${jlpt}">N${jlpt}</span>` : ''}${pos ? `<span class="tooltip-badge tooltip-pos-badge tooltip-pos-${posCategory} tsukeru-badge-pos">${escapeHtml(pos)}</span>` : ''}`;
+  const controls = controlsHtml ? `<div class="tsukeru-header-right">${controlsHtml}</div>` : '';
   return `
-    <button class="tsukeru-tooltip-close" aria-label="${escapeHtml(t('content_close', undefined, 'Close'))}">&times;</button>
-    <div class="tsukeru-tooltip-word">${escapeHtml(word)}</div>
-    <div class="tsukeru-tooltip-loading">${escapeHtml(t('content_loading', undefined, 'Loading...'))}</div>
+    <div class="tooltip-word tooltip-word-header tsukeru-header-row">
+      <span class="tooltip-word-label">${escapeHtml(String(info.word || ''))}</span>
+      ${badges}
+      ${controls}
+    </div>`;
+}
+
+function getTooltipLoadingHtml(wordInfo) {
+  const info = normalizeTooltipWordInfo(wordInfo);
+  return `
+    ${renderTooltipHeaderHtml(info, `<button type="button" class="tsukeru-tooltip-close" aria-label="${escapeHtml(t('content_close', undefined, 'Close'))}">&times;</button>`)}
+    <div class="tooltip-loading tooltip-loading-inline tsukeru-tooltip-loading" role="status" aria-live="polite"><span class="tooltip-loading-spinner tsukeru-loader" aria-hidden="true"></span><span>${escapeHtml(t('content_loading', undefined, 'Loading...'))}</span></div>
   `;
 }
 
-function getTooltipErrorHtml(word, message) {
+function getTooltipErrorHtml(wordInfo, message) {
+  const info = normalizeTooltipWordInfo(wordInfo);
   return `
-    <button class="tsukeru-tooltip-close" aria-label="${escapeHtml(t('content_close', undefined, 'Close'))}">&times;</button>
-    <div class="tsukeru-tooltip-word">${escapeHtml(word)}</div>
-    <div class="tsukeru-tooltip-error">${escapeHtml(message)}</div>
+    ${renderTooltipHeaderHtml(info, `<button type="button" class="tsukeru-tooltip-close" aria-label="${escapeHtml(t('content_close', undefined, 'Close'))}">&times;</button>`)}
+    <div class="tooltip-error tooltip-state-message tsukeru-tooltip-error" role="status" aria-live="polite">${escapeHtml(message)}</div>
   `;
 }
 
@@ -362,17 +492,17 @@ function generateAltReadingsDropdown(alternativeReadings, uniqueId) {
   if (!alternativeReadings || alternativeReadings.length === 0) return '';
   const altId = `tsukeru-alt-${uniqueId}`;
   return `
-    <div class="tsukeru-alt-readings-container" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border, #e4e4e7);">
-      <button type="button" class="tsukeru-alt-readings-toggle" data-target="${altId}" style="width: 100%; display: flex; align-items: center; justify-content: space-between; text-align: left; font-size: 11px; font-weight: 500; color: var(--text-muted, #71717a); background: none; border: none; cursor: pointer; padding: 0;">
-        <span>${escapeHtml(t('content_alt_readings_count', [String(alternativeReadings.length)], `→ Alt. Readings (${alternativeReadings.length})`))}</span>
-        <svg class="tsukeru-alt-arrow" style="width: 10px; height: 10px; transition: transform 0.2s;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="tsukeru-alt-readings-container tooltip-learning-section">
+      <button type="button" class="tsukeru-alt-readings-toggle tooltip-learning-toggle" data-target="${altId}" aria-expanded="false" aria-controls="${altId}">
+        <span>${escapeHtml(t('content_alt_readings_count', [String(alternativeReadings.length)], `Alt. Readings (${alternativeReadings.length})`))}</span>
+        <svg class="tsukeru-alt-arrow tooltip-disclosure-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
         </svg>
       </button>
-      <div id="${altId}" class="tsukeru-alt-readings-content" style="display: none; margin-top: 4px; flex-direction: column; gap: 4px;">
+      <div id="${altId}" class="tsukeru-alt-readings-content tsukeru-hidden">
         ${alternativeReadings.map(alt => `
-          <div style="font-size: 11px; padding-left: 8px; border-left: 2px solid #3b82f6;">
-            <span style="font-weight: 500; color: var(--text, #18181b);">${escapeHtml(alt)}</span>
+          <div class="tsukeru-alt-reading-item">
+            <span>${escapeHtml(alt)}</span>
           </div>
         `).join('')}
       </div>
@@ -409,7 +539,7 @@ function normalizeDefinitionData(data) {
 function renderDefinitionTooltip(tooltip, wordInfo, data) {
   if (data?.error) {
     tooltip.innerHTML = getTooltipErrorHtml(
-      wordInfo.word,
+      wordInfo,
       t('content_dictionary_unavailable', undefined, 'Dictionary not available')
     );
     addTooltipInteractionHandlers();
@@ -419,39 +549,28 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
   const normalized = normalizeDefinitionData(data);
   if (!normalized || normalized.senses.length === 0) {
     tooltip.innerHTML = getTooltipErrorHtml(
-      wordInfo.word,
+      wordInfo,
       t('content_no_definition_found', undefined, 'No definition found')
     );
     addTooltipInteractionHandlers();
     return;
   }
 
-  const readingText = wordInfo.reading || normalized.reading;
+  const readingText = String(wordInfo.reading || normalized.reading || '');
   const displayWord = wordInfo.word;
-  const jlptBadge = wordInfo.jlpt ? `<span class="tsukeru-badge-jlpt tsukeru-bg-jlpt-${wordInfo.jlpt}">N${escapeHtml(wordInfo.jlpt)}</span>` : '';
-  const posBadge = wordInfo.pos ? `<span class="tsukeru-badge-pos">${escapeHtml(wordInfo.pos.split(',')[0].trim())}</span>` : '';
-
-  let html = `
-      <div class="tooltip-word tsukeru-header-row">
-          <div class="tsukeru-header-left">
-              <span>${escapeHtml(displayWord)}</span>
-              ${jlptBadge}${posBadge}
-          </div>
-          <div class="tsukeru-header-right">
-              <button class="tooltip-save tsukeru-tooltip-save" title="${escapeHtml(t('content_save_word', undefined, 'Save word'))}">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-                  </svg>
-              </button>
-              <button class="tooltip-close tsukeru-tooltip-close" aria-label="${escapeHtml(t('content_close', undefined, 'Close'))}">&times;</button>
-          </div>
-      </div>`;
+  let html = renderTooltipHeaderHtml(wordInfo, `
+    <button type="button" class="tooltip-save tsukeru-tooltip-save" aria-label="${escapeHtml(t('content_save_word', undefined, 'Save word'))}" title="${escapeHtml(t('content_save_word', undefined, 'Save word'))}">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+    </button>
+    <button type="button" class="tooltip-close tsukeru-tooltip-close" aria-label="${escapeHtml(t('content_close', undefined, 'Close'))}">&times;</button>
+  `);
 
   html += `
       <div class="tooltip-reading-row tsukeru-reading-row">
           <div class="tooltip-reading tsukeru-reading-text">${escapeHtml(readingText)}</div>
-          <div class="tsukeru-reading-actions">
-              <button class="tooltip-audio-btn tsukeru-tooltip-speaker"
+          <div class="tooltip-reading-actions tsukeru-reading-actions">
+              <button type="button" class="tooltip-audio-btn tsukeru-tooltip-speaker"
+                  aria-label="${escapeHtml(t('content_play_pronunciation', undefined, 'Play pronunciation'))}"
                   data-reading="${escapeHtml(readingText)}"
                   data-word="${escapeHtml(displayWord)}"
                   title="${escapeHtml(t('content_play_pronunciation', undefined, 'Play pronunciation'))}">
@@ -460,7 +579,8 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
                       <path d="M13.5 7.5a3 3 0 010 5"/>
                   </svg>
               </button>
-              <button class="tsukeru-tooltip-report-btn"
+              <button type="button" class="tooltip-report-btn tsukeru-tooltip-report-btn"
+                  aria-label="${escapeHtml(t('content_report_wrong_reading', undefined, 'Report wrong reading'))}"
                   data-reading="${escapeHtml(readingText)}"
                   data-word="${escapeHtml(displayWord)}"
                   title="${escapeHtml(t('content_report_wrong_reading', undefined, 'Report wrong reading'))}">
@@ -478,11 +598,11 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
     const gloss = (sense.glosses || []).join('; ');
     if (!gloss) return;
 
-    html += `<div class="tooltip-sense tsukeru-sense-row">`;
+    html += `<div class="tooltip-sense tooltip-definition-sense tsukeru-sense-row">`;
     if (sense.pos && sense.pos.length) {
       html += `<div class="tooltip-pos tsukeru-sense-pos">${escapeHtml(sense.pos.slice(0, 2).join(', '))}</div>`;
     }
-    html += `<div class="tooltip-gloss tsukeru-sense-gloss">${escapeHtml(gloss)}</div>`;
+    html += `<div class="tooltip-gloss tooltip-definition-gloss tsukeru-sense-gloss">${escapeHtml(gloss)}</div>`;
     html += `</div>`;
   });
 
@@ -493,45 +613,98 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
 
   html += generateAltReadingsDropdown(wordInfo.altReadings, Date.now());
 
-  html += `<div id="tsukeru-example-container" class="tsukeru-async-section tsukeru-loading">
-             <div class="tsukeru-loader"></div>
-           </div>`;
-  html += `<div id="tsukeru-kanji-container" class="tsukeru-async-section tsukeru-loading">
-             <div class="tsukeru-loader"></div>
-           </div>`;
+  html += getAsyncSectionHtml('example', 'tsukeru-example-container', t('content_example_section', undefined, 'Example sentence'));
+  html += getAsyncSectionHtml('kanji', 'tsukeru-kanji-container', t('content_kanji_section', undefined, 'Kanji details'));
 
   tooltip.innerHTML = html;
   tooltip.classList.add('show');
   addTooltipInteractionHandlers();
+  requestAnimationFrame(() => positionTooltip(tooltip._activeRuby, tooltip));
+}
 
-  loadExampleSentence(wordInfo.word);
-  loadKanjiBreakdown(wordInfo.word);
+function getAsyncSectionHtml(sectionName, containerId, label) {
+  const toggleClass = sectionName === 'example' ? 'tsukeru-example-toggle' : 'tsukeru-kanji-toggle';
+  const contentClass = sectionName === 'example' ? 'tsukeru-example-content' : 'tsukeru-kanji-content';
+  return `
+    <div id="${containerId}" class="tsukeru-async-section tooltip-learning-section" data-section="${sectionName}" data-state="idle" data-expanded="false">
+      <button type="button" class="${toggleClass} tsukeru-dropdown-toggle tooltip-learning-toggle" aria-expanded="false" aria-controls="${containerId}-content">
+        <span>${escapeHtml(label)}</span>
+        <svg class="tsukeru-dropdown-arrow tooltip-disclosure-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+      </button>
+      <div id="${containerId}-content" class="${contentClass} tsukeru-dropdown-content tsukeru-hidden" role="region" aria-live="polite"></div>
+    </div>`;
 }
 
 // ── Dictionary lookup ─────────────────────────────────────────────────────────
 
-async function lookupDefinition(word) {
+function getDefinitionCacheKey(word, lookupReading = '', readingType = '') {
+  return JSON.stringify([
+    String(word || '').trim(),
+    String(lookupReading || '').trim(),
+    String(readingType || '').trim().toLowerCase()
+  ]);
+}
+
+const CONTENT_DEFINITION_CACHE_MAX_ENTRIES = 100;
+const CONTENT_DEFINITION_CACHE_TTL = 5 * 60 * 1000;
+
+function clearDefinitionCaches() {
+  definitionCacheGeneration += 1;
+  definitionCache.clear();
+  definitionPendingCache.clear();
+}
+
+function evictCompletedDefinitionCacheEntries() {
+  const now = Date.now();
+  for (const [key, entry] of definitionCache.entries()) {
+    if (now - entry.timestamp >= CONTENT_DEFINITION_CACHE_TTL) definitionCache.delete(key);
+  }
+  while (definitionCache.size > CONTENT_DEFINITION_CACHE_MAX_ENTRIES) {
+    const oldestKey = definitionCache.keys().next().value;
+    if (oldestKey === undefined) break;
+    definitionCache.delete(oldestKey);
+  }
+}
+
+async function lookupDefinition(word, lookupReading = '', readingType = '') {
   // definitionCache is a var global from content-main.js
   const key = (word || '').trim();
   if (!key) return null;
+  const normalizedReading = String(lookupReading || '').trim();
+  const normalizedReadingType = String(readingType || '').trim().toLowerCase();
+  const cacheKey = getDefinitionCacheKey(key, normalizedReading, normalizedReadingType);
 
-  if (definitionCache.has(key)) {
-    try {
-      return await definitionCache.get(key);
-    } catch (err) {
-      definitionCache.delete(key);
-    }
+  const cached = definitionCache.get(cacheKey);
+  if (cached) {
+    if (Date.now() - cached.timestamp < CONTENT_DEFINITION_CACHE_TTL) return cached.data;
+    definitionCache.delete(cacheKey);
   }
 
-  const promise = chrome.runtime.sendMessage({ action: 'lookupDefinition', word: key })
+  const sharedRequest = definitionPendingCache.get(cacheKey);
+  if (sharedRequest) return sharedRequest;
+
+  const message = { action: 'lookupDefinition', word: key };
+  if (normalizedReading) message.reading = normalizedReading;
+  if (normalizedReadingType) message.readingType = normalizedReadingType;
+  const cacheGeneration = definitionCacheGeneration;
+  const promise = chrome.runtime.sendMessage(message)
     .then((response) => {
       if (response?.success && response.data) {
+        if (definitionCacheGeneration === cacheGeneration) {
+          definitionCache.set(cacheKey, { data: response.data, timestamp: Date.now() });
+          evictCompletedDefinitionCacheEntries();
+        }
+        if (definitionPendingCache.get(cacheKey) === promise) definitionPendingCache.delete(cacheKey);
         return response.data;
       }
-      throw new Error(response?.error || 'Lookup failed');
+      throw createRuntimeResponseError(response, 'Lookup failed');
+    })
+    .catch((error) => {
+      if (definitionPendingCache.get(cacheKey) === promise) definitionPendingCache.delete(cacheKey);
+      throw error;
     });
 
-  definitionCache.set(key, promise);
+  definitionPendingCache.set(cacheKey, promise);
   return promise;
 }
 
@@ -584,109 +757,151 @@ function fallbackTTS(word, buttonElement) {
 
 // ── Async tooltip sections ────────────────────────────────────────────────────
 
-async function loadExampleSentence(word) {
-  const container = document.getElementById('tsukeru-example-container');
-  if (!container) return;
-  try {
-    const response = await chrome.runtime.sendMessage({ action: 'fetchExampleSentence', word });
-    if (response?.success && response.data && response.data.japanese) {
-      let html = `
-        <div class="tsukeru-dropdown-header">
-          <button type="button" class="tsukeru-example-toggle tsukeru-dropdown-toggle">
-            <span>${escapeHtml(t('content_example_sentence_count', ['1'], '→ Example Sentence (1)'))}</span>
-            <svg class="tsukeru-dropdown-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </button>
-          <div class="tsukeru-example-content tsukeru-dropdown-content tsukeru-hidden">
-            <div class="tsukeru-example-item">
-              <div class="tsukeru-example-jp">${sanitizeHtmlFragment(response.data.japanese_furigana_html)}</div>
-              <div class="tsukeru-example-en">- ${escapeHtml(response.data.english)}</div>
-            </div>
-          </div>
-        </div>
-      `;
-      container.innerHTML = html;
-      container.classList.remove('tsukeru-loading');
+function getAsyncSectionLabel(sectionName) {
+  return sectionName === 'example'
+    ? t('content_example_section', undefined, 'Example sentence')
+    : t('content_kanji_section', undefined, 'Kanji details');
+}
 
-      const toggleBtn = container.querySelector('.tsukeru-example-toggle');
-      const contentDiv = container.querySelector('.tsukeru-example-content');
-      const arrowSvg = container.querySelector('.tsukeru-dropdown-arrow');
-      if (toggleBtn && contentDiv) {
-        toggleBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          contentDiv.classList.toggle('tsukeru-hidden');
-          if (arrowSvg) arrowSvg.classList.toggle('tsukeru-rotate-180');
-        });
-        contentDiv.classList.remove('tsukeru-hidden');
-        if (arrowSvg) arrowSvg.classList.add('tsukeru-rotate-180');
-      }
-    } else {
-      container.remove();
-    }
-  } catch (e) {
-    container.remove();
+function renderAsyncLoading(container) {
+  const content = container?.querySelector('.tsukeru-dropdown-content');
+  if (!content) return;
+  container.dataset.state = 'loading';
+  content.innerHTML = `<div class="tooltip-loading tooltip-loading-inline tsukeru-async-loading" role="status" aria-live="polite"><span class="tooltip-loading-spinner tsukeru-loader" aria-hidden="true"></span><span>${escapeHtml(t('content_loading', undefined, 'Loading...'))}</span></div>`;
+  content.classList.toggle('tsukeru-hidden', container.dataset.expanded !== 'true');
+}
+
+function updateAsyncSectionContent(tooltip, container, state, label, contentValue) {
+  if (!container || !container.isConnected) return;
+  const toggle = container.querySelector('.tsukeru-dropdown-toggle');
+  const content = container.querySelector('.tsukeru-dropdown-content');
+  if (!toggle || !content) return;
+
+  const labelElement = toggle.querySelector('span');
+  if (labelElement) labelElement.textContent = label;
+  container.dataset.state = state;
+  if (typeof contentValue === 'string') {
+    content.innerHTML = contentValue;
+  } else {
+    content.replaceChildren();
+    if (contentValue?.nodeType) content.appendChild(contentValue);
   }
+  setTooltipSectionExpanded(container, container.dataset.expanded === 'true');
+  requestAnimationFrame(() => positionTooltip(tooltip._activeRuby, tooltip));
+}
+
+function createExampleSentenceContent(data) {
+  const fragment = document.createDocumentFragment();
+  const item = document.createElement('div');
+  item.className = 'tsukeru-example-item';
+
+  const japanese = document.createElement('div');
+  japanese.className = 'tsukeru-example-jp';
+  japanese.appendChild(sanitizeHtmlFragment(data?.japanese_furigana_html || ''));
+
+  const english = document.createElement('div');
+  english.className = 'tsukeru-example-en';
+  english.textContent = `- ${String(data?.english || '')}`;
+
+  item.append(japanese, english);
+  fragment.appendChild(item);
+  return fragment;
+}
+
+function renderAsyncUnavailable(tooltip, container, message) {
+  if (!container || !container.isConnected) return;
+  const label = getAsyncSectionLabel(container.dataset.section);
+  updateAsyncSectionContent(
+    tooltip,
+    container,
+    message ? 'error' : 'empty',
+    label,
+    `<div class="tsukeru-async-unavailable">${escapeHtml(t('content_section_unavailable', undefined, 'Not available right now'))}</div>`
+  );
+}
+
+async function loadExampleSentence(word) {
+  const tooltip = ensureDictionaryTooltip();
+  const container = document.getElementById('tsukeru-example-container');
+  const coordinator = tooltip._asyncCoordinator;
+  if (!container || !coordinator || !word) return;
+  renderAsyncLoading(container);
+  const requestVersion = tooltip._lookupVersion;
+  return coordinator.open('example', async () => {
+    const response = await chrome.runtime.sendMessage({ action: 'fetchExampleSentence', word });
+    if (!response?.success) {
+      throw createRuntimeResponseError(response, 'Example sentence lookup failed');
+    }
+    return response?.success && response.data?.japanese ? response.data : null;
+  }, {
+    onSuccess: (data) => {
+      if (!isCurrentTooltipLookup(tooltip, requestVersion, word)) return;
+      if (!data) {
+        renderAsyncUnavailable(tooltip, container, false);
+        return;
+      }
+      updateAsyncSectionContent(
+        tooltip,
+        container,
+        'loaded',
+        t('content_example_sentence_count', ['1'], 'Example Sentence (1)'),
+        createExampleSentenceContent(data)
+      );
+    },
+    onError: (error) => {
+      if (!isCurrentTooltipLookup(tooltip, requestVersion, word)) return;
+      console.warn('Tsukeru: example enrichment failed', error);
+      renderAsyncUnavailable(tooltip, container, true);
+    }
+  });
 }
 
 async function loadKanjiBreakdown(word) {
+  const tooltip = ensureDictionaryTooltip();
   const container = document.getElementById('tsukeru-kanji-container');
-  if (!container) return;
-  try {
+  const coordinator = tooltip._asyncCoordinator;
+  if (!container || !coordinator || !word) return;
+  renderAsyncLoading(container);
+  const requestVersion = tooltip._lookupVersion;
+  return coordinator.open('kanji', async () => {
     const response = await chrome.runtime.sendMessage({ action: 'fetchKanjiBreakdown', word });
-    if (response?.success && response.data && response.data.characters && response.data.characters.length > 0) {
-      const data = response.data;
-      let html = `
-        <div class="tsukeru-dropdown-header">
-          <button type="button" class="tsukeru-kanji-toggle tsukeru-dropdown-toggle">
-            <span>${escapeHtml(t('content_kanji_count', [String(data.characters.length)], `→ Kanji (${data.characters.length})`))}</span>
-            <svg class="tsukeru-dropdown-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </button>
-          <div class="tsukeru-kanji-content tsukeru-dropdown-content tsukeru-hidden">
-      `;
-
-      data.characters.forEach(charInfo => {
-        const charJlptBadge = charInfo.jlpt_level && charInfo.jlpt_level > 0
-          ? `<span class="tsukeru-badge-inline tsukeru-bg-jlpt-${charInfo.jlpt_level}">N${charInfo.jlpt_level}</span>`
-          : '';
-
-        html += `
-          <div class="tsukeru-kanji-item">
-            <div class="tsukeru-kanji-item-header">
-                <span class="tsukeru-kanji-char-large">${escapeHtml(charInfo.character)}</span>
-                ${charJlptBadge}
-            </div>
-            ${charInfo.on_readings && charInfo.on_readings.length ? `<div class="tsukeru-kanji-reading"><span class="tsukeru-on-label">音:</span> ${escapeHtml(charInfo.on_readings.slice(0, 3).join(', '))}</div>` : ''}
-            ${charInfo.kun_readings && charInfo.kun_readings.length ? `<div class="tsukeru-kanji-reading"><span class="tsukeru-kun-label">訓:</span> ${escapeHtml(charInfo.kun_readings.slice(0, 3).join(', '))}</div>` : ''}
-            ${charInfo.meanings && charInfo.meanings.length ? `<div class="tsukeru-kanji-meaning">${escapeHtml(charInfo.meanings.slice(0, 3).join('; '))}</div>` : ''}
-          </div>
-        `;
-      });
-      html += `
-          </div>
-        </div>
-      `;
-      container.innerHTML = html;
-      container.classList.remove('tsukeru-loading');
-
-      const toggleBtn = container.querySelector('.tsukeru-kanji-toggle');
-      const contentDiv = container.querySelector('.tsukeru-kanji-content');
-      const arrowSvg = container.querySelector('.tsukeru-dropdown-arrow');
-      if (toggleBtn && contentDiv) {
-        toggleBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          contentDiv.classList.toggle('tsukeru-hidden');
-          if (arrowSvg) arrowSvg.classList.toggle('tsukeru-rotate-180');
-        });
-      }
-    } else {
-      container.remove();
+    if (!response?.success) {
+      throw createRuntimeResponseError(response, 'Kanji breakdown lookup failed');
     }
-  } catch (e) {
-    container.remove();
-  }
+    return response?.success && Array.isArray(response.data?.characters) && response.data.characters.length
+      ? response.data
+      : null;
+  }, {
+    onSuccess: (data) => {
+      if (!isCurrentTooltipLookup(tooltip, requestVersion, word)) return;
+      if (!data) {
+        renderAsyncUnavailable(tooltip, container, false);
+        return;
+      }
+      const characters = data.characters;
+      updateAsyncSectionContent(
+        tooltip,
+        container,
+        'loaded',
+        t('content_kanji_count', [String(characters.length)], `Kanji (${characters.length})`),
+        `<div class="tsukeru-kanji-grid">
+          ${characters.map((charInfo = {}) => {
+            const level = Number(charInfo.jlpt_level) || 0;
+            const charJlptBadge = level > 0 ? `<span class="tsukeru-badge-inline tsukeru-bg-jlpt-${level}">N${level}</span>` : '';
+            const onReadings = Array.isArray(charInfo.on_readings) ? charInfo.on_readings.slice(0, 3).join(', ') : '';
+            const kunReadings = Array.isArray(charInfo.kun_readings) ? charInfo.kun_readings.slice(0, 3).join(', ') : '';
+            const meanings = Array.isArray(charInfo.meanings) ? charInfo.meanings.slice(0, 3).join('; ') : '';
+            return `<div class="tsukeru-kanji-item"><div class="tsukeru-kanji-item-header"><span class="tsukeru-kanji-char-large">${escapeHtml(charInfo.character || '')}</span>${charJlptBadge}</div>${onReadings ? `<div class="tsukeru-kanji-reading"><span class="tsukeru-on-label">音:</span> ${escapeHtml(onReadings)}</div>` : ''}${kunReadings ? `<div class="tsukeru-kanji-reading"><span class="tsukeru-kun-label">訓:</span> ${escapeHtml(kunReadings)}</div>` : ''}${meanings ? `<div class="tsukeru-kanji-meaning">${escapeHtml(meanings)}</div>` : ''}</div>`;
+          }).join('')}
+        </div>`
+      );
+    },
+    onError: (error) => {
+      if (!isCurrentTooltipLookup(tooltip, requestVersion, word)) return;
+      console.warn('Tsukeru: kanji enrichment failed', error);
+      renderAsyncUnavailable(tooltip, container, true);
+    }
+  });
 }
 
 // ── Report modal (in-page) ────────────────────────────────────────────────────
@@ -703,7 +918,7 @@ function ensureContentReportModal() {
     <div class="tsukeru-crm-content">
       <div class="tsukeru-crm-header">
         <span>${escapeHtml(t('content_report_title', undefined, 'Report Reading'))}</span>
-        <button id="tsukeru-crm-close">&times;</button>
+        <button type="button" id="tsukeru-crm-close" aria-label="${escapeHtml(t('content_close', undefined, 'Close'))}">&times;</button>
       </div>
       <div class="tsukeru-crm-body">
         <div id="tsukeru-crm-error" class="tsukeru-crm-msg tsukeru-crm-error hidden"></div>
@@ -716,7 +931,7 @@ function ensureContentReportModal() {
         <textarea id="tsukeru-crm-context" class="tsukeru-crm-textarea" rows="2" readonly></textarea>
         <label class="tsukeru-crm-label">${escapeHtml(t('content_report_label_correction_optional', undefined, 'Correction (Optional):'))}</label>
         <input type="text" id="tsukeru-crm-correct" class="tsukeru-crm-input">
-        <button id="tsukeru-crm-submit" class="tsukeru-crm-submit">${escapeHtml(t('content_report_submit', undefined, 'Submit Report'))}</button>
+        <button type="button" id="tsukeru-crm-submit" class="tsukeru-crm-submit">${escapeHtml(t('content_report_submit', undefined, 'Submit Report'))}</button>
       </div>
     </div>
   `;
@@ -775,10 +990,12 @@ function ensureContentReportModal() {
 function extractSentenceContext(element) {
   let container = element.closest('p, article, section, blockquote');
   if (!container || container.textContent.trim().length < 20) {
-    container = element.closest('div, li, td, span');
+    // The complete analysis wrapper may itself be a span. Start from its
+    // parent so the fallback includes surrounding sentence context.
+    container = element.parentElement?.closest('div, li, td, span');
   }
   if (!container) container = element.parentElement;
-  if (!container) return element.textContent;
+  if (!container) return getPlainTextWithoutReadings(element);
 
   const markerAttr = 'data-tsukeru-target';
   const hadMarker = element.hasAttribute(markerAttr);
@@ -819,7 +1036,9 @@ async function handleRubyDoubleClick(event) {
     return;
   }
 
-  const targetEl = event.target.closest('ruby, span[data-jlpt]');
+  if (event.target.closest('#tsukeru-word-tooltip')) return;
+
+  const targetEl = resolveAnalysisWordElement(event.target);
   if (!targetEl) return;
 
   event.preventDefault();
@@ -829,7 +1048,7 @@ async function handleRubyDoubleClick(event) {
   if (!wordInfo.word) return;
 
   let sentenceContext = extractSentenceContext(targetEl);
-  const strippedCtx = sentenceContext.replace(/<[^>]*>/gm, '');
+  const strippedCtx = getPlainTextFromHtml(sentenceContext);
   if (strippedCtx.length <= (wordInfo.word + (wordInfo.reading || '')).length + 2) sentenceContext = '';
 
   const entry = {
@@ -846,7 +1065,10 @@ async function handleRubyDoubleClick(event) {
   };
 
   try {
-    await attachDefinitionToEntry(entry);
+    await attachDefinitionToEntry(entry, {
+      lookupReading: wordInfo.lookupReading,
+      readingType: wordInfo.lookupReadingType
+    });
     await saveToVocabulary(entry);
     await refreshSavedVocabularyHighlights();
     showVocabSavedToast(wordInfo.surface || wordInfo.word);
@@ -857,9 +1079,9 @@ async function handleRubyDoubleClick(event) {
 
 // ── Vocabulary storage ────────────────────────────────────────────────────────
 
-async function attachDefinitionToEntry(entry) {
+async function attachDefinitionToEntry(entry, lookupOptions = {}) {
   try {
-    const data = await lookupDefinition(entry.word);
+    const data = await lookupDefinition(entry.word, lookupOptions.lookupReading, lookupOptions.readingType);
     const normalized = normalizeDefinitionData(data);
     if (normalized) {
       entry.definition = normalized.senses.slice(0, DICTIONARY_MAX_SENSES).map(s => (s.glosses || []).join('; ')).filter(Boolean).join(' | ');
@@ -882,33 +1104,43 @@ function getVocabularyMatchKeys(item = {}) {
   };
 }
 
-function getRubyMatchKeys(ruby) {
-  if (!ruby) return {};
-  const rtText = ruby.querySelector('rt')?.textContent || '';
-  const baseText = ruby.textContent.replace(rtText, '').trim();
+function getRubyMatchKeys(element) {
+  if (!element) return {};
+  const info = getAnalysisWordData(element);
+  const rtText = info.surfaceReading || '';
+  const baseText = info.surface || '';
   return {
-    dictForm: String(ruby.dataset.dictForm || '').trim(),
-    surface: String(ruby.dataset.surface || '').trim(),
-    dictReading: String(ruby.dataset.dictReading || '').trim(),
-    reading: String(ruby.dataset.reading || '').trim(),
+    dictForm: String(info.dictForm || '').trim(),
+    surface: String(info.surface || '').trim(),
+    dictReading: String(info.reading || '').trim(),
+    reading: String(info.surfaceReading || '').trim(),
     rtText: String(rtText || '').trim(),
     baseText: String(baseText || '').trim(),
   };
 }
 
 function setSavedVocabularyClass(savedWords, savedPairs) {
-  document.querySelectorAll('ruby[data-surface], ruby[data-dict-form], span[data-jlpt]').forEach((el) => {
+  savedVocabularyWords = savedWords;
+  savedVocabularyPairs = savedPairs;
+  applySavedVocabularyHighlightsTo(document);
+}
+
+function applySavedVocabularyHighlightsTo(root) {
+  if (!root || !savedVocabularyWords.size && !savedVocabularyPairs.size) return;
+  getAnalysisWordElements(root).forEach((el) => {
     const keys = getRubyMatchKeys(el);
-    const standaloneMatch = savedWords.has(keys.dictForm) || savedWords.has(keys.surface) || savedWords.has(keys.baseText);
+    const standaloneMatch = savedVocabularyWords.has(keys.dictForm) ||
+      savedVocabularyWords.has(keys.surface) ||
+      savedVocabularyWords.has(keys.baseText);
     const pairMatch =
-      savedPairs.has(`${keys.dictForm}|${keys.dictReading}`) ||
-      savedPairs.has(`${keys.dictForm}|${keys.reading}`) ||
-      savedPairs.has(`${keys.surface}|${keys.dictReading}`) ||
-      savedPairs.has(`${keys.surface}|${keys.reading}`) ||
-      savedPairs.has(`${keys.dictForm}|${keys.rtText}`) ||
-      savedPairs.has(`${keys.surface}|${keys.rtText}`) ||
-      savedPairs.has(`${keys.dictForm}|${keys.baseText}`) ||
-      savedPairs.has(`${keys.surface}|${keys.baseText}`);
+      savedVocabularyPairs.has(`${keys.dictForm}|${keys.dictReading}`) ||
+      savedVocabularyPairs.has(`${keys.dictForm}|${keys.reading}`) ||
+      savedVocabularyPairs.has(`${keys.surface}|${keys.dictReading}`) ||
+      savedVocabularyPairs.has(`${keys.surface}|${keys.reading}`) ||
+      savedVocabularyPairs.has(`${keys.dictForm}|${keys.rtText}`) ||
+      savedVocabularyPairs.has(`${keys.surface}|${keys.rtText}`) ||
+      savedVocabularyPairs.has(`${keys.dictForm}|${keys.baseText}`) ||
+      savedVocabularyPairs.has(`${keys.surface}|${keys.baseText}`);
     el.classList.toggle('vocab-saved', standaloneMatch || pairMatch);
   });
 }
@@ -982,26 +1214,11 @@ async function removeFromVocabulary(wordToRemove) {
 
 function showVocabSavedToast(word) {
   const toast = document.createElement('div');
+  toast.className = 'tsukeru-vocab-saved-toast';
   toast.textContent = t('content_saved_toast_with_word', [word], `Saved: ${word}`);
-  toast.style.cssText = `
-    position: fixed;
-    top: 16px;
-    right: 16px;
-    background: #10b981;
-    color: white;
-    padding: 10px 16px;
-    border-radius: 6px;
-    font-family: system-ui, -apple-system, sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    z-index: 2147483647;
-    animation: slideInRight 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  `;
   document.body.appendChild(toast);
 
   setTimeout(() => {
-    toast.style.animation = 'slideInRight 0.2s ease reverse';
-    setTimeout(() => toast.remove(), 200);
+    toast.remove();
   }, 1500);
 }

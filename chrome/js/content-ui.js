@@ -1,13 +1,13 @@
 /*
 Module: content-ui
-Purpose: Render non-blocking toast notifications for rate-limit and error feedback.
+Purpose: Render instrument-styled, non-blocking toast notifications for rate-limit and error feedback.
 
 Inputs:
 - Toast message text and rate-limit metadata from content-script callers.
 - chrome.i18n message catalog entries when available.
 
 Outputs:
-- Dismissible toast elements and structured rate-limit toast IDs.
+- Dismissible, locally styled toast elements and structured rate-limit toast IDs.
 
 Side Effects:
 - Mutates the document body to add and remove toast elements.
@@ -85,13 +85,7 @@ function _getToastMount() {
   return document.body || document.documentElement || null;
 }
 
-function _applyToastStyles(toast, type) {
-  const palette = {
-    error: '#dc2626',
-    warning: '#d97706',
-    info: '#4f46e5',
-  };
-  const accent = palette[type] || palette.warning;
+function _applyToastStyles(toast) {
   const style = toast.style;
 
   style.setProperty('position', 'fixed', 'important');
@@ -101,20 +95,12 @@ function _applyToastStyles(toast, type) {
   style.setProperty('z-index', '2147483647', 'important');
   style.setProperty('display', 'flex', 'important');
   style.setProperty('align-items', 'center', 'important');
-  style.setProperty('gap', '8px');
+  style.setProperty('gap', '10px');
   style.setProperty('max-width', 'min(92vw, 420px)');
-  style.setProperty('padding', '8px 10px');
-  style.setProperty('border-radius', '4px');
-  style.setProperty('border', '1px solid #e4e4e7');
-  style.setProperty('background', '#ffffff');
-  style.setProperty('color', '#18181b');
-  style.setProperty('box-shadow', '0 6px 18px rgba(24, 24, 27, 0.14)');
-  style.setProperty('font-family', 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif');
-  style.setProperty('font-size', '12px');
-  style.setProperty('line-height', '1.4');
+  style.setProperty('padding', '9px 12px');
+  style.setProperty('border-radius', '3px');
   style.setProperty('box-sizing', 'border-box');
   style.setProperty('pointer-events', 'auto');
-  style.setProperty('--tsukeru-toast-accent', accent);
 }
 
 function _buildToastMessage(type, retryAfter) {
@@ -168,20 +154,11 @@ function showToast(message, options = {}) {
   const toast = document.createElement('div');
   const messageNode = document.createElement('span');
   const closeButton = document.createElement('button');
-  const indicator = document.createElement('span');
 
   toast.dataset.tsukeruToast = String(toastId);
   toast._toastId = toastId;
   toast.className = `tsukeru-toast tsukeru-toast--${type}`;
-  _applyToastStyles(toast, type);
-
-  indicator.className = 'tsukeru-toast__indicator';
-  indicator.setAttribute('aria-hidden', 'true');
-  indicator.style.setProperty('width', '6px');
-  indicator.style.setProperty('height', '6px');
-  indicator.style.setProperty('border-radius', '999px');
-  indicator.style.setProperty('background', 'var(--tsukeru-toast-accent)');
-  indicator.style.setProperty('flex', '0 0 auto');
+  _applyToastStyles(toast);
 
   messageNode.className = 'tsukeru-toast__message';
   messageNode.textContent = String(message ?? '');
@@ -193,16 +170,8 @@ function showToast(message, options = {}) {
   closeButton.className = 'tsukeru-toast__dismiss';
   closeButton.textContent = '×';
   closeButton.setAttribute('aria-label', 'Dismiss notification');
-  closeButton.style.setProperty('all', 'unset');
-  closeButton.style.setProperty('cursor', 'pointer');
-  closeButton.style.setProperty('color', '#71717a');
-  closeButton.style.setProperty('font-size', '16px');
-  closeButton.style.setProperty('line-height', '1');
-  closeButton.style.setProperty('font-weight', '500');
-  closeButton.style.setProperty('flex', '0 0 auto');
   closeButton.addEventListener('click', () => dismissToast(toastId));
 
-  toast.appendChild(indicator);
   toast.appendChild(messageNode);
   toast.appendChild(closeButton);
 

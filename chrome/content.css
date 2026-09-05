@@ -1,36 +1,186 @@
-/* Furigana styling - minimal impact on page layout */
+/* Shared tokens for every injected UI surface, including when custom page styling is disabled. */
+.tsukeru-word-tooltip,
+.tsukeru-content-report-modal,
+.tsukeru-vocab-saved-toast,
+.tsukeru-toast {
+  --tsukeru-canvas: #eceae5;
+  --tsukeru-paper: #f3f2ee;
+  --tsukeru-surface: #f1f2ee;
+  --tsukeru-surface-muted: #e5e4df;
+  --tsukeru-surface-hover: #dad8d2;
+  --tsukeru-metal: #dfe1dd;
+  --tsukeru-metal-highlight: #eef1ed;
+  --tsukeru-metal-shadow: #b4aea5;
+  --tsukeru-ink: #24485e;
+  --tsukeru-text: #222522;
+  --tsukeru-secondary: #6b6d69;
+  --tsukeru-muted: #6b6d69;
+  --tsukeru-blue: #1a7ffc;
+  --tsukeru-blue-readable: #126edc;
+  --tsukeru-blue-dark: #0758b6;
+  --tsukeru-blue-soft: #e9f0f7;
+  --tsukeru-blue-border: #aecbed;
+  --tsukeru-attention: #b95743;
+  --tsukeru-star: #d29a27;
+  --tsukeru-success: #347a5c;
+  --tsukeru-error: #c33d3d;
+  --tsukeru-border: #c8c8c2;
+  --tsukeru-border-strong: #a3a59f;
+  --tsukeru-paper-edge: #c9c6bf;
+  --tsukeru-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --tsukeru-sans: "BIZ UDPGothic", "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
+  --tsukeru-paper-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.06' numOctaves='2'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 .04'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
+}
+
+@media (prefers-color-scheme: dark) {
+  .tsukeru-word-tooltip,
+  .tsukeru-content-report-modal,
+  .tsukeru-vocab-saved-toast,
+  .tsukeru-toast {
+    --tsukeru-canvas: #101112;
+    --tsukeru-paper: #151b20;
+    --tsukeru-surface: #121920;
+    --tsukeru-surface-muted: #182129;
+    --tsukeru-surface-hover: #202a32;
+    --tsukeru-metal: #161f27;
+    --tsukeru-metal-highlight: #202a33;
+    --tsukeru-metal-shadow: #0a0e12;
+    --tsukeru-ink: #c6dce7;
+    --tsukeru-text: #eef1ee;
+    --tsukeru-secondary: #9ba7a2;
+    --tsukeru-muted: #9ba7a2;
+    --tsukeru-blue: #1a7ffc;
+    --tsukeru-blue-readable: #5aa6ff;
+    --tsukeru-blue-dark: #285d94;
+    --tsukeru-blue-soft: #102b4c;
+    --tsukeru-blue-border: #285d94;
+    --tsukeru-attention: #e17a5f;
+    --tsukeru-star: #efbd4a;
+    --tsukeru-success: #64c49a;
+    --tsukeru-error: #ff746f;
+    --tsukeru-border: #2b3740;
+    --tsukeru-border-strong: #43525a;
+    --tsukeru-paper-edge: #34414a;
+  }
+}
+
+/* Furigana styling - isolated to Tsukeru's document markers. */
+:root[data-tsukeru-custom-style="on"] {
+  --tsukeru-canvas: #eceae5;
+  --tsukeru-paper: #f3f2ee;
+  --tsukeru-surface: #f1f2ee;
+  --tsukeru-surface-muted: #e5e4df;
+  --tsukeru-surface-hover: #dad8d2;
+  --tsukeru-metal: #dfe1dd;
+  --tsukeru-metal-highlight: #eef1ed;
+  --tsukeru-metal-shadow: #b4aea5;
+  --tsukeru-ink: #24485e;
+  --tsukeru-text: #222522;
+  --tsukeru-secondary: #6b6d69;
+  --tsukeru-muted: #6b6d69;
+  --tsukeru-blue: #1a7ffc;
+  --tsukeru-blue-readable: #126edc;
+  --tsukeru-blue-dark: #0758b6;
+  --tsukeru-blue-soft: #e9f0f7;
+  --tsukeru-blue-border: #aecbed;
+  --tsukeru-attention: #b95743;
+  --tsukeru-star: #d29a27;
+  --tsukeru-success: #347a5c;
+  --tsukeru-error: #c33d3d;
+  --tsukeru-border: #c8c8c2;
+  --tsukeru-border-strong: #a3a59f;
+  --tsukeru-paper-edge: #c9c6bf;
+  --tsukeru-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --tsukeru-sans: "BIZ UDPGothic", "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
+  --tsukeru-ruby-color: #475569;
+  --tsukeru-ruby-size: .65em;
+  --tsukeru-ruby-weight: normal;
+  --tsukeru-group-n1: #d6a094;
+  --tsukeru-group-n2: #dfbd88;
+  --tsukeru-group-n3: #c8c68f;
+  --tsukeru-group-n4: #b4cba9;
+  --tsukeru-group-n5: #aec9dc;
+  --tsukeru-group-neutral: #deded8;
+  --tsukeru-pos-verb: #d6a094;
+  --tsukeru-pos-adjective: #dfbd88;
+  --tsukeru-pos-noun: #aec9dc;
+  --tsukeru-pos-particle: #b4cba9;
+  --tsukeru-pos-adverb: #b7bec9;
+  --tsukeru-group-ink: #222522;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-tsukeru-custom-style="on"] {
+    --tsukeru-canvas: #101112;
+    --tsukeru-paper: #151b20;
+    --tsukeru-surface: #121920;
+    --tsukeru-surface-muted: #182129;
+    --tsukeru-surface-hover: #202a32;
+    --tsukeru-metal: #161f27;
+    --tsukeru-metal-highlight: #202a33;
+    --tsukeru-metal-shadow: #0a0e12;
+    --tsukeru-ink: #c6dce7;
+    --tsukeru-text: #eef1ee;
+    --tsukeru-secondary: #9ba7a2;
+    --tsukeru-muted: #9ba7a2;
+    --tsukeru-blue: #1a7ffc;
+    --tsukeru-blue-readable: #5aa6ff;
+    --tsukeru-blue-dark: #285d94;
+    --tsukeru-blue-soft: #102b4c;
+    --tsukeru-blue-border: #285d94;
+    --tsukeru-attention: #e17a5f;
+    --tsukeru-star: #efbd4a;
+    --tsukeru-success: #64c49a;
+    --tsukeru-error: #ff746f;
+    --tsukeru-border: #2b3740;
+    --tsukeru-border-strong: #43525a;
+    --tsukeru-paper-edge: #34414a;
+    --tsukeru-group-n1: #6f403d;
+    --tsukeru-group-n2: #76572f;
+    --tsukeru-group-n3: #646c42;
+    --tsukeru-group-n4: #315c49;
+    --tsukeru-group-n5: #2e5674;
+    --tsukeru-group-neutral: #303735;
+    --tsukeru-pos-verb: #6f403d;
+    --tsukeru-pos-adjective: #76572f;
+    --tsukeru-pos-noun: #2e5674;
+    --tsukeru-pos-particle: #315c49;
+    --tsukeru-pos-adverb: #4b5661;
+    --tsukeru-group-ink: #eef1ee;
+  }
+}
+
 :root[data-tsukeru-custom-style="on"] ruby {
+  display: ruby;
   ruby-position: over;
   ruby-align: center;
-  cursor: pointer;
   position: relative;
-  /* Inherit line-height from parent to preserve page layout */
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 :root[data-tsukeru-custom-style="on"] span[data-jlpt] {
-  cursor: pointer;
   position: relative;
+  cursor: pointer;
 }
 
 :root[data-tsukeru-custom-style="on"] ruby:hover,
 :root[data-tsukeru-custom-style="on"] span[data-jlpt]:hover {
-  background-color: rgba(102, 126, 234, 0.1);
+  background-color: rgba(26, 127, 252, .12);
   border-radius: 2px;
 }
 
 :root[data-tsukeru-custom-style="on"] rt {
-  font-size: var(--tsukeru-ruby-size, 0.65em);
+  position: relative;
+  z-index: 10;
+  color: var(--tsukeru-ruby-color);
+  font-size: var(--tsukeru-ruby-size);
+  font-weight: var(--tsukeru-ruby-weight);
   line-height: 1;
   text-align: center;
   user-select: none;
-  transition: opacity 0.15s ease;
-  color: var(--tsukeru-ruby-color, #475569);
-  font-weight: var(--tsukeru-ruby-weight, normal);
-  position: relative;
-  z-index: 10; /* Force furigana to render above all highlights */
+  transition: opacity .15s ease;
 }
 
-/* Click-to-hide feature */
 :root[data-tsukeru-custom-style="on"] ruby.tsukeru-hidden rt {
   opacity: 0;
   transform: translateY(-3px);
@@ -41,476 +191,95 @@
   cursor: pointer;
 }
 
-:root[data-tsukeru-custom-style="on"] ruby.tsukeru-hidden:hover::after {
-  content: "👁";
-  position: absolute;
-  top: -1.2em;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.8em;
-  opacity: 0.5;
-}
-
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  :root[data-tsukeru-custom-style="on"] rt {
-    opacity: 0.9;
-    color: var(--tsukeru-ruby-color, #475569);
-  }
-
-  :root[data-tsukeru-custom-style="on"] ruby:hover,
-  :root[data-tsukeru-custom-style="on"] span[data-jlpt]:hover {
-    background-color: rgba(165, 180, 252, 0.12);
-  }
-}
-
-/* Smooth fade-in for newly added furigana */
-@keyframes furiganaFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-2px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+:root[data-tsukeru-custom-style="on"] ruby.tsukeru-hidden:hover {
+  text-decoration: underline dotted;
+  text-decoration-color: currentColor;
+  text-underline-offset: .16em;
 }
 
 :root[data-tsukeru-custom-style="on"] ruby[data-tsukeru-processed="true"] rt {
-  animation: furiganaFadeIn 0.3s ease;
+  animation: furiganaFadeIn .3s ease;
 }
 
-/* Ambiguous reading indicator (words with multiple readings) */
-:root[data-tsukeru-custom-style="on"] .ambiguous-reading rt .alt-indicator {
-  color: #f59e0b;
-  font-weight: bold;
-  margin-left: 2px;
-  cursor: help;
+@keyframes furiganaFadeIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 :root[data-tsukeru-custom-style="on"] .ambiguous-reading {
   position: relative;
 }
 
-:root[data-tsukeru-custom-style="on"] .ambiguous-reading:hover {
-  background-color: rgba(245, 158, 11, 0.1);
+:root[data-tsukeru-custom-style="on"] .ambiguous-reading rt .alt-indicator {
+  margin-left: 2px;
+  color: var(--tsukeru-star);
+  font-weight: 700;
+  cursor: help;
 }
 
-/* Highlight vocab words (if the backend includes vocab data) */
+:root[data-tsukeru-custom-style="on"] .ambiguous-reading:hover {
+  background-color: rgba(210, 154, 39, .12);
+}
+
 :root[data-tsukeru-custom-style="on"] .vocab-word {
   cursor: help;
   border-bottom: 1px dotted currentColor;
-  transition: background-color 0.2s ease;
+  transition: background-color .2s ease;
 }
 
 :root[data-tsukeru-custom-style="on"] .vocab-word:hover {
-  background-color: rgba(59, 130, 246, 0.12);
-}
-
-/* Dictionary tooltip for inline popups */
-.tsukeru-word-tooltip {
-  position: absolute;
-  background-color: #ffffff;
-  color: #1f2937;
-  padding: 14px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-family: system-ui, -apple-system, sans-serif;
-  line-height: 1.5;
-  letter-spacing: normal;
-  z-index: 2147483646;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.15s ease, visibility 0.15s ease;
-  pointer-events: none;
-  max-width: 320px;
-  min-width: 220px;
-  max-height: clamp(250px, 50vh, 450px);
-  overflow-y: auto;
-  border: 1px solid #e5e7eb;
-}
-
-.tsukeru-word-tooltip.show {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-}
-
-.tsukeru-word-tooltip::-webkit-scrollbar {
-  width: 6px;
-}
-.tsukeru-word-tooltip::-webkit-scrollbar-track {
-  background: transparent;
-}
-.tsukeru-word-tooltip::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1;
-  border-radius: 20px;
-}
-.tsukeru-word-tooltip:hover::-webkit-scrollbar-thumb {
-  background-color: #94a3b8;
-}
-
-
-.tsukeru-word-tooltip .tsukeru-header-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 20px;
-  /* text-xl */
-  font-weight: 700;
-  color: #111827;
-  margin-bottom: 4px;
-}
-
-.tsukeru-word-tooltip .tsukeru-header-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.tsukeru-word-tooltip .tsukeru-header-right {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-/* JLPT and POS badges used in header */
-.tsukeru-word-tooltip .tsukeru-badge-jlpt,
-.tsukeru-word-tooltip .tsukeru-badge-inline {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 6px;
-  border-radius: 4px;
-  /* rounded */
-  font-size: 12px;
-  /* text-xs */
-  font-weight: 500;
-}
-
-.tsukeru-word-tooltip .tsukeru-bg-jlpt-1 {
-  background-color: #fee2e2;
-  color: #991b1b;
-}
-
-.tsukeru-word-tooltip .tsukeru-bg-jlpt-2 {
-  background-color: #ffedd5;
-  color: #9a3412;
-}
-
-.tsukeru-word-tooltip .tsukeru-bg-jlpt-3 {
-  background-color: #fef3c7;
-  color: #92400e;
-}
-
-.tsukeru-word-tooltip .tsukeru-bg-jlpt-4 {
-  background-color: #dcfce7;
-  color: #166534;
-}
-
-.tsukeru-word-tooltip .tsukeru-bg-jlpt-5 {
-  background-color: #dbeafe;
-  color: #1e40af;
-}
-
-.tsukeru-word-tooltip .tsukeru-badge-pos {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 12px;
-  background-color: #f3f4f6;
-  /* bg-gray-100 */
-  color: #6b7280;
-  /* text-gray-500 */
-}
-
-.tsukeru-word-tooltip .tsukeru-reading-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.tsukeru-word-tooltip .tsukeru-reading-text {
-  font-size: 16px;
-  color: #3b82f6;
-  /* text-blue-500 */
-  margin: 0;
-}
-
-.tsukeru-word-tooltip .tsukeru-reading-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.tsukeru-word-tooltip .tsukeru-sense-row {
-  margin-bottom: 8px;
-  padding-left: 8px;
-  border-left: 2px solid #e5e7eb;
-  /* border-gray-200 */
-}
-
-.tsukeru-word-tooltip .tsukeru-sense-pos {
-  font-size: 12px;
-  color: #6b7280;
-  /* text-gray-500 */
-  font-style: italic;
-  margin-bottom: 2px;
-}
-
-.tsukeru-word-tooltip .tsukeru-sense-gloss {
-  color: #4b5563;
-  /* text-gray-600 */
-  line-height: 1.5;
-  font-size: 14px;
-  /* text-sm */
-}
-
-.tsukeru-word-tooltip .tsukeru-sense-more {
-  text-align: center;
-  margin-top: 4px;
-  font-size: 11px;
-  color: #6b7280;
-}
-
-.tsukeru-word-tooltip .tsukeru-tooltip-loading {
-  text-align: center;
-  color: #6b7280;
-  padding: 8px 0;
-}
-
-.tsukeru-word-tooltip .tsukeru-tooltip-error {
-  text-align: center;
-  color: #ef4444;
-  padding: 8px 0;
-}
-
-.tsukeru-word-tooltip .tsukeru-tooltip-close {
-  background: none;
-  border: none;
-  color: #9ca3af;
-  /* text-gray-400 */
-  cursor: pointer;
-  padding: 4px;
-  line-height: 1;
-  font-size: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.tsukeru-word-tooltip .tsukeru-tooltip-close:hover {
-  color: #4b5563;
-  /* hover:text-gray-600 */
-}
-
-.tsukeru-word-tooltip .tsukeru-tooltip-save {
-  background: none;
-  border: none;
-  color: #9ca3af;
-  cursor: pointer;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.tsukeru-word-tooltip .tsukeru-tooltip-save:hover {
-  color: #3b82f6;
-}
-
-.tsukeru-word-tooltip .tsukeru-tooltip-save.saved {
-  color: #3b82f6;
-}
-
-/* Fill the icon when the word is already saved */
-.tsukeru-word-tooltip .tsukeru-tooltip-save.saved svg {
-  fill: currentColor;
-  stroke: none;
-}
-
-.tsukeru-word-tooltip .tsukeru-tooltip-speaker {
-  background: none;
-  border: none;
-  color: #9ca3af;
-  /* text-gray-400 */
-  cursor: pointer;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.8;
-  transition: opacity 0.2s, color 0.2s;
-}
-
-.tsukeru-word-tooltip .tsukeru-tooltip-speaker:hover {
-  color: #3b82f6;
-  opacity: 1;
-}
-
-.tsukeru-word-tooltip .tsukeru-tooltip-speaker.speaking {
-  color: #3b82f6;
-  opacity: 1;
-}
-
-.tsukeru-word-tooltip::-webkit-scrollbar {
-  width: 6px;
-}
-
-.tsukeru-word-tooltip::-webkit-scrollbar-track {
-  background: #f3f4f6;
-}
-
-.tsukeru-word-tooltip::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 9999px;
-}
-
-.tsukeru-word-tooltip::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background-color: rgba(26, 127, 252, .12);
 }
 
 @media (prefers-color-scheme: dark) {
-  .tsukeru-word-tooltip {
-    background-color: #1f2937;
-    color: #f9fafb;
-    border-color: #374151;
-  }
-
-  .tsukeru-word-tooltip .tsukeru-tooltip-word {
-    color: #f9fafb;
-    border-bottom-color: #60a5fa;
-  }
-
-  .tsukeru-word-tooltip .tsukeru-tooltip-reading {
-    color: #60a5fa;
-  }
-
-  .tsukeru-word-tooltip .tsukeru-tooltip-sense {
-    border-left-color: #374151;
-  }
-
-  .tsukeru-word-tooltip .tsukeru-tooltip-gloss {
-    color: #d1d5db;
-  }
-
-  .tsukeru-word-tooltip .tsukeru-tooltip-pos {
-    color: #9ca3af;
-  }
-
-  .tsukeru-word-tooltip .tsukeru-tooltip-loading {
-    color: #9ca3af;
-  }
-
-  .tsukeru-word-tooltip .tsukeru-tooltip-close,
-  .tsukeru-word-tooltip .tsukeru-tooltip-speaker {
-    color: #9ca3af;
-  }
+  :root[data-tsukeru-custom-style="on"] rt { opacity: .9; }
+  :root[data-tsukeru-custom-style="on"] ruby:hover,
+  :root[data-tsukeru-custom-style="on"] span[data-jlpt]:hover { background-color: rgba(90, 166, 255, .14); }
 }
 
-/* Print styles - hide furigana in print mode unless explicitly wanted */
 @media print {
-  :root[data-tsukeru-custom-style="on"] rt {
-    font-size: 0.4em;
-    color: #666;
-  }
+  :root[data-tsukeru-custom-style="on"] rt { font-size: .4em; color: #666; }
 }
 
-/* Accessibility - respect reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
-
   :root[data-tsukeru-custom-style="on"] ruby,
   :root[data-tsukeru-custom-style="on"] rt,
-  :root[data-tsukeru-custom-style="on"] .vocab-word {
-    transition: none;
-    animation: none;
-  }
-
-  :root[data-tsukeru-custom-style="on"] ruby.tsukeru-hidden rt {
-    transition: none;
-  }
+  :root[data-tsukeru-custom-style="on"] .vocab-word { transition: none; animation: none; }
+  :root[data-tsukeru-custom-style="on"] ruby.tsukeru-hidden rt { transition: none; }
 }
 
-/* High contrast mode support */
 @media (prefers-contrast: high) {
-  :root[data-tsukeru-custom-style="on"] rt {
-    color: inherit;
-    font-weight: 600;
-  }
-
+  :root[data-tsukeru-custom-style="on"] rt { color: inherit; font-weight: 600; }
   :root[data-tsukeru-custom-style="on"] ruby:hover,
-  :root[data-tsukeru-custom-style="on"] span[data-jlpt]:hover {
-    outline: 2px solid currentColor;
-    background-color: transparent;
-  }
+  :root[data-tsukeru-custom-style="on"] span[data-jlpt]:hover { outline: 2px solid currentColor; background-color: transparent; }
 }
 
-/* Ensure minimal layout disruption */
-:root[data-tsukeru-custom-style="on"] ruby {
-  display: ruby;
-  white-space: nowrap;
-}
+:root[data-tsukeru-custom-style="on"] ruby::selection { background: rgba(26, 127, 252, .2); }
+:root[data-tsukeru-custom-style="on"] rt::selection { background: transparent; }
 
-/* Prevent text selection issues */
-:root[data-tsukeru-custom-style="on"] ruby::selection {
-  background: rgba(102, 126, 234, 0.2);
-}
-
-:root[data-tsukeru-custom-style="on"] rt::selection {
-  background: transparent;
-}
-
-/* Vocabulary saved animation */
+/* Saved words use a static accent so saving never changes layout or scales the page. */
 :root[data-tsukeru-custom-style="on"] ruby.vocab-saved,
 :root[data-tsukeru-custom-style="on"] span.vocab-saved {
-  animation: vocabSavedPulse 0.5s ease;
-  background-color: rgba(16, 185, 129, 0.15) !important;
+  background-color: rgba(52, 122, 92, .12) !important;
+  border-radius: 2px;
 }
 
-@keyframes vocabSavedPulse {
-
-  0%,
-  100% {
-    transform: scale(1);
-    background-color: rgba(16, 185, 129, 0.15);
-  }
-
-  50% {
-    transform: scale(1.05);
-    background-color: rgba(16, 185, 129, 0.3);
-  }
-}
-
-/* Highlight animation for vocab mode click-to-scroll */
-:root[data-tsukeru-custom-style="on"] ruby.tsukeru-highlight {
+/* Highlight animation used by page-word navigation. */
+:root[data-tsukeru-custom-style="on"] ruby.tsukeru-highlight,
+:root[data-tsukeru-custom-style="on"] span.tsukeru-highlight {
   animation: tsukeruHighlight 3s ease;
-  background-color: rgba(251, 191, 36, 0.4) !important;
+  background-color: rgba(210, 154, 39, .4) !important;
   border-radius: 3px;
-  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
+  box-shadow: 0 0 0 3px rgba(210, 154, 39, .3);
 }
 
 @keyframes tsukeruHighlight {
-  0% {
-    background-color: rgba(251, 191, 36, 0.6);
-    box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.4);
-  }
-
-  50% {
-    background-color: rgba(251, 191, 36, 0.4);
-    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
-  }
-
-  100% {
-    background-color: transparent;
-    box-shadow: none;
-  }
+  0% { background-color: rgba(210, 154, 39, .6); box-shadow: 0 0 0 6px rgba(210, 154, 39, .4); }
+  50% { background-color: rgba(210, 154, 39, .4); box-shadow: 0 0 0 3px rgba(210, 154, 39, .3); }
+  100% { background-color: transparent; box-shadow: none; }
 }
 
-/* Highlight modes controlled via data-tsukeru-highlight on <html> */
+/* Page highlight modes: the page may retain the backend's original data values. */
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt],
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt],
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos],
@@ -518,605 +287,417 @@
   position: relative;
   z-index: 0;
   padding: 0 1px;
-  border-radius: 1.5px;
+  border-radius: 2px;
 }
 
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt]::before,
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt]::before,
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos]::before,
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos]::before {
-  content: '';
   position: absolute;
   left: -1px;
   right: -1px;
   bottom: -1px;
+  z-index: -2;
   height: 1.05em;
-  /* keep highlight behind base text, not over furigana */
   border-radius: 2px;
   background: var(--tsukeru-highlight, transparent);
-  z-index: -2;
-  /* keep highlight behind surrounding elements and furigana */
+  content: "";
   pointer-events: none;
 }
 
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt="5"],
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt="5"] {
-  --tsukeru-highlight: #dbeafe;
-  color: #1e40af;
-}
-
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt="5"] { --tsukeru-highlight: var(--tsukeru-group-n5); color: var(--tsukeru-group-ink); }
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt="4"],
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt="4"] {
-  --tsukeru-highlight: #dcfce7;
-  color: #166534;
-}
-
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt="4"] { --tsukeru-highlight: var(--tsukeru-group-n4); color: var(--tsukeru-group-ink); }
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt="3"],
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt="3"] {
-  --tsukeru-highlight: #fef3c7;
-  color: #92400e;
-}
-
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt="3"] { --tsukeru-highlight: var(--tsukeru-group-n3); color: var(--tsukeru-group-ink); }
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt="2"],
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt="2"] {
-  --tsukeru-highlight: #ffedd5;
-  color: #9a3412;
-}
-
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt="2"] { --tsukeru-highlight: var(--tsukeru-group-n2); color: var(--tsukeru-group-ink); }
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt="1"],
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt="1"] {
-  --tsukeru-highlight: #fee2e2;
-  color: #991b1b;
-}
-
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby:not([data-jlpt]) {
-  --tsukeru-highlight: #e5e7eb;
-  color: #111827;
-}
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt="1"] { --tsukeru-highlight: var(--tsukeru-group-n1); color: var(--tsukeru-group-ink); }
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby:not([data-jlpt]),
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt]:not([data-jlpt="1" i]):not([data-jlpt="2" i]):not([data-jlpt="3" i]):not([data-jlpt="4" i]):not([data-jlpt="5" i]) { --tsukeru-highlight: var(--tsukeru-group-neutral); color: var(--tsukeru-group-ink); }
 
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos="Noun" i],
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Noun" i] {
-  --tsukeru-highlight: #e0f2fe;
-  color: #1d4ed8;
-}
-
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Noun" i],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos="Pronoun" i],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Pronoun" i] { --tsukeru-highlight: var(--tsukeru-pos-noun); color: var(--tsukeru-group-ink); }
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos="Verb" i],
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Verb" i] {
-  --tsukeru-highlight: #fee2e2;
-  color: #b91c1c;
-}
-
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Verb" i],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos="Aux verb" i],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Aux verb" i] { --tsukeru-highlight: var(--tsukeru-pos-verb); color: var(--tsukeru-group-ink); }
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos="Adjective" i],
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Adjective" i] {
-  --tsukeru-highlight: #fef9c3;
-  color: #92400e;
-}
-
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Adjective" i],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos="Na-adj" i],
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Na-adj" i] { --tsukeru-highlight: var(--tsukeru-pos-adjective); color: var(--tsukeru-group-ink); }
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos="Adverb" i],
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Adverb" i] {
-  --tsukeru-highlight: #ede9fe;
-  color: #6b21a8;
-}
-
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Adverb" i] { --tsukeru-highlight: var(--tsukeru-pos-adverb); color: var(--tsukeru-group-ink); }
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos="Particle" i],
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Particle" i] {
-  --tsukeru-highlight: #dcfce7;
-  color: #166534;
-}
-
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos]:not([data-pos="Noun" i]):not([data-pos="Verb" i]):not([data-pos="Adjective" i]):not([data-pos="Adverb" i]):not([data-pos="Particle" i]),
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos]:not([data-pos="Noun" i]):not([data-pos="Verb" i]):not([data-pos="Adjective" i]):not([data-pos="Adverb" i]):not([data-pos="Particle" i]) {
-  --tsukeru-highlight: #e5e7eb;
-  color: #111827;
-}
-
-/* --- New Extension Features: Tags, Examples, Kanji Breakdown --- */
-.tsukeru-word-tooltip .tsukeru-tooltip-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 12px;
-}
-
-.tsukeru-word-tooltip .tsukeru-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.tsukeru-word-tooltip .tsukeru-tag-jlpt {
-  background-color: #fee2e2;
-  color: #b91c1c;
-}
-
-.tsukeru-word-tooltip .tsukeru-tag-pos {
-  background-color: #e0f2fe;
-  color: #1d4ed8;
-}
-
-.tsukeru-word-tooltip .tsukeru-tooltip-pos-inline {
-  display: inline-block;
-  font-size: 10px;
-  color: #15803d;
-  background-color: #dcfce7;
-  padding: 1px 4px;
-  border-radius: 3px;
-  margin-right: 6px;
-  vertical-align: middle;
-}
-
-/* --- Dropdown Components (Example, Kanji) --- */
-.tsukeru-word-tooltip .tsukeru-async-section {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid #e5e7eb;
-  /* border-gray-200 */
-}
-
-.tsukeru-word-tooltip .tsukeru-dropdown-toggle {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  text-align: left;
-  font-size: 12px;
-  /* text-xs */
-  font-weight: 500;
-  color: #6b7280;
-  /* text-gray-500 */
-  background: none;
-  border: none;
-  padding: 4px 0;
-  cursor: pointer;
-  transition: color 0.15s;
-}
-
-.tsukeru-word-tooltip .tsukeru-example-toggle:hover {
-  color: #3b82f6;
-  /* hover-blue-600 */
-}
-
-.tsukeru-word-tooltip .tsukeru-kanji-toggle:hover {
-  color: #9333ea;
-  /* hover-purple-600 */
-}
-
-.tsukeru-word-tooltip .tsukeru-dropdown-arrow {
-  width: 10px;
-  height: 10px;
-  flex-shrink: 0;
-  transition: transform 0.2s;
-}
-
-.tsukeru-word-tooltip .tsukeru-rotate-180 {
-  transform: rotate(180deg);
-}
-
-.tsukeru-word-tooltip .tsukeru-dropdown-content {
-  margin-top: 4px;
-}
-
-.tsukeru-word-tooltip .tsukeru-hidden {
-  display: none;
-}
-
-/* Higher-specificity override: dropdown content with .tsukeru-hidden always wins over display:flex */
-.tsukeru-word-tooltip .tsukeru-dropdown-content.tsukeru-hidden {
-  display: none;
-}
-
-/* Example Sentence */
-.tsukeru-word-tooltip .tsukeru-example-item {
-  font-size: 13px;
-  /* pl-2 */
-  border-left: 2px solid #93c5fd;
-  /* border-blue-300 */
-  margin-top: 4px;
-}
-
-.tsukeru-word-tooltip .tsukeru-example-jp {
-  font-weight: 500;
-  color: #111827;
-  /* text-gray-900 */
-}
-
-.tsukeru-word-tooltip .tsukeru-example-en {
-  color: #6b7280;
-  /* text-gray-500 */
-  margin-left: 4px;
-  /* ml-1 */
-}
-
-.tsukeru-word-tooltip mark.example-highlight {
-  background: rgba(251, 191, 36, 0.4);
-  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.25);
-  border-radius: 3px;
-  padding: 1px 2px;
-  color: inherit;
-}
-
-/* Kanji Breakdown */
-.tsukeru-word-tooltip .tsukeru-kanji-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  /* space-y-2 */
-}
-
-.tsukeru-word-tooltip .tsukeru-kanji-item {
-  padding-left: 8px;
-  /* pl-2 */
-  border-left: 2px solid #d8b4fe;
-  /* border-purple-300 */
-}
-
-.tsukeru-word-tooltip .tsukeru-kanji-item-header {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  /* gap-1 */
-}
-
-.tsukeru-word-tooltip .tsukeru-kanji-char-large {
-  font-size: 18px;
-  /* text-lg */
-  font-weight: 500;
-  color: #111827;
-  /* text-gray-900 */
-}
-
-.tsukeru-word-tooltip .tsukeru-kanji-reading {
-  font-size: 12px;
-  /* text-xs */
-  color: #4b5563;
-  /* text-gray-600 */
-}
-
-.tsukeru-word-tooltip .tsukeru-on-label {
-  color: #3b82f6;
-  /* text-blue-600 */
-}
-
-.tsukeru-word-tooltip .tsukeru-kun-label {
-  color: #9333ea;
-  /* text-purple-600 */
-}
-
-.tsukeru-word-tooltip .tsukeru-kanji-meaning {
-  font-size: 12px;
-  /* text-xs */
-  color: #6b7280;
-  /* text-gray-500 */
-}
-
-.tsukeru-word-tooltip .tsukeru-loader {
-  border: 2px solid #e2e8f0;
-  border-top-color: #3b82f6;
-  border-radius: 50%;
-  width: 16px;
-  height: 16px;
-  animation: tsukeru-spin 1s linear infinite;
-  margin: 0 auto;
-}
-
-@keyframes tsukeru-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  .tsukeru-word-tooltip .tsukeru-tag-jlpt {
-    background-color: #991b1b;
-    color: #fca5a5;
-  }
-
-  .tsukeru-word-tooltip .tsukeru-tag-pos {
-    background-color: #1e3a8a;
-    color: #93c5fd;
-  }
-
-  .tsukeru-word-tooltip .tsukeru-tooltip-pos-inline {
-    background-color: #14532d;
-    color: #86efac;
-  }
-
-  .tsukeru-word-tooltip .tsukeru-async-section {
-    border-color: #374151;
-  }
-
-  .tsukeru-word-tooltip .tsukeru-example-sentence {
-    background: #0f172a;
-    border-left-color: #818cf8;
-  }
-
-  .tsukeru-word-tooltip .tsukeru-example-jp {
-    color: #f8fafc;
-  }
-
-  .tsukeru-word-tooltip .tsukeru-example-en {
-    color: #94a3b8;
-  }
-
-  .tsukeru-word-tooltip mark.example-highlight {
-    background: rgba(251, 191, 36, 0.25);
-    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
-    color: #fde68a;
-  }
-
-  .tsukeru-word-tooltip .tsukeru-kanji-card {
-    background: #1e293b;
-    border-color: #334155;
-  }
-
-  .tsukeru-word-tooltip .tsukeru-kanji-char {
-    color: #f8fafc;
-    border-color: #334155;
-  }
-
-  .tsukeru-word-tooltip .tsukeru-kanji-meanings {
-    color: #cbd5e1;
-  }
-
-  .tsukeru-word-tooltip .tsukeru-kanji-reading-on span,
-  .tsukeru-word-tooltip .tsukeru-kanji-reading-kun span {
-    background: #334155;
-    color: #94a3b8;
-  }
-
-  .tsukeru-word-tooltip .tsukeru-loader {
-    border-color: #334155;
-    border-top-color: #60a5fa;
-  }
-}
-
-/* ── Inline Report Button (inside tooltip) ─────────────────────────── */
-.tsukeru-tooltip-report-btn {
-  background: transparent !important;
-  border: none !important;
-  padding: 2px 4px !important;
-  cursor: pointer !important;
-  border-radius: 4px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  opacity: 0.7;
-  transition: opacity 0.2s, background 0.2s;
-}
-
-.tsukeru-tooltip-report-btn:hover {
-  opacity: 1 !important;
-  background: rgba(239, 68, 68, 0.1) !important;
-}
-
-/* ── Injected Content Report Modal (maximum isolation) ─────────────── */
-.tsukeru-content-report-modal {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  background: rgba(0, 0, 0, 0.6) !important;
-  z-index: 2147483647 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  font-family: system-ui, -apple-system, sans-serif !important;
-  box-sizing: border-box !important;
-}
-
-.tsukeru-content-report-modal.hidden {
-  display: none !important;
-}
-
-.tsukeru-crm-content {
-  background: #ffffff !important;
-  border-radius: 8px !important;
-  width: 380px !important;
-  max-width: 90vw !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
-  color: #1e293b !important;
-  overflow: hidden !important;
-}
-
-.tsukeru-crm-header {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  padding: 12px 16px !important;
-  border-bottom: 1px solid #e2e8f0 !important;
-  font-size: 15px !important;
-  font-weight: 600 !important;
-  color: #1e293b !important;
-}
-
-.tsukeru-crm-header button {
-  background: transparent !important;
-  border: none !important;
-  font-size: 20px !important;
-  line-height: 1 !important;
-  cursor: pointer !important;
-  color: #64748b !important;
-  padding: 0 4px !important;
-}
-
-.tsukeru-crm-header button:hover {
-  color: #1e293b !important;
-}
-
-.tsukeru-crm-body {
-  padding: 14px 16px !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 6px !important;
-}
-
-.tsukeru-crm-label {
-  font-size: 12px !important;
-  font-weight: 600 !important;
-  color: #475569 !important;
-  margin-top: 4px !important;
-  display: block !important;
-}
-
-.tsukeru-crm-input,
-.tsukeru-crm-textarea {
-  width: 100% !important;
-  box-sizing: border-box !important;
-  padding: 6px 8px !important;
-  border: 1px solid #cbd5e1 !important;
-  border-radius: 4px !important;
-  font-size: 13px !important;
-  color: #1e293b !important;
-  background: #f8fafc !important;
-  font-family: system-ui, sans-serif !important;
-  resize: none !important;
-}
-
-.tsukeru-crm-input[readonly],
-.tsukeru-crm-textarea[readonly] {
-  background: #f1f5f9 !important;
-  color: #64748b !important;
-}
-
-.tsukeru-crm-msg {
-  padding: 8px 10px !important;
-  border-radius: 4px !important;
-  font-size: 13px !important;
-  font-weight: 500 !important;
-  margin-bottom: 2px !important;
-}
-
-.tsukeru-crm-error {
-  background: #fee2e2 !important;
-  color: #991b1b !important;
-  border: 1px solid #fca5a5 !important;
-}
-
-.tsukeru-crm-success {
-  background: #dcfce7 !important;
-  color: #166534 !important;
-  border: 1px solid #86efac !important;
-}
-
-.tsukeru-crm-msg.hidden {
-  display: none !important;
-}
-
-.tsukeru-crm-submit {
-  background: #ef4444 !important;
-  color: #ffffff !important;
-  width: 100% !important;
-  padding: 8px !important;
-  border: none !important;
-  border-radius: 4px !important;
-  cursor: pointer !important;
-  font-size: 14px !important;
-  font-weight: 600 !important;
-  margin-top: 6px !important;
-  font-family: system-ui, sans-serif !important;
-}
-
-.tsukeru-crm-submit:hover:not(:disabled) {
-  background: #dc2626 !important;
-}
-
-.tsukeru-crm-submit:disabled {
-  background: #fca5a5 !important;
-  cursor: not-allowed !important;
-}
-
-/* ── Smart Caching: Soft-disable (preserves DOM, hides visually) ─────────── */
-body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby rt {
-  display: none !important;
-}
-
-body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby {
-  background-color: transparent !important;
-  cursor: text !important;
-}
-
-/* ── Smart Caching: CSS-driven JLPT level filtering ─────────────────────── */
-/* N5 (Beginner): user needs furigana for everything — no rules needed. */
-
-/* N4: user knows N5 words already, hide N5 furigana. */
-:root[data-tsukeru-jlpt="4"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="5"] rt { display: none !important; }
-
-/* N3: user knows N5–N4, hide N5 and N4 furigana. */
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Particle" i] { --tsukeru-highlight: var(--tsukeru-pos-particle); color: var(--tsukeru-group-ink); }
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos]:not([data-pos="Noun" i]):not([data-pos="Pronoun" i]):not([data-pos="Verb" i]):not([data-pos="Aux verb" i]):not([data-pos="Adjective" i]):not([data-pos="Na-adj" i]):not([data-pos="Adverb" i]):not([data-pos="Particle" i]),
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos]:not([data-pos="Noun" i]):not([data-pos="Pronoun" i]):not([data-pos="Verb" i]):not([data-pos="Aux verb" i]):not([data-pos="Adjective" i]):not([data-pos="Na-adj" i]):not([data-pos="Adverb" i]):not([data-pos="Particle" i]) { --tsukeru-highlight: var(--tsukeru-group-neutral); color: var(--tsukeru-group-ink); }
+
+/* Smart caching and level filtering. */
+body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby rt { display: none !important; }
+body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-color: transparent !important; cursor: text !important; }
+
+:root[data-tsukeru-jlpt="4"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="5"] rt,
+:root[data-tsukeru-jlpt="4"] [data-tsukeru-wrapper="1"] .analysis-word[data-jlpt="5"] rt,
+:root[data-tsukeru-jlpt="4"] [data-tsukeru-wrapper="1"] .srt-word[data-jlpt="5"] rt { display: none !important; }
 :root[data-tsukeru-jlpt="3"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="5"] rt,
-:root[data-tsukeru-jlpt="3"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="4"] rt { display: none !important; }
-
-/* N2: user knows N5–N3, hide N5, N4, N3 furigana. */
+:root[data-tsukeru-jlpt="3"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="4"] rt,
+:root[data-tsukeru-jlpt="3"] [data-tsukeru-wrapper="1"] .analysis-word[data-jlpt="5"] rt,
+:root[data-tsukeru-jlpt="3"] [data-tsukeru-wrapper="1"] .analysis-word[data-jlpt="4"] rt,
+:root[data-tsukeru-jlpt="3"] [data-tsukeru-wrapper="1"] .srt-word[data-jlpt="5"] rt,
+:root[data-tsukeru-jlpt="3"] [data-tsukeru-wrapper="1"] .srt-word[data-jlpt="4"] rt { display: none !important; }
 :root[data-tsukeru-jlpt="2"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="5"] rt,
 :root[data-tsukeru-jlpt="2"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="4"] rt,
-:root[data-tsukeru-jlpt="2"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="3"] rt { display: none !important; }
-
-/* N1 (Advanced): user knows N5–N2, hide N5, N4, N3, N2 furigana. */
+:root[data-tsukeru-jlpt="2"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="3"] rt,
+:root[data-tsukeru-jlpt="2"] [data-tsukeru-wrapper="1"] .analysis-word[data-jlpt="5"] rt,
+:root[data-tsukeru-jlpt="2"] [data-tsukeru-wrapper="1"] .analysis-word[data-jlpt="4"] rt,
+:root[data-tsukeru-jlpt="2"] [data-tsukeru-wrapper="1"] .analysis-word[data-jlpt="3"] rt,
+:root[data-tsukeru-jlpt="2"] [data-tsukeru-wrapper="1"] .srt-word[data-jlpt="5"] rt,
+:root[data-tsukeru-jlpt="2"] [data-tsukeru-wrapper="1"] .srt-word[data-jlpt="4"] rt,
+:root[data-tsukeru-jlpt="2"] [data-tsukeru-wrapper="1"] .srt-word[data-jlpt="3"] rt { display: none !important; }
 :root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="5"] rt,
 :root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="4"] rt,
 :root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="3"] rt,
-:root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="2"] rt { display: none !important; }
+:root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] ruby[data-jlpt="2"] rt,
+:root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] .analysis-word[data-jlpt="5"] rt,
+:root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] .analysis-word[data-jlpt="4"] rt,
+:root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] .analysis-word[data-jlpt="3"] rt,
+:root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] .analysis-word[data-jlpt="2"] rt,
+:root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] .srt-word[data-jlpt="5"] rt,
+:root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] .srt-word[data-jlpt="4"] rt,
+:root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] .srt-word[data-jlpt="3"] rt,
+:root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] .srt-word[data-jlpt="2"] rt { display: none !important; }
 
-/* ==========================================================================
-   SITE-SPECIFIC FIXES: YouTube
-   ========================================================================== */
-
-/* --- 1. Main Video Title Fix ---
-   Break the rigid 56px max-height on the parent container so it can grow downwards.
-*/
+/* Site-specific layout corrections retained for YouTube. */
 :root[data-tsukeru-custom-style="on"] h1.ytd-watch-metadata:has(ruby[data-surface]),
-:root[data-tsukeru-custom-style="on"] #title.ytd-watch-metadata h1:has(ruby[data-surface]) {
-  max-height: none !important;
-  overflow: visible !important;
-}
-
-/*
-   Break the -webkit-box line-clamp on the actual text, and provide massive
-   line-height so the furigana doesn't smash into the text above it.
-*/
-:root[data-tsukeru-custom-style="on"] h1.ytd-watch-metadata yt-formatted-string:has(ruby[data-surface]) {
-  line-height: 2.0 !important; /* Huge breathing room for large main titles */
-  display: block !important;
-  max-height: none !important;
-  -webkit-line-clamp: none !important;
-  overflow: visible !important;
-}
-
-/* Ensure the title pushes the channel info/subscribe button down instead of overlapping */
-#owner.ytd-watch-metadata {
-  margin-top: 10px !important;
-}
-
-/* --- 2. Sidebar & Recommended Video Titles Fix ---
-   Fix for the smaller thumbnails in sidebar/grid.
-*/
+:root[data-tsukeru-custom-style="on"] #title.ytd-watch-metadata h1:has(ruby[data-surface]) { max-height: none !important; overflow: visible !important; }
+:root[data-tsukeru-custom-style="on"] h1.ytd-watch-metadata yt-formatted-string:has(ruby[data-surface]) { display: block !important; max-height: none !important; line-height: 2 !important; -webkit-line-clamp: none !important; overflow: visible !important; }
+#owner.ytd-watch-metadata { margin-top: 10px !important; }
 :root[data-tsukeru-custom-style="on"] #video-title:has(ruby[data-surface]),
 :root[data-tsukeru-custom-style="on"] .yt-lockup-metadata-view-model__title:has(ruby[data-surface]),
 :root[data-tsukeru-custom-style="on"] ytd-compact-video-renderer #video-title:has(ruby[data-surface]),
-:root[data-tsukeru-custom-style="on"] ytd-grid-video-renderer #video-title:has(ruby[data-surface]) {
-  line-height: 1.8 !important;
-  display: block !important;
-  max-height: none !important;
-  -webkit-line-clamp: none !important;
-  overflow: visible !important;
+:root[data-tsukeru-custom-style="on"] ytd-grid-video-renderer #video-title:has(ruby[data-surface]) { display: block !important; max-height: none !important; line-height: 1.8 !important; -webkit-line-clamp: none !important; overflow: visible !important; }
+:root[data-tsukeru-custom-style="on"] ytd-comment-renderer #content-text:has(ruby[data-surface]) { line-height: 1.6 !important; }
+:root[data-tsukeru-custom-style="on"] ytd-app [data-tsukeru-wrapper="1"] ruby rt { font-size: .55em !important; line-height: 1 !important; vertical-align: top !important; }
+
+/* Dictionary tooltip: all declarations are scoped and important for host isolation. */
+.tsukeru-word-tooltip {
+  position: fixed !important;
+  z-index: 2147483646 !important;
+  width: min(320px, calc(100vw - 24px)) !important;
+  min-width: min(220px, calc(100vw - 24px)) !important;
+  max-width: calc(100vw - 24px) !important;
+  max-height: calc(100vh - 24px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  padding: 14px !important;
+  border: 1px solid var(--tsukeru-border-strong) !important;
+  border-radius: 4px !important;
+  background-color: var(--tsukeru-paper) !important;
+  background-image: var(--tsukeru-paper-texture) !important;
+  color: var(--tsukeru-text) !important;
+  font-family: var(--tsukeru-sans) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  line-height: 1.45 !important;
+  letter-spacing: normal !important;
+  direction: ltr !important;
+  text-align: left !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 16px 38px rgba(36, 52, 60, .24), inset 0 1px 0 rgba(255, 255, 255, .24) !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transition: opacity .15s ease, visibility .15s ease !important;
 }
 
-/* --- 3. YouTube Formatted Comments Fix --- */
-:root[data-tsukeru-custom-style="on"] ytd-comment-renderer #content-text:has(ruby[data-surface]) {
-  line-height: 1.6 !important;
+.tsukeru-word-tooltip.show { opacity: 1 !important; visibility: visible !important; pointer-events: auto !important; }
+.tsukeru-word-tooltip *,
+.tsukeru-word-tooltip *::before,
+.tsukeru-word-tooltip *::after { box-sizing: border-box !important; }
+.tsukeru-word-tooltip button,
+.tsukeru-word-tooltip input,
+.tsukeru-word-tooltip textarea,
+.tsukeru-word-tooltip select,
+.tsukeru-word-tooltip summary,
+.tsukeru-word-tooltip a {
+  max-width: 100% !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  line-height: 1.35 !important;
+  letter-spacing: normal !important;
+  text-align: left !important;
+  text-transform: none !important;
+}
+.tsukeru-word-tooltip button { appearance: none !important; -webkit-appearance: none !important; margin: 0 !important; }
+.tsukeru-word-tooltip input,
+.tsukeru-word-tooltip textarea,
+.tsukeru-word-tooltip select { appearance: none !important; -webkit-appearance: none !important; border: 0 !important; padding: 0 !important; background: transparent !important; color: inherit !important; }
+.tsukeru-word-tooltip summary { cursor: pointer !important; list-style: none !important; }
+.tsukeru-word-tooltip a { color: inherit !important; text-decoration: none !important; }
+.tsukeru-word-tooltip button:focus-visible,
+.tsukeru-word-tooltip summary:focus-visible,
+.tsukeru-word-tooltip a:focus-visible,
+.tsukeru-content-report-modal button:focus-visible,
+.tsukeru-content-report-modal input:focus-visible,
+.tsukeru-content-report-modal textarea:focus-visible { outline: 2px solid var(--tsukeru-canvas) !important; outline-offset: 0 !important; box-shadow: 0 0 0 4px var(--tsukeru-blue) !important; }
+
+.tsukeru-word-tooltip::-webkit-scrollbar { width: 7px; }
+.tsukeru-word-tooltip::-webkit-scrollbar-track { background: transparent; }
+.tsukeru-word-tooltip::-webkit-scrollbar-thumb { border: 2px solid var(--tsukeru-paper); border-radius: 2px; background: var(--tsukeru-border); }
+
+.tsukeru-word-tooltip .tsukeru-header-row,
+.tsukeru-word-tooltip .tooltip-word-header { display: flex !important; flex-wrap: wrap !important; align-items: baseline !important; justify-content: flex-start !important; gap: 7px !important; margin-bottom: 7px !important; padding-bottom: 7px !important; border-bottom: 2px solid var(--tsukeru-blue) !important; }
+.tsukeru-word-tooltip .tooltip-word-label,
+.tsukeru-word-tooltip .tooltip-word { color: var(--tsukeru-ink) !important; font-size: 19px !important; font-weight: 700 !important; line-height: 1.3 !important; overflow-wrap: anywhere !important; }
+.tsukeru-word-tooltip .tsukeru-header-right { display: flex !important; align-items: center !important; gap: 2px !important; margin-left: auto !important; flex: 0 0 auto !important; }
+.tsukeru-word-tooltip .tooltip-badge,
+.tsukeru-word-tooltip .tsukeru-badge-jlpt,
+.tsukeru-word-tooltip .tsukeru-badge-pos,
+.tsukeru-word-tooltip .tsukeru-badge-inline {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 18px !important;
+  padding: 2px 5px !important;
+  border: 1px solid var(--tsukeru-border) !important;
+  border-radius: 2px !important;
+  background: var(--tsukeru-surface-muted) !important;
+  color: var(--tsukeru-secondary) !important;
+  font-family: var(--tsukeru-mono) !important;
+  font-size: 9px !important;
+  font-weight: 600 !important;
+  letter-spacing: .03em !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+}
+.tsukeru-word-tooltip .tooltip-jlpt-badge,
+.tsukeru-word-tooltip .tsukeru-badge-jlpt { border-color: var(--tsukeru-blue-border) !important; background: var(--tsukeru-blue-soft) !important; color: var(--tsukeru-blue-readable) !important; }
+.tsukeru-word-tooltip .tooltip-pos-badge,
+.tsukeru-word-tooltip .tsukeru-badge-pos { background: var(--tsukeru-surface-muted) !important; color: var(--tsukeru-secondary) !important; }
+.tsukeru-word-tooltip .tooltip-pos-verb,
+.tsukeru-word-tooltip .tooltip-pos-adjective,
+.tsukeru-word-tooltip .tooltip-pos-noun,
+.tsukeru-word-tooltip .tooltip-pos-particle,
+.tsukeru-word-tooltip .tooltip-pos-adverb,
+.tsukeru-word-tooltip .tooltip-pos-other { border-color: var(--tsukeru-border) !important; }
+.tsukeru-word-tooltip .tsukeru-bg-jlpt-1 { background: var(--tsukeru-group-n1) !important; color: var(--tsukeru-group-ink) !important; }
+.tsukeru-word-tooltip .tsukeru-bg-jlpt-2 { background: var(--tsukeru-group-n2) !important; color: var(--tsukeru-group-ink) !important; }
+.tsukeru-word-tooltip .tsukeru-bg-jlpt-3 { background: var(--tsukeru-group-n3) !important; color: var(--tsukeru-group-ink) !important; }
+.tsukeru-word-tooltip .tsukeru-bg-jlpt-4 { background: var(--tsukeru-group-n4) !important; color: var(--tsukeru-group-ink) !important; }
+.tsukeru-word-tooltip .tsukeru-bg-jlpt-5 { background: var(--tsukeru-group-n5) !important; color: var(--tsukeru-group-ink) !important; }
+.tsukeru-word-tooltip .tooltip-jlpt-badge[data-jlpt="1"] { background: var(--tsukeru-group-n1) !important; border-color: var(--tsukeru-border) !important; color: var(--tsukeru-group-ink) !important; }
+.tsukeru-word-tooltip .tooltip-jlpt-badge[data-jlpt="2"] { background: var(--tsukeru-group-n2) !important; border-color: var(--tsukeru-border) !important; color: var(--tsukeru-group-ink) !important; }
+.tsukeru-word-tooltip .tooltip-jlpt-badge[data-jlpt="3"] { background: var(--tsukeru-group-n3) !important; border-color: var(--tsukeru-border) !important; color: var(--tsukeru-group-ink) !important; }
+.tsukeru-word-tooltip .tooltip-jlpt-badge[data-jlpt="4"] { background: var(--tsukeru-group-n4) !important; border-color: var(--tsukeru-border) !important; color: var(--tsukeru-group-ink) !important; }
+.tsukeru-word-tooltip .tooltip-jlpt-badge[data-jlpt="5"] { background: var(--tsukeru-group-n5) !important; border-color: var(--tsukeru-border) !important; color: var(--tsukeru-group-ink) !important; }
+.tsukeru-word-tooltip .tooltip-pos-verb { background: var(--tsukeru-pos-verb) !important; color: var(--tsukeru-group-ink) !important; }
+.tsukeru-word-tooltip .tooltip-pos-adjective { background: var(--tsukeru-pos-adjective) !important; color: var(--tsukeru-group-ink) !important; }
+.tsukeru-word-tooltip .tooltip-pos-noun { background: var(--tsukeru-pos-noun) !important; color: var(--tsukeru-group-ink) !important; }
+.tsukeru-word-tooltip .tooltip-pos-particle { background: var(--tsukeru-pos-particle) !important; color: var(--tsukeru-group-ink) !important; }
+.tsukeru-word-tooltip .tooltip-pos-adverb { background: var(--tsukeru-pos-adverb) !important; color: var(--tsukeru-group-ink) !important; }
+.tsukeru-word-tooltip .tooltip-pos-other { background: var(--tsukeru-group-neutral) !important; color: var(--tsukeru-group-ink) !important; }
+
+.tsukeru-word-tooltip .tsukeru-reading-row,
+.tsukeru-word-tooltip .tooltip-reading-row { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 8px !important; margin-bottom: 10px !important; padding: 8px 0 10px !important; }
+.tsukeru-word-tooltip .tsukeru-reading-text,
+.tsukeru-word-tooltip .tooltip-reading { color: var(--tsukeru-blue-readable) !important; font-size: 15px !important; font-weight: 400 !important; line-height: 1.4 !important; overflow-wrap: anywhere !important; }
+.tsukeru-word-tooltip .tsukeru-header-right,
+.tsukeru-word-tooltip .tsukeru-reading-actions { display: flex !important; align-items: center !important; gap: 2px !important; flex-shrink: 0 !important; }
+.tsukeru-word-tooltip .tsukeru-tooltip-close,
+.tsukeru-word-tooltip .tsukeru-tooltip-save,
+.tsukeru-word-tooltip .tsukeru-tooltip-speaker,
+.tsukeru-word-tooltip .tsukeru-tooltip-report-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 27px !important;
+  height: 27px !important;
+  padding: 4px !important;
+  border: 1px solid transparent !important;
+  border-radius: 2px !important;
+  background: transparent !important;
+  color: var(--tsukeru-secondary) !important;
+  cursor: pointer !important;
+}
+.tsukeru-word-tooltip .tsukeru-tooltip-close { font-size: 20px !important; line-height: 1 !important; }
+.tsukeru-word-tooltip .tsukeru-tooltip-close:hover,
+.tsukeru-word-tooltip .tsukeru-tooltip-save:hover,
+.tsukeru-word-tooltip .tsukeru-tooltip-speaker:hover,
+.tsukeru-word-tooltip .tsukeru-tooltip-report-btn:hover,
+.tsukeru-word-tooltip .tsukeru-tooltip-close:focus-visible,
+.tsukeru-word-tooltip .tsukeru-tooltip-save:focus-visible,
+.tsukeru-word-tooltip .tsukeru-tooltip-speaker:focus-visible,
+.tsukeru-word-tooltip .tsukeru-tooltip-report-btn:focus-visible { border-color: var(--tsukeru-blue) !important; background: var(--tsukeru-surface-hover) !important; color: var(--tsukeru-blue) !important; opacity: 1 !important; }
+.tsukeru-word-tooltip .tsukeru-tooltip-save.saved,
+.tsukeru-word-tooltip .tsukeru-tooltip-speaker.speaking { color: var(--tsukeru-blue) !important; }
+.tsukeru-word-tooltip .tsukeru-tooltip-save.saved svg { fill: currentColor; stroke: none; }
+.tsukeru-word-tooltip .tsukeru-tooltip-report-btn { color: var(--tsukeru-attention) !important; }
+
+.tsukeru-word-tooltip .tsukeru-sense-row { margin: 0 0 8px !important; padding: 0 0 8px !important; border-bottom: 1px solid var(--tsukeru-border) !important; }
+.tsukeru-word-tooltip .tsukeru-sense-row:last-of-type { border-bottom: 0 !important; }
+.tsukeru-word-tooltip .tsukeru-sense-pos { margin-bottom: 3px !important; color: var(--tsukeru-secondary) !important; font-family: var(--tsukeru-mono) !important; font-size: 10px !important; font-weight: 500 !important; letter-spacing: .04em !important; text-transform: uppercase !important; }
+.tsukeru-word-tooltip .tsukeru-sense-gloss { color: var(--tsukeru-text) !important; font-size: 14px !important; font-weight: 500 !important; line-height: 1.42 !important; overflow-wrap: anywhere !important; }
+.tsukeru-word-tooltip .tsukeru-sense-more { margin: 2px 0 8px !important; color: var(--tsukeru-secondary) !important; font-family: var(--tsukeru-mono) !important; font-size: 10px !important; text-align: center !important; }
+
+.tsukeru-word-tooltip .tsukeru-tooltip-loading,
+.tsukeru-word-tooltip .tsukeru-tooltip-error,
+.tsukeru-word-tooltip .tooltip-loading,
+.tsukeru-word-tooltip .tooltip-error {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  padding: 16px 0 !important;
+  color: var(--tsukeru-secondary) !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  text-align: center !important;
+}
+.tsukeru-word-tooltip .tsukeru-tooltip-error,
+.tsukeru-word-tooltip .tooltip-error { color: var(--tsukeru-error) !important; }
+
+.tsukeru-word-tooltip .tooltip-loading-spinner,
+.tsukeru-word-tooltip .tsukeru-loader {
+  display: inline-block !important;
+  width: 14px !important;
+  height: 14px !important;
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+  border: 2px solid var(--tsukeru-border) !important;
+  border-top-color: var(--tsukeru-blue) !important;
+  border-radius: 2px !important;
+  animation: tsukeru-tooltip-loading-spin .75s steps(12) infinite !important;
+}
+@keyframes tsukeru-tooltip-loading-spin { to { transform: rotate(360deg); } }
+
+.tsukeru-word-tooltip .tooltip-learning-section,
+.tsukeru-word-tooltip .tsukeru-alt-readings-container,
+.tsukeru-word-tooltip .tsukeru-async-section { margin-top: 9px !important; padding-top: 8px !important; border-top: 1px solid var(--tsukeru-border) !important; }
+.tsukeru-word-tooltip .tooltip-learning-toggle,
+.tsukeru-word-tooltip .tsukeru-alt-readings-toggle,
+.tsukeru-word-tooltip .tsukeru-dropdown-toggle {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  min-height: 28px !important;
+  padding: 4px 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--tsukeru-secondary) !important;
+  cursor: pointer !important;
+  font-family: var(--tsukeru-mono) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: .03em !important;
+  text-align: left !important;
+}
+.tsukeru-word-tooltip .tooltip-learning-toggle:hover,
+.tsukeru-word-tooltip .tooltip-learning-toggle:focus-visible,
+.tsukeru-word-tooltip .tsukeru-dropdown-toggle:hover,
+.tsukeru-word-tooltip .tsukeru-dropdown-toggle:focus-visible { color: var(--tsukeru-blue) !important; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.tsukeru-word-tooltip .tooltip-disclosure-icon,
+.tsukeru-word-tooltip .tsukeru-dropdown-arrow,
+.tsukeru-word-tooltip .tsukeru-alt-arrow { width: 11px !important; height: 11px !important; flex: 0 0 auto !important; transition: transform .15s ease !important; }
+.tsukeru-word-tooltip .tsukeru-rotate-180 { transform: rotate(180deg); }
+.tsukeru-word-tooltip .tsukeru-hidden,
+.tsukeru-word-tooltip .tsukeru-dropdown-content.tsukeru-hidden { display: none !important; }
+.tsukeru-word-tooltip .tsukeru-alt-readings-content { display: flex; flex-direction: column; gap: 4px; margin-top: 5px; }
+.tsukeru-word-tooltip .tsukeru-alt-reading-item { padding: 5px 0; border-bottom: 1px solid var(--tsukeru-border); color: var(--tsukeru-text); font-size: 11px !important; font-weight: 500 !important; }
+.tsukeru-word-tooltip .tsukeru-alt-reading-item:last-child { border-bottom: 0; }
+.tsukeru-word-tooltip .tsukeru-async-section[data-state="loading"] .tsukeru-dropdown-toggle { color: var(--tsukeru-blue) !important; }
+.tsukeru-word-tooltip .tsukeru-dropdown-content { margin-top: 5px !important; }
+.tsukeru-word-tooltip .tsukeru-async-unavailable { padding: 5px 0 2px !important; color: var(--tsukeru-secondary) !important; font-family: var(--tsukeru-mono) !important; font-size: 10px !important; font-style: normal !important; text-align: center !important; }
+.tsukeru-word-tooltip .tsukeru-example-item { margin-top: 4px !important; padding: 7px 9px !important; border: 1px solid var(--tsukeru-border) !important; border-radius: 2px !important; background: var(--tsukeru-surface) !important; }
+.tsukeru-word-tooltip .tsukeru-example-jp { color: var(--tsukeru-text) !important; font-size: 13px !important; font-weight: 500 !important; overflow-wrap: anywhere !important; }
+.tsukeru-word-tooltip .tsukeru-example-en { margin: 5px 0 0 !important; color: var(--tsukeru-secondary) !important; font-size: 11px !important; overflow-wrap: anywhere !important; }
+.tsukeru-word-tooltip .tsukeru-kanji-grid { display: flex; flex-direction: column; gap: 0; }
+.tsukeru-word-tooltip .tsukeru-kanji-item { padding: 7px 0 !important; border-bottom: 1px solid var(--tsukeru-border-strong) !important; }
+.tsukeru-word-tooltip .tsukeru-kanji-item:last-child { border-bottom: 0 !important; }
+.tsukeru-word-tooltip .tsukeru-kanji-item-header { display: flex; align-items: center; gap: 5px; }
+.tsukeru-word-tooltip .tsukeru-kanji-char-large { color: var(--tsukeru-ink) !important; font-size: 18px !important; font-weight: 700 !important; }
+.tsukeru-word-tooltip .tsukeru-kanji-reading { color: var(--tsukeru-text) !important; font-size: 10px !important; }
+.tsukeru-word-tooltip .tsukeru-on-label { color: var(--tsukeru-blue) !important; font-weight: 700 !important; }
+.tsukeru-word-tooltip .tsukeru-kun-label { color: var(--tsukeru-attention) !important; font-weight: 700 !important; }
+.tsukeru-word-tooltip .tsukeru-kanji-meaning { color: var(--tsukeru-secondary) !important; font-size: 10px !important; }
+.tsukeru-word-tooltip mark.example-highlight { background: rgba(210, 154, 39, .28) !important; color: inherit !important; }
+
+/* Generic page feedback uses the same restrained full-border treatment in every theme. */
+.tsukeru-toast {
+  --tsukeru-toast-accent: var(--tsukeru-attention);
+  border: 1px solid var(--tsukeru-toast-accent) !important;
+  border-radius: 3px !important;
+  background: var(--tsukeru-paper) !important;
+  background-image: var(--tsukeru-paper-texture) !important;
+  color: var(--tsukeru-toast-accent) !important;
+  box-shadow: 0 8px 22px rgba(36, 52, 60, .16) !important;
+  font-family: var(--tsukeru-sans) !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+}
+.tsukeru-toast--error { --tsukeru-toast-accent: var(--tsukeru-error); }
+.tsukeru-toast--warning { --tsukeru-toast-accent: var(--tsukeru-attention); }
+.tsukeru-toast--info { --tsukeru-toast-accent: var(--tsukeru-blue-readable); }
+.tsukeru-toast__message { flex: 1 1 auto !important; white-space: pre-wrap !important; word-break: break-word !important; }
+.tsukeru-toast__dismiss {
+  all: unset !important;
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--tsukeru-secondary) !important;
+  cursor: pointer !important;
+  font: 500 16px/1 var(--tsukeru-sans) !important;
+}
+.tsukeru-toast__dismiss:hover,
+.tsukeru-toast__dismiss:focus-visible { color: var(--tsukeru-toast-accent) !important; }
+.tsukeru-toast__dismiss:focus-visible { outline: 2px solid var(--tsukeru-toast-accent) !important; outline-offset: 2px !important; }
+
+/* Injected report dialog and feedback stay full-border, never side-rail cards. */
+.tsukeru-content-report-modal { position: fixed !important; inset: 0 !important; z-index: 2147483647 !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 16px !important; background: rgba(16, 17, 18, .62) !important; font-family: var(--tsukeru-sans) !important; box-sizing: border-box !important; }
+.tsukeru-content-report-modal.hidden { display: none !important; }
+.tsukeru-content-report-modal .tsukeru-crm-content { width: min(380px, 100%) !important; overflow: hidden !important; border: 1px solid var(--tsukeru-border-strong) !important; border-radius: 4px !important; background: var(--tsukeru-paper) !important; background-image: var(--tsukeru-paper-texture) !important; color: var(--tsukeru-text) !important; box-shadow: 0 16px 38px rgba(36, 52, 60, .24) !important; box-sizing: border-box !important; }
+.tsukeru-content-report-modal .tsukeru-crm-header { display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 11px 13px !important; border-top: 3px solid var(--tsukeru-attention) !important; border-bottom: 1px solid var(--tsukeru-border) !important; background: linear-gradient(145deg, var(--tsukeru-metal-highlight), var(--tsukeru-metal)) !important; color: var(--tsukeru-ink) !important; font-size: 14px !important; font-weight: 700 !important; }
+.tsukeru-content-report-modal .tsukeru-crm-header button { width: auto !important; padding: 2px 5px !important; border: 1px solid transparent !important; border-radius: 2px !important; background: transparent !important; color: var(--tsukeru-secondary) !important; cursor: pointer !important; font-size: 20px !important; line-height: 1 !important; }
+.tsukeru-content-report-modal .tsukeru-crm-header button:hover { border-color: var(--tsukeru-attention) !important; color: var(--tsukeru-attention) !important; }
+.tsukeru-content-report-modal .tsukeru-crm-body { display: flex !important; flex-direction: column !important; gap: 7px !important; padding: 13px !important; }
+.tsukeru-content-report-modal .tsukeru-crm-label { display: block !important; margin-top: 3px !important; color: var(--tsukeru-secondary) !important; font-family: var(--tsukeru-mono) !important; font-size: 9px !important; font-weight: 600 !important; letter-spacing: .04em !important; text-transform: uppercase !important; }
+.tsukeru-content-report-modal .tsukeru-crm-input,
+.tsukeru-content-report-modal .tsukeru-crm-textarea { width: 100% !important; min-height: 29px !important; padding: 6px 8px !important; border: 1px solid var(--tsukeru-border-strong) !important; border-radius: 2px !important; background: var(--tsukeru-surface) !important; color: var(--tsukeru-text) !important; font: 13px/1.35 var(--tsukeru-sans) !important; box-sizing: border-box !important; resize: vertical !important; }
+.tsukeru-content-report-modal .tsukeru-crm-input[readonly],
+.tsukeru-content-report-modal .tsukeru-crm-textarea[readonly] { color: var(--tsukeru-secondary) !important; }
+.tsukeru-content-report-modal .tsukeru-crm-msg { padding: 7px 9px !important; border: 1px solid currentColor !important; border-radius: 3px !important; background: var(--tsukeru-paper) !important; font-size: 11px !important; font-weight: 600 !important; }
+.tsukeru-content-report-modal .tsukeru-crm-error { color: var(--tsukeru-error) !important; }
+.tsukeru-content-report-modal .tsukeru-crm-success { color: var(--tsukeru-success) !important; }
+.tsukeru-content-report-modal .tsukeru-crm-msg.hidden { display: none !important; }
+.tsukeru-content-report-modal .tsukeru-crm-submit { min-height: 32px !important; margin-top: 4px !important; padding: 7px 10px !important; border: 0 !important; border-bottom: 3px solid var(--tsukeru-blue-dark) !important; border-radius: 3px !important; background: linear-gradient(180deg, #2c8dff, #1165c9) !important; color: #fff !important; cursor: pointer !important; font: 700 13px/1.35 var(--tsukeru-sans) !important; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28) !important; }
+.tsukeru-content-report-modal .tsukeru-crm-submit:hover:not(:disabled) { filter: brightness(1.06); }
+.tsukeru-content-report-modal .tsukeru-crm-submit:disabled { cursor: wait !important; opacity: .65 !important; }
+
+.tsukeru-vocab-saved-toast { position: fixed !important; top: 16px !important; right: 16px !important; z-index: 2147483647 !important; max-width: min(90vw, 360px) !important; padding: 9px 12px !important; border: 1px solid var(--tsukeru-success) !important; border-radius: 3px !important; background: var(--tsukeru-paper) !important; background-image: var(--tsukeru-paper-texture) !important; color: var(--tsukeru-ink) !important; box-shadow: 0 8px 22px rgba(36, 52, 60, .16) !important; font: 600 12px/1.4 var(--tsukeru-sans) !important; }
+
+#tsukeru-word-tooltip [data-jlpt]::before,
+#tsukeru-word-tooltip [data-pos]::before { display: none !important; content: none !important; }
+
+@media (prefers-color-scheme: dark) {
+  .tsukeru-word-tooltip { box-shadow: 0 16px 38px rgba(0, 0, 0, .42), inset 0 1px 0 rgba(255, 255, 255, .04) !important; }
+  .tsukeru-toast { box-shadow: 0 8px 22px rgba(0, 0, 0, .34) !important; }
 }
 
-/* --- 4. Global YouTube Ruby Optimization ---
-   Shrinking the ruby text specifically on YouTube prevents the layout
-   from getting too aggressively stretched horizontally and vertically.
-*/
-:root[data-tsukeru-custom-style="on"] ytd-app [data-tsukeru-wrapper="1"] ruby rt {
-  font-size: 0.55em !important;
-  line-height: 1 !important;
-  vertical-align: top !important;
+@media (prefers-reduced-motion: reduce) {
+  .tsukeru-word-tooltip,
+  .tsukeru-word-tooltip *,
+  .tsukeru-word-tooltip *::before,
+  .tsukeru-word-tooltip *::after,
+  .tsukeru-content-report-modal,
+  .tsukeru-content-report-modal *,
+  .tsukeru-vocab-saved-toast,
+  .tsukeru-toast,
+  .tsukeru-toast * { transition: none !important; animation: none !important; }
 }

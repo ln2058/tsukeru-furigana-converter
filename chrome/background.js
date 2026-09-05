@@ -7,11 +7,12 @@ Inputs:
 - Message actions and payloads from popup/content scripts.
 
 Outputs:
-- Async message responses, rate-limit metadata propagation, and tab-level apply/clear toggles.
+- Async message responses, reading-aware lookup/rate-limit metadata propagation, and tab-level apply/clear toggles.
 
 Side Effects:
 - Seeds and reads `chrome.storage.sync` defaults.
-- Creates context menus and injects content scripts/CSS when needed.
+- Creates context menus and injects content scripts/CSS, including tooltip dependencies in order, when needed.
+- Routes optional lookup reading fields and API error metadata without persisting them.
 
 Failure Modes:
 - Message delivery fails when tabs/content scripts are unavailable.
@@ -159,11 +160,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === 'lookupDefinition') {
-    lookupDefinition(message.word)
+    lookupDefinition(message.word, message.reading, message.readingType)
       .then((data) => sendResponse({ success: true, data }))
       .catch((error) => {
         console.error('Definition lookup failed', error);
-        sendResponse({ success: false, error: error.message });
+        sendResponse({
+          success: false,
+          error: error.message,
+          ...(error.status && { status: error.status }),
+          ...(error.rateLimitType && { rateLimitType: error.rateLimitType }),
+          ...(error.retryAfter != null && { retryAfter: error.retryAfter }),
+        });
       });
     return true;
   }
@@ -173,7 +180,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then((data) => sendResponse({ success: true, data }))
       .catch((error) => {
         console.error('Example sentence fetch failed', error);
-        sendResponse({ success: false, error: error.message });
+        sendResponse({
+          success: false,
+          error: error.message,
+          ...(error.status && { status: error.status }),
+          ...(error.rateLimitType && { rateLimitType: error.rateLimitType }),
+          ...(error.retryAfter != null && { retryAfter: error.retryAfter }),
+        });
       });
     return true;
   }
@@ -183,7 +196,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then((data) => sendResponse({ success: true, data }))
       .catch((error) => {
         console.error('Kanji breakdown fetch failed', error);
-        sendResponse({ success: false, error: error.message });
+        sendResponse({
+          success: false,
+          error: error.message,
+          ...(error.status && { status: error.status }),
+          ...(error.rateLimitType && { rateLimitType: error.rateLimitType }),
+          ...(error.retryAfter != null && { retryAfter: error.retryAfter }),
+        });
       });
     return true;
   }
@@ -354,6 +373,7 @@ async function ensureContentScript(tabId) {
     'js/content-ui.js',
     'js/content-rate-limit.js',
     'js/content-dom.js',
+    'js/tooltip-async-state.js',
     'js/content-tooltip.js',
     'js/content-main.js',
   ]) {

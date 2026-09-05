@@ -1,16 +1,16 @@
 /*
 Module: popup-vocab
-Purpose: Power vocabulary list and vocab-mode workflows, including lookup enrichment, audio, and exports.
+Purpose: Power the instrument-styled vocabulary ledger and vocab-mode workflows, including reading-aware lookup enrichment, audio, and exports.
 
 Inputs:
 - Stored vocabulary data, popup UI events, active-tab word/context responses, and background API responses.
 
 Outputs:
-- Rendered vocab lists, saved vocabulary entries, and CSV/ZIP export downloads.
+- Rendered paper-ledger vocab lists, saved vocabulary entries, and CSV/ZIP export downloads.
 
 Side Effects:
 - Reads/writes `chrome.storage.local` vocabulary.
-- Sends runtime/tab messages and triggers browser downloads.
+- Sends reading-aware runtime/tab messages and triggers browser downloads.
 
 Failure Modes:
 - Storage/message/network failures can block lookup, save, or export operations.
@@ -60,6 +60,26 @@ function isWebVocabularySource(url = '') {
   return /^https?:\/\//i.test(url);
 }
 
+export function getPosGroupClass(pos) {
+  const value = String(pos || '').split(',')[0].trim().toLowerCase();
+  if (value === 'verb' || value === 'aux verb') return 'pos-verb';
+  if (value === 'adjective' || value === 'na-adj') return 'pos-adjective';
+  if (value === 'noun' || value === 'pronoun') return 'pos-noun';
+  if (value === 'particle') return 'pos-particle';
+  if (value === 'adverb') return 'pos-adverb';
+  return 'pos-other';
+}
+
+export function getJlptGroupClass(level) {
+  const value = String(level || '').trim();
+  return /^[1-5]$/.test(value) ? `jlpt-${value}` : '';
+}
+
+function getJlptLabel(level) {
+  const value = String(level || '').trim();
+  return /^[1-5]$/.test(value) ? `N${value}` : '';
+}
+
 function isLocalVocabularySource(url = '') {
   return normalizeVocabularySourceUrl(url) === LOCAL_FILE_SOURCE;
 }
@@ -91,7 +111,7 @@ export function sanitizeExtensionHtml(dirtyHtml) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(dirtyHtml, 'text/html');
   const allowedTags = new Set(['ruby', 'rt', 'rp', 'span', 'div']);
-  const allowedAttributes = new Set(['class', 'data-surface', 'data-reading', 'data-dict-form', 'data-dict-reading', 'data-jlpt', 'data-pos']);
+  const allowedAttributes = new Set(['class', 'data-surface', 'data-reading', 'data-dict-form', 'data-dict-reading', 'data-lookup-reading', 'data-jlpt', 'data-pos']);
 
   function cleanNode(node) {
     if (node.nodeType === Node.TEXT_NODE) return;
@@ -124,6 +144,13 @@ export function convertRubyToParentheses(html) {
     }
   });
   return temp.textContent;
+}
+
+function getPlainSentenceText(html) {
+  const temp = document.createElement('div');
+  temp.innerHTML = sanitizeExtensionHtml(html);
+  temp.querySelectorAll('rt, rp, [data-tsukeru-reading-only="true"]').forEach((readingNode) => readingNode.remove());
+  return temp.textContent.replace(/\s+/g, ' ').trim();
 }
 
 export function highlightSavedWordInSentence(sentenceHtml, item) {
@@ -198,22 +225,52 @@ export function normalizeDefinitionData(data) {
 
 const definitionCache = new Map();
 
-export async function lookupDefinition(word) {
+function createPopupRuntimeResponseError(response, fallbackMessage) {
+  const error = new Error(
+    typeof response?.error === 'string' && response.error
+      ? response.error
+      : fallbackMessage
+  );
+  for (const field of ['status', 'httpStatus', 'rateLimitType', 'retryAfter']) {
+    if (response?.[field] !== undefined && response?.[field] !== null) {
+      error[field] = response[field];
+    }
+  }
+  return error;
+}
+
+function getDefinitionCacheKey(word, lookupReading = '', readingType = '') {
+  return JSON.stringify([
+    String(word || '').trim(),
+    String(lookupReading || '').trim(),
+    String(readingType || '').trim().toLowerCase()
+  ]);
+}
+
+export async function lookupDefinition(word, lookupReading = '', readingType = '') {
   const term = (word || '').trim();
   if (!term) return null;
+  const normalizedReading = String(lookupReading || '').trim();
+  const normalizedReadingType = String(readingType || '').trim().toLowerCase();
+  const cacheKey = getDefinitionCacheKey(term, normalizedReading, normalizedReadingType);
   const now = Date.now();
-  const cached = definitionCache.get(term);
+  const cached = definitionCache.get(cacheKey);
   if (cached && now - cached.timestamp < DEFINITION_CACHE_TTL) return cached.data;
-  const response = await chrome.runtime.sendMessage({ action: 'lookupDefinition', word: term });
-  if (!response?.success) throw new Error(response?.error || 'Definition lookup failed');
+  const message = { action: 'lookupDefinition', word: term };
+  if (normalizedReading) message.reading = normalizedReading;
+  if (normalizedReadingType) message.readingType = normalizedReadingType;
+  const response = await chrome.runtime.sendMessage(message);
+  if (!response?.success) {
+    throw createPopupRuntimeResponseError(response, 'Definition lookup failed');
+  }
   const data = response.data;
-  definitionCache.set(term, { data, timestamp: now });
+  definitionCache.set(cacheKey, { data, timestamp: now });
   return data;
 }
 
-export async function attachDefinitionToEntry(entry) {
+export async function attachDefinitionToEntry(entry, lookupOptions = {}) {
   try {
-    const data = await lookupDefinition(entry.word);
+    const data = await lookupDefinition(entry.word, lookupOptions.lookupReading, lookupOptions.readingType);
     const normalized = normalizeDefinitionData(data);
     if (normalized) {
       entry.definition = normalized.senses
@@ -235,12 +292,10 @@ export async function playVocabAudio(word, reading, buttonElement) {
   if (!word) return;
   if (buttonElement) {
     buttonElement.classList.add('speaking');
-    buttonElement.style.color = '#3b82f6';
   }
   const resetState = () => {
     if (buttonElement) {
       buttonElement.classList.remove('speaking');
-      buttonElement.style.color = '#6b7280';
     }
   };
   try {
@@ -271,21 +326,48 @@ export async function playVocabAudio(word, reading, buttonElement) {
 
 export let currentVocabulary = [];
 export let filteredVocabulary = [];
+export const VOCABULARY_PAGE_SIZE = 40;
 
-export async function loadVocabulary() {
-  try {
-    const result = await chrome.storage.local.get(['vocabulary']);
-    currentVocabulary = result.vocabulary || [];
-    filteredVocabulary = currentVocabulary;
-    renderVocabulary();
-  } catch (err) {
-    console.error('Failed to load vocabulary:', err);
-  }
+let vocabularyLoadPromise = null;
+let vocabularyRenderedCount = 0;
+let vocabularySearchQuery = '';
+
+export function getVocabularyPage(entries, renderedCount = 0, pageSize = VOCABULARY_PAGE_SIZE) {
+  const list = Array.isArray(entries) ? entries : [];
+  const start = Math.max(0, Number.isFinite(renderedCount) ? renderedCount : 0);
+  const size = Math.max(1, Number.isFinite(pageSize) ? pageSize : VOCABULARY_PAGE_SIZE);
+  return list.slice(start, start + size);
 }
 
-export function renderVocabulary() {
+function filterVocabulary(query) {
+  const normalizedQuery = String(query || '').toLowerCase().trim();
+  vocabularySearchQuery = normalizedQuery;
+  if (!normalizedQuery) return currentVocabulary;
+  return currentVocabulary.filter(item => {
+    const word = String(item.word || '').toLowerCase();
+    const reading = String(item.reading || '').toLowerCase();
+    const sentence = String(item.sentence || '').toLowerCase();
+    return word.includes(normalizedQuery) || reading.includes(normalizedQuery) || sentence.includes(normalizedQuery) || getDefinitionText(item).toLowerCase().includes(normalizedQuery);
+  });
+}
+
+export function loadVocabulary() {
+  if (vocabularyLoadPromise) return vocabularyLoadPromise;
+  vocabularyLoadPromise = chrome.storage.local.get(['vocabulary']).then((result) => {
+    currentVocabulary = result.vocabulary || [];
+    filteredVocabulary = filterVocabulary(vocabularySearchQuery);
+    renderVocabulary();
+  }).catch((err) => {
+    vocabularyLoadPromise = null;
+    console.error('Failed to load vocabulary:', err);
+  });
+  return vocabularyLoadPromise;
+}
+
+export function renderVocabulary({ append = false } = {}) {
   const vocabList = document.getElementById('vocabList');
   const vocabCount = document.getElementById('vocabCount');
+  const showMoreBtn = document.getElementById('vocabShowMoreBtn');
   vocabCount.textContent = formatCountWithNoun(
     currentVocabulary.length,
     'word_singular',
@@ -293,9 +375,13 @@ export function renderVocabulary() {
     'vocab_count_saved',
     '{count} {noun} saved'
   );
-  vocabList.innerHTML = '';
+  if (!append) {
+    vocabularyRenderedCount = 0;
+    vocabList.innerHTML = '';
+  }
 
   if (filteredVocabulary.length === 0) {
+    if (append) return;
     if (currentVocabulary.length === 0) {
       vocabList.innerHTML = `
         <div class="vocab-empty">
@@ -310,12 +396,16 @@ export function renderVocabulary() {
         </div>
       `;
     }
+    if (showMoreBtn) showMoreBtn.hidden = true;
     return;
   }
 
-  filteredVocabulary.forEach((item, index) => {
-    vocabList.appendChild(createVocabItem(item, index));
+  const page = getVocabularyPage(filteredVocabulary, vocabularyRenderedCount);
+  page.forEach((item, index) => {
+    vocabList.appendChild(createVocabItem(item, vocabularyRenderedCount + index));
   });
+  vocabularyRenderedCount += page.length;
+  if (showMoreBtn) showMoreBtn.hidden = vocabularyRenderedCount >= filteredVocabulary.length;
 }
 
 export function createVocabItem(item, index) {
@@ -323,28 +413,33 @@ export function createVocabItem(item, index) {
   div.className = 'vocab-item';
   const entryId = getEntryId(item);
 
-  const jlptText = item.jlpt ? `N${item.jlpt}` : '';
-  const jlptClass = item.jlpt ? ` jlpt-${item.jlpt}` : '';
-  const posText = item.pos || '';
-  const dateStr = new Date(item.timestamp).toLocaleDateString();
+  const word = String(item.word || '');
+  const reading = String(item.reading || '');
+  const sentence = String(item.sentence || '');
+  const tatoebaJp = String(item.tatoebaJp || '');
+  const jlptText = getJlptLabel(item.jlpt);
+  const jlptClass = getJlptGroupClass(item.jlpt);
+  const posText = String(item.pos || '');
+  const posGroupClass = getPosGroupClass(posText);
+  const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleDateString() : '';
   const normalizedSourceUrl = normalizeVocabularySourceUrl(item.url);
-  const urlDisplay = getVocabularySourceLabel(item.url);
+  const urlDisplay = getVocabularySourceLabel(item.url || '');
   const sourceHtml = isWebVocabularySource(normalizedSourceUrl)
     ? `<a href="${escapeHtml(normalizedSourceUrl)}" class="vocab-url" target="_blank" title="${escapeHtml(normalizedSourceUrl)}">${escapeHtml(urlDisplay)} &middot; ${dateStr}</a>`
     : `<span class="vocab-url" title="${escapeHtml(urlDisplay)}">${escapeHtml(urlDisplay)} &middot; ${dateStr}</span>`;
 
   const definitionText = getDefinitionText(item);
   const definitionHtml = definitionText ? `<div class="vocab-definition">${escapeHtml(definitionText)}</div>` : '';
-  const sentenceHtml = renderSentenceWithFurigana(item.sentence, item);
-  const tatoebaHtml = item.tatoebaJp ? renderSentenceWithFurigana(item.tatoebaJp, item) : null;
+  const sentenceHtml = renderSentenceWithFurigana(sentence, item);
+  const tatoebaHtml = tatoebaJp ? renderSentenceWithFurigana(tatoebaJp, item) : null;
 
   div.innerHTML = `
-    <div class="vocab-item-header" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-      <div style="display: flex; align-items: baseline; gap: 8px;">
-        <div class="vocab-word">${escapeHtml(item.word)}</div>
-        <div class="vocab-reading">${escapeHtml(item.reading)}</div>
+    <div class="vocab-item-header">
+      <div class="vocab-word-line">
+        <div class="vocab-word">${escapeHtml(word)}</div>
+        <div class="vocab-reading">${escapeHtml(reading)}</div>
       </div>
-      <button class="vocab-speaker-btn" data-word="${escapeHtml(item.word)}" data-reading="${escapeHtml(item.reading)}" title="${escapeHtml(t('vocab_listen', undefined, 'Listen'))}" style="background: none; border: none; cursor: pointer; color: #6b7280; padding: 4px; display: flex; align-items: center; border-radius: 4px; width: auto; margin-bottom: 0; flex-shrink: 0;">
+      <button class="vocab-speaker-btn" data-word="${escapeHtml(word)}" data-reading="${escapeHtml(reading)}" title="${escapeHtml(t('vocab_listen', undefined, 'Listen'))}" aria-label="${escapeHtml(t('vocab_listen', undefined, 'Listen'))}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
           <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
@@ -353,12 +448,12 @@ export function createVocabItem(item, index) {
     </div>
     ${(jlptText || posText) ? `
       <div class="vocab-meta">
-        ${jlptText ? `<span class="vocab-badge jlpt${jlptClass}">${jlptText}</span>` : ''}
-        ${posText ? `<span class="vocab-badge pos">${escapeHtml(posText)}</span>` : ''}
+        ${jlptText ? `<span class="vocab-badge jlpt ${jlptClass}">${jlptText}</span>` : ''}
+        ${posText ? `<span class="vocab-badge pos ${posGroupClass}">${escapeHtml(posText)}</span>` : ''}
       </div>
     ` : ''}
     ${definitionHtml}
-    <div class="vocab-sentence">${sentenceHtml}</div>
+    ${sentenceHtml ? `<div class="vocab-sentence">${sentenceHtml}</div>` : ''}
     ${tatoebaHtml ? `
       <div class="vocab-sentence tatoeba-sentence">
         <div class="tatoeba-jp">${tatoebaHtml}</div>
@@ -368,8 +463,8 @@ export function createVocabItem(item, index) {
     ` : ''}
     <div class="vocab-footer">
       ${sourceHtml}
-      <div style="display:flex;gap:4px;align-items:center;">
-        <button class="vocab-action-btn report-btn" title="${escapeHtml(t('report_button_title', undefined, 'Report Wrong Reading'))}" data-word="${escapeHtml(item.word)}" data-reading="${escapeHtml(item.reading)}" data-context="${escapeHtml((item.sentence || '').replace(/<[^>]+>/g, '').substring(0, 100))}">
+      <div class="vocab-footer-actions">
+        <button class="vocab-action-btn report-btn" title="${escapeHtml(t('report_button_title', undefined, 'Report Wrong Reading'))}" aria-label="${escapeHtml(t('report_button_title', undefined, 'Report Wrong Reading'))}" data-word="${escapeHtml(word)}" data-reading="${escapeHtml(reading)}" data-context="${escapeHtml(getPlainSentenceText(sentence).substring(0, 100))}">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
         </button>
         <button class="vocab-delete" data-id="${escapeHtml(entryId)}">${escapeHtml(t('vocab_delete', undefined, 'Delete'))}</button>
@@ -386,10 +481,6 @@ export function createVocabItem(item, index) {
     speakerBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       playVocabAudio(speakerBtn.dataset.word, speakerBtn.dataset.reading, speakerBtn);
-    });
-    speakerBtn.addEventListener('mouseenter', () => speakerBtn.style.color = '#3b82f6');
-    speakerBtn.addEventListener('mouseleave', () => {
-      if (!speakerBtn.classList.contains('speaking')) speakerBtn.style.color = '#6b7280';
     });
   }
 
@@ -409,7 +500,7 @@ export async function deleteVocabItem(entryId) {
     if (index < 0) return;
     currentVocabulary.splice(index, 1);
     await chrome.storage.local.set({ vocabulary: currentVocabulary });
-    filteredVocabulary = currentVocabulary;
+    filteredVocabulary = filterVocabulary(vocabularySearchQuery);
     renderVocabulary();
   } catch (err) {
     console.error('Failed to delete vocabulary item:', err);
@@ -441,8 +532,9 @@ export function exportVocabulary() {
 
   currentVocabulary.forEach(item => {
     const temp = document.createElement('div');
-    temp.innerHTML = item.sentence;
-    const sentenceWithParens = convertRubyToParentheses(item.sentence);
+    const sentence = String(item.sentence || '');
+    temp.innerHTML = sentence;
+    const sentenceWithParens = convertRubyToParentheses(sentence);
     const sentencePlain = temp.textContent;
 
     let tatoebaWithFurigana = '';
@@ -457,8 +549,8 @@ export function exportVocabulary() {
 
     const date = new Date(item.timestamp).toLocaleDateString();
     rows.push([
-      item.word,
-      item.reading,
+      item.word || '',
+      item.reading || '',
       getDefinitionText(item),
       sentenceWithParens,
       sentencePlain,
@@ -536,34 +628,30 @@ export async function initVocabularyTab() {
   const exportBtn = document.getElementById('exportVocabBtn');
   const exportAudioBtn = document.getElementById('exportAudioBtn');
   const clearBtn = document.getElementById('clearVocabBtn');
-
-  await loadVocabulary();
+  const showMoreBtn = document.getElementById('vocabShowMoreBtn');
 
   vocabSearch.addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase().trim();
-    if (!query) {
-      filteredVocabulary = currentVocabulary;
-    } else {
-      filteredVocabulary = currentVocabulary.filter(item =>
-        item.word.toLowerCase().includes(query) ||
-        item.reading.toLowerCase().includes(query) ||
-        item.sentence.toLowerCase().includes(query) ||
-        getDefinitionText(item).toLowerCase().includes(query)
-      );
-    }
+    filteredVocabulary = filterVocabulary(e.target.value);
     renderVocabulary();
   });
 
   exportBtn.addEventListener('click', exportVocabulary);
   exportAudioBtn.addEventListener('click', exportAnkiAudio);
+  showMoreBtn?.addEventListener('click', () => renderVocabulary({ append: true }));
 
   clearBtn.addEventListener('click', async () => {
     if (currentVocabulary.length === 0) return;
     if (confirm(t('vocab_clear_confirm', [String(currentVocabulary.length)], `Clear all ${currentVocabulary.length} vocabulary items?`))) {
       await chrome.storage.local.set({ vocabulary: [] });
-      await loadVocabulary();
+      currentVocabulary = [];
+      filteredVocabulary = [];
+      vocabularySearchQuery = '';
+      renderVocabulary();
     }
   });
+
+  // Saved is the default tab, so begin loading after all popup handlers are wired.
+  loadVocabulary();
 }
 
 // ── Vocab mode tab ────────────────────────────────────────────────────────────
@@ -574,10 +662,10 @@ export let vocabModeSortMode = 'occurrence';
 export let vocabModeJlptFilter = 'all';
 
 export const VM_SORT_MODES = [
-  { key: 'occurrence', labelKey: 'vm_sort_occurrence', fallbackLabel: '⏱ Appearance' },
-  { key: 'frequency', labelKey: 'vm_sort_frequency', fallbackLabel: '📊 Frequency' },
-  { key: 'word', labelKey: 'vm_sort_word', fallbackLabel: '🔤 A-Z' },
-  { key: 'jlpt', labelKey: 'vm_sort_jlpt', fallbackLabel: '🎓 Difficulty' },
+  { key: 'occurrence', labelKey: 'vm_sort_occurrence', fallbackLabel: 'Appearance' },
+  { key: 'frequency', labelKey: 'vm_sort_frequency', fallbackLabel: 'Frequency' },
+  { key: 'word', labelKey: 'vm_sort_word', fallbackLabel: 'A-Z' },
+  { key: 'jlpt', labelKey: 'vm_sort_jlpt', fallbackLabel: 'Difficulty' },
 ];
 
 export async function initVocabModeTab() {
@@ -635,10 +723,13 @@ export async function loadVocabMode() {
 export function filterVocabMode() {
   const searchQuery = document.getElementById('vocabmodeSearch').value.toLowerCase().trim();
   filteredVocabModeWords = vocabModeWords.filter(word => {
+    const wordText = String(word.word || '');
+    const readingText = String(word.reading || '');
+    const altReadingsText = String(word.altReadings || '');
     if (vocabModeJlptFilter !== 'all' && String(word.jlpt) !== vocabModeJlptFilter) return false;
-    if (searchQuery && !word.word.toLowerCase().includes(searchQuery) &&
-        !(word.reading || '').toLowerCase().includes(searchQuery) &&
-        !(word.altReadings || '').toLowerCase().includes(searchQuery)) return false;
+    if (searchQuery && !wordText.toLowerCase().includes(searchQuery) &&
+        !readingText.toLowerCase().includes(searchQuery) &&
+        !altReadingsText.toLowerCase().includes(searchQuery)) return false;
     return true;
   });
   sortVocabMode();
@@ -708,13 +799,19 @@ export async function renderVocabMode() {
   list.innerHTML = '';
 
   filteredVocabModeWords.forEach((word, index) => {
-    const isSaved = savedSet.has(`${word.word}|${word.reading}`);
+    const wordText = String(word.word || '');
+    const readingText = String(word.reading || '');
+    const isSaved = savedSet.has(`${wordText}|${readingText}`);
     const freqBadge = (word.frequency > 1)
       ? `<span class="vm-freq-badge">${word.frequency}×</span>` : '';
-    const jlptTag = word.jlpt
-      ? `<span class="vm-jlpt-tag jlpt-${word.jlpt}">N${word.jlpt}</span>` : '';
+    const jlptLabel = getJlptLabel(word.jlpt);
+    const jlptTag = jlptLabel
+      ? `<span class="vm-jlpt-tag ${getJlptGroupClass(word.jlpt)}">${jlptLabel}</span>` : '';
+    const posText = String(word.pos || '').split(',')[0].trim();
+    const posTag = posText
+      ? `<span class="vm-pos-tag ${getPosGroupClass(posText)}">${escapeHtml(posText)}</span>` : '';
     const snippetHtml = word.snippet
-      ? `<span class="vm-snippet">${escapeHtml(word.snippet)}</span>` : '';
+      ? `<span class="vm-snippet">${escapeHtml(String(word.snippet))}</span>` : '';
 
     const row = document.createElement('div');
     row.className = 'vm-row';
@@ -722,21 +819,22 @@ export async function renderVocabMode() {
     row.innerHTML = `
       <div class="vm-row-left">
         <div class="vm-word-line">
-          <span class="vm-word">${escapeHtml(word.word)}</span>
-          <span class="vm-reading">${escapeHtml(word.reading)}</span>
+          <span class="vm-word">${escapeHtml(wordText)}</span>
+          <span class="vm-reading">${escapeHtml(readingText)}</span>
         </div>
         ${snippetHtml}
       </div>
       <div class="vm-row-right">
         ${freqBadge}
         ${jlptTag}
+        ${posTag}
         <div class="vm-actions">
-          <button class="vm-action-btn save-btn${isSaved ? ' saved' : ''}" title="${escapeHtml(isSaved ? t('vm_saved', undefined, 'Saved') : t('vm_save_word', undefined, 'Save word'))}">${isSaved ? '✓' : '+'}</button>
-          <button class="vm-action-btn play-btn" title="${escapeHtml(t('vm_play_pronunciation', undefined, 'Play pronunciation'))}">
+          <button type="button" class="vm-action-btn save-btn${isSaved ? ' saved' : ''}" title="${escapeHtml(isSaved ? t('vm_saved', undefined, 'Saved') : t('vm_save_word', undefined, 'Save word'))}" aria-label="${escapeHtml(isSaved ? t('vm_saved', undefined, 'Saved') : t('vm_save_word', undefined, 'Save word'))}">${isSaved ? '✓' : '+'}</button>
+          <button type="button" class="vm-action-btn play-btn" title="${escapeHtml(t('vm_play_pronunciation', undefined, 'Play pronunciation'))}" aria-label="${escapeHtml(t('vm_play_pronunciation', undefined, 'Play pronunciation'))}">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
           </button>
-          <button class="vm-action-btn jump-btn" title="${escapeHtml(t('vm_jump_to_word', undefined, 'Jump to word on page'))}">↗</button>
-          <button class="vm-action-btn report-btn" title="${escapeHtml(t('report_button_title', undefined, 'Report Wrong Reading'))}">
+          <button type="button" class="vm-action-btn jump-btn" title="${escapeHtml(t('vm_jump_to_word', undefined, 'Jump to word on page'))}" aria-label="${escapeHtml(t('vm_jump_to_word', undefined, 'Jump to word on page'))}">↗</button>
+          <button type="button" class="vm-action-btn report-btn" title="${escapeHtml(t('report_button_title', undefined, 'Report Wrong Reading'))}" aria-label="${escapeHtml(t('report_button_title', undefined, 'Report Wrong Reading'))}">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>
           </button>
         </div>
@@ -809,7 +907,7 @@ export async function addToVocabularyFromVocabMode(word, btn) {
       word: word.word,
       reading: word.reading,
       surface: word.surface || word.word,
-      surfaceReading: word.reading,
+      surfaceReading: word.surfaceReading || word.reading || '',
       sentence,
       jlpt: word.jlpt,
       pos: word.pos,
@@ -827,7 +925,10 @@ export async function addToVocabularyFromVocabMode(word, btn) {
       return;
     }
 
-    await attachDefinitionToEntry(entry);
+    await attachDefinitionToEntry(entry, {
+      lookupReading: word.lookupReading,
+      readingType: word.lookupReadingType
+    });
     vocabulary.unshift(entry);
     if (vocabulary.length > 1000) vocabulary.length = 1000;
     await chrome.storage.local.set({ vocabulary });

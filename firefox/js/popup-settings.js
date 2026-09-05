@@ -1,16 +1,16 @@
 /*
 Module: popup-settings
-Purpose: Manage settings persistence, content-script bootstrapping, and apply/clear actions from popup.
+Purpose: Manage instrument-styled popup settings, the live furigana preview, content-script bootstrapping, and apply/clear actions.
 
 Inputs:
-- Settings form events, active-tab info, and stored sync settings.
+- Settings form events, active-tab info, stored sync settings, and browser-specific colour controls.
 
 Outputs:
 - Updated settings in storage and apply/clear command messages to content scripts.
 
 Side Effects:
 - Reads/writes `chrome.storage.sync`.
-- Injects content scripts/CSS, updates popup status UI, and sends live appearance updates.
+- Injects content scripts/CSS in dependency order, updates popup status/preview UI, and sends live appearance updates.
 
 Failure Modes:
 - Unsupported tabs reject apply/clear actions.
@@ -58,6 +58,12 @@ export function applyI18nToPopupDom(root = document) {
     if (message) el.setAttribute('title', message);
   });
 
+  root.querySelectorAll('[data-i18n-aria-label]').forEach((el) => {
+    const key = el.getAttribute('data-i18n-aria-label');
+    const message = key ? t(key) : '';
+    if (message) el.setAttribute('aria-label', message);
+  });
+
   root.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
     const key = el.getAttribute('data-i18n-placeholder');
     const message = key ? t(key) : '';
@@ -68,7 +74,9 @@ export function applyI18nToPopupDom(root = document) {
 export function setStatus(message, type) {
   const el = document.getElementById('status');
   el.textContent = message;
-  el.className = `status ${type === 'error' ? 'error' : 'success'}`;
+  const statusType = ['info', 'success', 'error'].includes(type) ? type : 'info';
+  el.className = `status ${statusType}`;
+  el.setAttribute('aria-live', statusType === 'error' ? 'assertive' : 'polite');
   el.style.display = 'block';
 }
 
@@ -149,6 +157,7 @@ export async function ensureContentScript(tabId) {
     'js/content-ui.js',
     'js/content-rate-limit.js',
     'js/content-dom.js',
+    'js/tooltip-async-state.js',
     'js/content-tooltip.js',
     'js/content-main.js',
   ]) {
@@ -196,6 +205,33 @@ export async function initSettingsForm() {
   const rubyColorPalette = document.getElementById('rubyColorPalette');
   const rubyWeightSelect = document.getElementById('rubyWeight');
   const rubySizeValue = document.getElementById('rubySizeValue');
+  const preview = document.getElementById('rubyPreview');
+  const previewReading = document.getElementById('rubyPreviewReading');
+
+  function updateColorSwatchSelection(activeColor) {
+    rubyColorPalette.querySelectorAll('.color-swatch').forEach(swatch => {
+      const selected = swatch.dataset.color === activeColor;
+      swatch.classList.toggle('selected', selected);
+      swatch.setAttribute('aria-pressed', String(selected));
+    });
+  }
+
+  function updateAppearancePreview() {
+    if (!preview) return;
+    const size = parseFloat(rubySizeInput.value) || DEFAULT_SETTINGS.rubySize;
+    const color = rubyColorPalette.querySelector('.color-swatch.selected')?.dataset.color || DEFAULT_SETTINGS.rubyColor;
+    const weight = rubyWeightSelect.value || DEFAULT_SETTINGS.rubyWeight;
+    preview.style.setProperty('--preview-ruby-size', `${size}em`);
+    preview.style.setProperty('--preview-ruby-color', color);
+    preview.style.setProperty('--preview-ruby-weight', weight);
+    if (previewReading) {
+      previewReading.textContent = furiganaTypeSelect.value === 'katakana'
+        ? 'カンジ'
+        : furiganaTypeSelect.value === 'romaji'
+          ? 'kanji'
+          : 'かんじ';
+    }
+  }
 
   // Load stored settings
   const stored = await chrome.storage.sync.get(DEFAULT_SETTINGS);
@@ -211,10 +247,9 @@ export async function initSettingsForm() {
   rubySizeInput.value = String(stored.rubySize ?? DEFAULT_SETTINGS.rubySize);
   rubySizeValue.textContent = `${parseFloat(rubySizeInput.value).toFixed(2)}em`;
   const initialColor = stored.rubyColor || DEFAULT_SETTINGS.rubyColor;
-  rubyColorPalette.querySelectorAll('.color-swatch').forEach(swatch => {
-    swatch.classList.toggle('selected', swatch.dataset.color === initialColor);
-  });
+  updateColorSwatchSelection(initialColor);
   rubyWeightSelect.value = stored.rubyWeight || DEFAULT_SETTINGS.rubyWeight;
+  updateAppearancePreview();
 
   // Auto-save on any change
   const saveSettings = async () => {
@@ -252,7 +287,10 @@ export async function initSettingsForm() {
       chrome.tabs.sendMessage(tab.id, { action: 'updateJLPT', level: jlptSelect.value }).catch(() => {});
     }
   });
-  furiganaTypeSelect.addEventListener('change', saveSettings);
+  furiganaTypeSelect.addEventListener('change', () => {
+    updateAppearancePreview();
+    saveSettings();
+  });
   firstOccurrenceCheckbox.addEventListener('change', saveSettings);
   watchDynamicCheckbox.addEventListener('change', saveSettings);
   removeCustomStylingCheckbox.addEventListener('change', saveSettings);
@@ -261,16 +299,20 @@ export async function initSettingsForm() {
   });
   rubySizeInput.addEventListener('input', () => {
     rubySizeValue.textContent = `${parseFloat(rubySizeInput.value).toFixed(2)}em`;
+    updateAppearancePreview();
     saveSettings();
   });
   rubyColorPalette.querySelectorAll('.color-swatch').forEach(swatch => {
     swatch.addEventListener('click', () => {
-      rubyColorPalette.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
-      swatch.classList.add('selected');
+      updateColorSwatchSelection(swatch.dataset.color);
+      updateAppearancePreview();
       saveSettings();
     });
   });
-  rubyWeightSelect.addEventListener('change', saveSettings);
+  rubyWeightSelect.addEventListener('change', () => {
+    updateAppearancePreview();
+    saveSettings();
+  });
 
   applyBtn.addEventListener('click', async () => {
     await applyFuriganaToPage();
@@ -306,7 +348,12 @@ export async function initSettingsForm() {
       setStatus(t('status_processing', undefined, 'Processing...'), 'info');
       const response = await chrome.tabs.sendMessage(tab.id, { action: 'applyFurigana', settings });
       if (response?.ok) {
-        setStatus(t('status_furigana_applied', undefined, 'Furigana applied'), 'success');
+        setStatus(
+          response.pending
+            ? t('status_waiting_for_content', undefined, 'Waiting for page content...')
+            : t('status_furigana_applied', undefined, 'Furigana applied'),
+          response.pending ? 'info' : 'success'
+        );
       } else {
         throw new Error(response?.error || 'Unknown error');
       }
