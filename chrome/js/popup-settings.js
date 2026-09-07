@@ -234,6 +234,50 @@ export async function initSettingsForm() {
   const rubySizeValue = document.getElementById('rubySizeValue');
   const preview = document.getElementById('rubyPreview');
   const previewReading = document.getElementById('rubyPreviewReading');
+  let rateLimitInterval = null;
+
+  function formatCooldown(ms) {
+    const seconds = Math.max(0, Math.ceil(ms / 1000));
+    if (seconds >= 3600) return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+    if (seconds >= 60) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+    return `${seconds}s`;
+  }
+
+  async function refreshRateLimitState() {
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'getRateLimitState' });
+      const record = response?.state?.furigana;
+      const expiresAt = Number(record?.expiresAt);
+      if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+        applyBtn.disabled = false;
+        if (rateLimitInterval) clearInterval(rateLimitInterval);
+        rateLimitInterval = null;
+        return false;
+      }
+      const render = () => {
+        const remaining = expiresAt - Date.now();
+        if (remaining <= 0) {
+          applyBtn.disabled = false;
+          setStatus(t('rate_limit_ready', undefined, 'Ready to retry.'), 'success');
+          if (rateLimitInterval) clearInterval(rateLimitInterval);
+          rateLimitInterval = null;
+          return;
+        }
+        applyBtn.disabled = true;
+        setStatus(
+          t('rate_limit_wait', [formatCooldown(remaining)], `Furigana paused. Try again in ${formatCooldown(remaining)}.`),
+          'info',
+        );
+      };
+      render();
+      if (rateLimitInterval) clearInterval(rateLimitInterval);
+      rateLimitInterval = setInterval(render, 1000);
+      return true;
+    } catch (_) {
+      applyBtn.disabled = false;
+      return false;
+    }
+  }
 
   function updateAppearancePreview() {
     if (!preview) return;
@@ -268,6 +312,7 @@ export async function initSettingsForm() {
   rubyColorInput.value = stored.rubyColor || DEFAULT_SETTINGS.rubyColor;
   rubyWeightSelect.value = stored.rubyWeight || DEFAULT_SETTINGS.rubyWeight;
   updateAppearancePreview();
+  await refreshRateLimitState();
 
   // Auto-save on any change
   const saveSettings = async () => {
@@ -338,6 +383,8 @@ export async function initSettingsForm() {
   });
 
   async function applyFuriganaToPage() {
+    await refreshRateLimitState();
+    if (applyBtn.disabled) return;
     const settings = {
       jlptLevel: Number(jlptSelect.value || DEFAULT_SETTINGS.jlptLevel),
       furiganaType: furiganaTypeSelect.value || DEFAULT_SETTINGS.furiganaType,
@@ -375,6 +422,31 @@ export async function initSettingsForm() {
           response.pending ? 'info' : 'success'
         );
       } else {
+        const structuredFailure = response?.rateLimitType
+          || response?.errorCode === 'service_unavailable'
+          || response?.status === 429
+          || response?.status === 503;
+        if (structuredFailure) {
+          const hasSharedCooldown = await refreshRateLimitState();
+          if (hasSharedCooldown) return;
+
+          const retryAt = Number(response?.retryAt);
+          if (Number.isFinite(retryAt) && retryAt > Date.now()) {
+            applyBtn.disabled = true;
+            setStatus(
+              t('rate_limit_wait', [formatCooldown(retryAt - Date.now())], `Furigana paused. Try again in ${formatCooldown(retryAt - Date.now())}.`),
+              'info',
+            );
+            return;
+          }
+          if (response?.errorCode === 'service_unavailable') {
+            setStatus(
+              t('rate_limit_service_unavailable', undefined, 'Service temporarily unavailable. Please try again.'),
+              'error',
+            );
+            return;
+          }
+        }
         throw new Error(response?.error || 'Unknown error');
       }
     } catch (err) {

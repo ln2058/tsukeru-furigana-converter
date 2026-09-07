@@ -1,64 +1,44 @@
 # Security Policy
 
----
+## Supported versions
 
-## Supported Versions
+Security fixes are made for the latest published Chrome, Edge, and Firefox releases. Update to the latest store version before reporting a problem found in an older release.
 
-| Version | Supported |
-| ------- | --------- |
-| 3.0.1   | ✅        |
+## Reporting a vulnerability
 
----
+Please use [GitHub's private vulnerability reporting](https://github.com/ln2058/tsukeru-furigana-converter/security/advisories/new). Do not include exploit details or sensitive data in a public issue.
 
-## Permissions & Host Access
+Include the affected browser and extension version, clear reproduction steps, the expected impact, and a minimal proof of concept when possible.
 
-The Chrome, Edge, and Firefox builds explicitly avoid `<all_urls>` permissions. The extension operates under `activeTab` only — no DOM scanning occurs until the user explicitly triggers it via the popup or keyboard shortcut.
+## Security model
 
-All outbound network traffic is restricted by `host_permissions` to `https://www.ezfurigana.com/*`. No other domains are contacted at any point.
+Tsukeru runs content scripts on webpages so it can add furigana after the user activates it. Webpage content, messages, and API responses are treated as untrusted. The extension and its public API can be inspected, so backend validation and rate limits remain authoritative.
 
----
+The extension uses `activeTab`, `scripting`, `storage`, and `contextMenus`. Its network host permissions cover EZFurigana endpoints. Backend requests use HTTPS, and audio proxy requests are restricted by protocol, host, and port checks.
 
-## XSS Mitigation
+## Content and response handling
 
-### DOM Traversal
+Before a furigana request, the extension extracts text from eligible page nodes and divides it into bounded batches. It does not send the page's HTML structure. Backend markup passes through allowlist sanitizers before insertion, and generated dictionary content escapes untrusted text.
 
-The extension uses a native `DOMParser` to read and traverse the page. No regex-based HTML parsing is used at any stage.
+Other relevant controls include:
 
-### Payload Handling
+- Dictionary actions require trusted browser input rather than page-generated click events.
+- Audio and ZIP responses have MIME and size checks before they are loaded into memory.
+- CSV export neutralizes values that spreadsheet programs could interpret as formulas.
+- Network requests use timeouts, and temporary caches have size or expiry limits.
+- The extension stores and observes shared backend cooldowns instead of retrying blocked requests from every tab.
 
-Before sending text to the API, the DOM is dismantled into raw text chunks paired with positional markers. No HTML structure is forwarded to the server.
+The backend enforces request and character quotas. When it returns a rate limit or temporary availability response, the extension preserves the retry deadline and shows it in the page notification and extension popup. Exact limits are controlled by the service and may change without an extension release.
 
-### Sanitization on Injection
+## Data handling
 
-API responses are passed through a strict allowlist sanitizer before being written back to the page. The sanitizer uses a `<template>` element and a recursive walker that permits only:
+Settings use browser sync storage. Vocabulary, API caches, and cooldown state use local browser storage. Browser vendors may synchronize settings according to the user's browser account configuration.
 
-- `<ruby>`, `<rt>` — furigana annotations
-- `<mark>` — search highlights
-- `<span data-jlpt>` — JLPT level indicators
+Tsukeru sends only the data needed for the requested feature:
 
-All other elements, attributes, event handlers, and inline scripts are stripped. This covers XSS, DOM clobbering, and attribute injection from malformed or malicious API responses.
+- Japanese text for furigana processing.
+- Words and readings for dictionary, example, kanji, and audio requests.
+- Vocabulary terms for requested Anki audio exports.
+- User-visible reading-report fields when a report is submitted.
 
----
-
-## Rate Limiting
-
-The service worker enforces a token-bucket rate limit before dispatching API requests. The ceiling is **50,000 characters per 10-second window**. Requests that would exceed this are dropped, preventing accidental API flooding on unusually large DOM structures.
-
----
-
-## Data & Storage
-
-**No passive collection.** The extension performs no background scanning. Page content is only read from the active tab when explicitly triggered by the user.
-
-**IndexedDB caching.** API results are cached locally via IndexedDB to reduce repeat network requests. Cached dictionary entries expire after a fixed TTL.
-
-**Local storage only.** All user settings are written to `chrome.storage` (Sync or Local). No data leaves the browser except for the Japanese text sent to the EZFurigana API during an explicit apply action.
-
-**Zero telemetry.** The codebase contains no analytics, telemetry, or third-party tracking of any kind.
-
----
-
-## Reporting a Vulnerability
-
-If you find a security issue, open a private GitHub issue or contact the maintainer directly. Please do not disclose vulnerabilities publicly before they have been addressed.
-
+The extension does not include analytics, advertising, or third-party tracking scripts. See the [EZFurigana privacy policy](https://www.ezfurigana.com/privacy) for server-side data handling.

@@ -50,7 +50,7 @@ function createRuntimeResponseError(response, fallbackMessage) {
       ? response.error
       : fallbackMessage
   );
-  for (const field of ['status', 'httpStatus', 'rateLimitType', 'retryAfter']) {
+  for (const field of ['status', 'httpStatus', 'errorCode', 'operation', 'rateLimitType', 'retryAfter', 'retryAt']) {
     if (response?.[field] !== undefined && response?.[field] !== null) {
       error[field] = response[field];
     }
@@ -103,6 +103,8 @@ function handleDictionaryClick(event) {
     document.removeEventListener('click', handleDictionaryClick, true);
     return;
   }
+
+  if (!event.isTrusted) return;
 
   if (!isFuriganaActive) {
     hideDefinitionTooltip();
@@ -179,6 +181,9 @@ async function showDefinitionTooltip(ruby, wordInfo) {
   } catch (err) {
     if (tooltip._lookupVersion !== myToken || tooltip.dataset.word !== wordInfo.word) return;
     console.error('Tsukeru: dictionary lookup failed', err);
+    if (err?.rateLimitType || err?.errorCode === 'service_unavailable') {
+      showRateLimitToast(err.errorCode === 'service_unavailable' ? 'service_unavailable' : (err.rateLimitType || 'service_unavailable'), err.retryAfter, err.retryAt, err.operation || 'dictionary');
+    }
     tooltip.innerHTML = getTooltipErrorHtml(
       wordInfo,
       t('content_error_loading_definition', undefined, 'Error loading definition')
@@ -494,15 +499,103 @@ function generateAltReadingsDropdown(alternativeReadings, uniqueId) {
 
 // ── Definition rendering ──────────────────────────────────────────────────────
 
+const JMDICT_SOURCE_URL = 'https://www.edrdg.org/jmdict/j_jmdict.html';
+
+function getTextValues(value) {
+  if (typeof value === 'string') return value.trim() ? [value.trim()] : [];
+  if (Array.isArray(value)) return value.filter(item => typeof item === 'string' && item.trim()).map(item => item.trim());
+  return [];
+}
+
+function getSafeDictionarySourceUrl(source, value) {
+  if (source === 'jmdict') return JMDICT_SOURCE_URL;
+  if (source !== 'je_dict' || typeof value !== 'string' || !value) return '';
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.hostname !== 'www.tkgje.jp' || url.username || url.password || url.search || url.hash) return '';
+    return /^\/entries\/[^/]+\/[^/]+\.html$/.test(url.pathname) ? url.href : '';
+  } catch (_) {
+    return '';
+  }
+}
+
+function normalizeTkgjeExamples(examples, senses) {
+  if (!Array.isArray(examples)) return;
+  const valid = examples.map((example) => {
+    if (!example || typeof example !== 'object') return null;
+    const japanese = typeof example.japanese_ruby_html === 'string' && example.japanese_ruby_html
+      ? { html: example.japanese_ruby_html }
+      : typeof example.japanese_furigana_html === 'string' && example.japanese_furigana_html
+        ? { html: example.japanese_furigana_html }
+        : typeof example.japanese === 'string' && example.japanese.trim()
+          ? { text: example.japanese }
+          : null;
+    const english = typeof example.english === 'string' ? example.english.trim() : '';
+    if (!japanese || !english) return null;
+    const senseNumbers = Array.isArray(example.sense_numbers)
+      ? example.sense_numbers.map(Number).filter(Number.isFinite)
+      : [];
+    return { japanese, english, senseNumbers };
+  }).filter(Boolean);
+  const unnumbered = valid.filter(example => example.senseNumbers.length === 0);
+  let unnumberedIndex = 0;
+
+  senses.forEach((sense) => {
+    const numbered = Number.isFinite(sense.senseNumber)
+      ? valid.find(example => example.senseNumbers.includes(sense.senseNumber))
+      : null;
+    sense.example = numbered || unnumbered[unnumberedIndex++] || null;
+  });
+}
+
 function normalizeDefinitionData(data) {
-  if (!data || !Array.isArray(data.entries) || data.entries.length === 0) {
-    return null;
+  const richEntry = data?.source === 'je_dict' && data.entry && typeof data.entry === 'object'
+    ? data.entry
+    : null;
+  if (richEntry) {
+    const senses = [];
+    const byGloss = new Map();
+    const addSense = (gloss, explanation = '', senseNumber = null) => {
+      const cleanedGloss = String(gloss || '').trim();
+      if (!cleanedGloss) return;
+      const key = cleanedGloss.toLocaleLowerCase();
+      const existing = byGloss.get(key);
+      if (existing) {
+        if (!existing.explanation && explanation) existing.explanation = explanation;
+        if (!Number.isFinite(existing.senseNumber) && Number.isFinite(senseNumber)) existing.senseNumber = senseNumber;
+        return;
+      }
+      const sense = { glosses: [cleanedGloss], pos: [], explanation: String(explanation || '').trim(), senseNumber };
+      byGloss.set(key, sense);
+      senses.push(sense);
+    };
+    getTextValues(richEntry.gloss).forEach(gloss => addSense(gloss));
+    if (Array.isArray(richEntry.definitions)) {
+      richEntry.definitions.forEach((definition) => {
+        if (!definition || typeof definition !== 'object') return;
+        const explanation = getTextValues(definition.explanation)[0] || '';
+        const senseNumber = Number(definition.sense_number);
+        getTextValues(definition.gloss).forEach(gloss => addSense(gloss, explanation, Number.isFinite(senseNumber) ? senseNumber : null));
+      });
+    }
+    const trimmed = senses.slice(0, 6);
+    if (trimmed.length > 0) {
+      normalizeTkgjeExamples(richEntry.examples, trimmed);
+      return {
+        source: 'je_dict',
+        senses: trimmed,
+        reading: String(richEntry.reading || '').trim(),
+        headerPos: String(richEntry.part_of_speech || (Array.isArray(richEntry.pos_tags) ? richEntry.pos_tags.join(', ') : '')).trim(),
+        sourceUrl: getSafeDictionarySourceUrl('je_dict', richEntry.source_url),
+        hasAttachedExamples: trimmed.some(sense => Boolean(sense.example))
+      };
+    }
   }
 
+  if (!data || !Array.isArray(data.entries) || data.entries.length === 0) return null;
   const entry = data.entries[0];
   const senses = Array.isArray(entry.senses) ? entry.senses : [];
   const trimmed = [];
-
   for (const sense of senses) {
     const glosses = Array.isArray(sense.glosses) ? sense.glosses.filter(Boolean) : [];
     if (!glosses.length) continue;
@@ -512,11 +605,32 @@ function normalizeDefinitionData(data) {
     });
     if (trimmed.length >= 6) break;
   }
-
   return {
+    source: 'jmdict',
     senses: trimmed,
-    reading: Array.isArray(entry.kana) && entry.kana.length ? entry.kana.join('、') : ''
+    reading: Array.isArray(entry.kana) && entry.kana.length ? entry.kana.join('、') : '',
+    sourceUrl: getSafeDictionarySourceUrl('jmdict')
   };
+}
+
+function appendAttachedExamples(tooltip, senses) {
+  if (!tooltip || !Array.isArray(senses) || typeof document === 'undefined') return;
+  tooltip.querySelectorAll('.tsukeru-sense-attached-example').forEach((container) => {
+    const index = Number(container.dataset.senseIndex);
+    const example = senses[index]?.example;
+    if (!example) return;
+    const item = document.createElement('div');
+    item.className = 'tsukeru-example-item';
+    const japanese = document.createElement('div');
+    japanese.className = 'tsukeru-example-jp';
+    if (example.japanese.html) japanese.appendChild(sanitizeHtmlFragment(example.japanese.html));
+    else japanese.textContent = example.japanese.text || '';
+    const english = document.createElement('div');
+    english.className = 'tsukeru-example-en';
+    english.textContent = `- ${example.english}`;
+    item.append(japanese, english);
+    container.replaceChildren(item);
+  });
 }
 
 function renderDefinitionTooltip(tooltip, wordInfo, data) {
@@ -539,9 +653,10 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
     return;
   }
 
+  const headerWordInfo = normalized.headerPos ? { ...wordInfo, pos: normalized.headerPos } : wordInfo;
   const readingText = String(wordInfo.reading || normalized.reading || '');
   const displayWord = wordInfo.word;
-  let html = renderTooltipHeaderHtml(wordInfo, `
+  let html = renderTooltipHeaderHtml(headerWordInfo, `
     <button type="button" class="tooltip-save tsukeru-tooltip-save" aria-label="${escapeHtml(t('content_save_word', undefined, 'Save word'))}" title="${escapeHtml(t('content_save_word', undefined, 'Save word'))}">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
     </button>
@@ -577,7 +692,7 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
 
   // DICTIONARY_MAX_SENSES is a const from content-dom.js
   const sensesToShow = normalized.senses.slice(0, DICTIONARY_MAX_SENSES);
-  sensesToShow.forEach((sense) => {
+  sensesToShow.forEach((sense, index) => {
     const gloss = (sense.glosses || []).join('; ');
     if (!gloss) return;
 
@@ -586,6 +701,12 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
       html += `<div class="tooltip-pos tsukeru-sense-pos">${escapeHtml(sense.pos.slice(0, 2).join(', '))}</div>`;
     }
     html += `<div class="tooltip-gloss tooltip-definition-gloss tsukeru-sense-gloss">${escapeHtml(gloss)}</div>`;
+    if (sense.explanation) {
+      html += `<div class="tsukeru-sense-explanation">${escapeHtml(sense.explanation)}</div>`;
+    }
+    if (sense.example) {
+      html += `<div class="tsukeru-sense-attached-example" data-sense-index="${index}"></div>`;
+    }
     html += `</div>`;
   });
 
@@ -596,10 +717,18 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
 
   html += generateAltReadingsDropdown(wordInfo.altReadings, Date.now());
 
-  html += getAsyncSectionHtml('example', 'tsukeru-example-container', t('content_example_section', undefined, 'Example sentence'));
+  if (normalized.sourceUrl) {
+    const sourceName = normalized.source === 'je_dict' ? 'TKGJE' : 'JMdict';
+    html += `<div class="tsukeru-dictionary-source"><span>${escapeHtml(t('utility_source', undefined, 'Source'))}: </span><a href="${escapeHtml(normalized.sourceUrl)}" target="_blank" rel="noopener noreferrer">${sourceName}</a></div>`;
+  }
+
+  if (!normalized.hasAttachedExamples) {
+    html += getAsyncSectionHtml('example', 'tsukeru-example-container', t('content_example_section', undefined, 'Example sentence'));
+  }
   html += getAsyncSectionHtml('kanji', 'tsukeru-kanji-container', t('content_kanji_section', undefined, 'Kanji details'));
 
   tooltip.innerHTML = html;
+  appendAttachedExamples(tooltip, sensesToShow);
   tooltip.classList.add('show');
   addTooltipInteractionHandlers();
   requestAnimationFrame(() => positionTooltip(tooltip._activeRuby, tooltip));
@@ -811,6 +940,9 @@ async function loadExampleSentence(word) {
     onError: (error) => {
       if (!isCurrentTooltipLookup(tooltip, requestVersion, word)) return;
       console.warn('Tsukeru: example enrichment failed', error);
+      if (error?.rateLimitType || error?.errorCode === 'service_unavailable') {
+        showRateLimitToast(error.errorCode === 'service_unavailable' ? 'service_unavailable' : (error.rateLimitType || 'service_unavailable'), error.retryAfter, error.retryAt, 'examples');
+      }
       renderAsyncUnavailable(tooltip, container, true);
     }
   });
@@ -852,6 +984,9 @@ async function loadKanjiBreakdown(word) {
     onError: (error) => {
       if (!isCurrentTooltipLookup(tooltip, requestVersion, word)) return;
       console.warn('Tsukeru: kanji enrichment failed', error);
+      if (error?.rateLimitType || error?.errorCode === 'service_unavailable') {
+        showRateLimitToast(error.errorCode === 'service_unavailable' ? 'service_unavailable' : (error.rateLimitType || 'service_unavailable'), error.retryAfter, error.retryAt, 'dictionary');
+      }
       renderAsyncUnavailable(tooltip, container, true);
     }
   });
@@ -988,6 +1123,8 @@ async function handleRubyDoubleClick(event) {
     document.removeEventListener('dblclick', handleRubyDoubleClick, true);
     return;
   }
+
+  if (!event.isTrusted) return;
 
   if (event.target.closest('#tsukeru-word-tooltip')) return;
 

@@ -36,6 +36,7 @@ function loadRenderer(tooltipUrl) {
   const sandbox = {
     chrome: { i18n: { getMessage() { return ''; } } },
     console,
+    URL,
     escapeHtml,
     requestAnimationFrame() {},
     document: {
@@ -113,5 +114,81 @@ for (const tooltipUrl of tooltipFiles) {
 
     const unknownPosHtml = sandbox.getTooltipLoadingHtml({ word: '空', reading: 'そら', pos: 'Interjection' });
     assert.match(unknownPosHtml, /tooltip-pos-other/);
+  });
+
+  test(`${browserName} renders rich TKGJE definitions with safe source metadata`, () => {
+    const { sandbox, tooltip } = loadRenderer(tooltipUrl);
+    const rich = {
+      source: 'je_dict',
+      entry: {
+        headword: '大人',
+        reading: 'おとな',
+        part_of_speech: 'noun',
+        gloss: 'adult',
+        definitions: [
+          { sense_number: 1, gloss: 'adult', explanation: 'A grown person.' },
+          { sense_number: 2, gloss: 'grown-up' },
+        ],
+        examples: [{ sense_numbers: [1], japanese_ruby_html: '<ruby>大人<rt>おとな</rt></ruby>', english: 'Adult.' }],
+        source_url: 'https://www.tkgje.jp/entries/02500/02856_otona.html',
+      },
+    };
+    const normalized = sandbox.normalizeDefinitionData(rich);
+    assert.equal(normalized.source, 'je_dict');
+    assert.equal(normalized.reading, 'おとな');
+    assert.equal(normalized.headerPos, 'noun');
+    assert.deepEqual(JSON.parse(JSON.stringify(normalized.senses.map(sense => sense.glosses[0]))), ['adult', 'grown-up']);
+    assert.equal(normalized.senses[0].explanation, 'A grown person.');
+    assert.equal(normalized.sourceUrl, rich.entry.source_url);
+
+    sandbox.renderDefinitionTooltip(tooltip, { word: '大人', reading: '', jlpt: '3', pos: '' }, rich);
+    assert.match(tooltip.innerHTML, /A grown person\./);
+    assert.match(tooltip.innerHTML, /tooltip-pos-noun/);
+    assert.match(tooltip.innerHTML, /TKGJE/);
+    assert.doesNotMatch(tooltip.innerHTML, /tsukeru-example-container/);
+  });
+
+  test(`${browserName} rejects unsafe TKGJE source URLs and keeps attached example selection bounded`, () => {
+    const { sandbox } = loadRenderer(tooltipUrl);
+    for (const url of [
+      'http://www.tkgje.jp/entries/02500/02856_otona.html',
+      'https://evil.example/entries/02500/02856_otona.html',
+      'https://www.tkgje.jp/entries/02500/02856_otona.html?next=https://evil.example',
+      'https://user:pass@www.tkgje.jp/entries/02500/02856_otona.html',
+      'https://www.tkgje.jp/index.html',
+    ]) {
+      assert.equal(sandbox.getSafeDictionarySourceUrl('je_dict', url), '');
+    }
+    const normalized = sandbox.normalizeDefinitionData({
+      source: 'je_dict',
+      entry: {
+        reading: 'おとな',
+        gloss: 'adult',
+        definitions: [{ sense_number: 1, gloss: 'adult' }, { sense_number: 2, gloss: 'grown-up' }],
+        examples: [
+          { sense_numbers: [1], japanese_ruby_html: '<ruby>大人<rt>おとな</rt></ruby>', english: 'Adult.' },
+          { sense_numbers: [1], japanese_ruby_html: '<ruby>別<rt>べつ</rt></ruby>', english: 'Duplicate sense.' },
+          { japanese: '大人です', english: 'No sense number.' },
+        ],
+      },
+    });
+    assert.equal(normalized.senses.filter(sense => sense.example).length, 2);
+    assert.equal(normalized.senses[0].example.english, 'Adult.');
+    assert.equal(normalized.senses[1].example.english, 'No sense number.');
+  });
+
+  test(`${browserName} falls back to the additive entries projection when the rich entry is empty`, () => {
+    const { sandbox, tooltip } = loadRenderer(tooltipUrl);
+    const data = {
+      source: 'je_dict',
+      entry: { headword: '猫', reading: 'ねこ', definitions: [] },
+      entries: [{ kana: ['ねこ'], senses: [{ glosses: ['cat'], pos: ['noun'] }] }],
+    };
+    const normalized = sandbox.normalizeDefinitionData(data);
+    assert.equal(normalized.source, 'jmdict');
+    assert.deepEqual(JSON.parse(JSON.stringify(normalized.senses[0].glosses)), ['cat']);
+    sandbox.renderDefinitionTooltip(tooltip, { word: '猫', reading: 'ねこ', jlpt: '', pos: '' }, data);
+    assert.match(tooltip.innerHTML, />cat</);
+    assert.doesNotMatch(tooltip.innerHTML, />TKGJE</);
   });
 }

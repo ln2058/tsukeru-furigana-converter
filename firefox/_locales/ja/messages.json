@@ -437,6 +437,18 @@
   "status_failed_with_reason": {
     "message": "失敗: $1"
   },
+  "rate_limit_wait": {
+    "message": "ふりがな処理を一時停止しています。$1後に再試行できます。"
+  },
+  "rate_limit_ready": {
+    "message": "再試行できます。"
+  },
+  "rate_limit_countdown_suffix": {
+    "message": "$1後に再試行できます。"
+  },
+  "rate_limit_service_unavailable": {
+    "message": "サービスを一時的に利用できません。しばらくしてから再試行してください。"
+  },
   "contextMenuApplyFurigana": {
     "message": "ページにふりがなを適用"
   },
@@ -453,11 +465,11 @@
     "message": "予期しないエラーが発生しました。もう一度お試しください。"
   },
   "rate_limit_toast_request_count": {
-    "message": "処理を一時停止しています。$1秒後に再試行します。",
+    "message": "処理を一時停止しています。$1後に再試行します。",
     "description": "リクエスト数のレート制限時に表示するトースト"
   },
   "rate_limit_toast_char_rate": {
-    "message": "処理を一時停止しています。$1秒後に再試行します。",
+    "message": "処理を一時停止しています。$1後に再試行します。",
     "description": "文字数バースト制限時に表示するトースト"
   },
   "rate_limit_toast_hourly": {

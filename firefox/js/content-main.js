@@ -67,6 +67,19 @@ function invalidateContentLifecycle() {
   activeApplyOperation = null;
 }
 
+function serializeApplyFailure(error) {
+  return {
+    ok: false,
+    error: error?.message || 'Apply failed',
+    ...(error?.status != null && { status: error.status }),
+    ...(error?.errorCode && { errorCode: error.errorCode }),
+    ...(error?.operation && { operation: error.operation }),
+    ...(error?.rateLimitType && { rateLimitType: error.rateLimitType }),
+    ...(error?.retryAfter != null && { retryAfter: error.retryAfter }),
+    ...(error?.retryAt != null && { retryAt: error.retryAt }),
+  };
+}
+
 function isCurrentApplyOperation(operation) {
   return Boolean(
     operation &&
@@ -264,12 +277,13 @@ async function applyFurigana(settings) {
   } catch (error) {
     if (!isValid() || error.cancelled) return;
     console.error('Error applying furigana:', error);
-    if (error.rateLimitType) {
-      // Toast already guaranteed visible by sendFuriganaWithRateLimitRetry.
+    if (error.rateLimitType || error.errorCode === 'service_unavailable') {
+      // Rate-limit and service-availability toasts are guaranteed by the retry helper.
     } else {
       showToast(getUserFacingApplyError(error), { type: 'error', duration: 8000 });
       setHighlightMode('off');
     }
+    throw error;
   } finally {
     // Toasts manage their own lifetime; do not dismiss them here.
     if (activeApplyOperation === operation) activeApplyOperation = null;
@@ -390,7 +404,28 @@ if (!window.__TSUKERU_LOADED__) {
     if (request.action === 'applyFurigana') {
       applyFurigana(request.settings)
         .then((result) => sendResponse({ ok: true, pending: Boolean(result?.pending) }))
-        .catch((error) => sendResponse({ ok: false, error: error.message }));
+        .catch(async (error) => {
+          const failure = serializeApplyFailure(error);
+          if (failure.rateLimitType || failure.errorCode === 'service_unavailable') {
+            try {
+              const stateResponse = await chrome.runtime.sendMessage({ action: 'getRateLimitState' });
+              const cooldown = stateResponse?.state?.furigana;
+              if (Number(cooldown?.expiresAt) > Date.now()) {
+                failure.status = cooldown.status ?? failure.status;
+                failure.errorCode = cooldown.status === 503
+                  ? 'service_unavailable'
+                  : (failure.errorCode || 'rate_limited');
+                failure.operation = cooldown.operation || failure.operation || 'furigana';
+                failure.rateLimitType = cooldown.rateLimitType || failure.rateLimitType;
+                failure.retryAt = Number(cooldown.expiresAt);
+                failure.retryAfter = Math.max(1, Math.ceil((failure.retryAt - Date.now()) / 1000));
+              }
+            } catch (_) {
+              // Preserve the original structured failure when state refresh is unavailable.
+            }
+          }
+          sendResponse(failure);
+        });
       return true;
     }
 

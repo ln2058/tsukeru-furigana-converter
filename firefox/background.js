@@ -27,7 +27,7 @@ Security Notes:
 import {
   handleFuriganaRequest, lookupDefinition, fetchExampleSentence, fetchKanjiBreakdown,
   handlePlayAudio, handlePlayAudioDirect, handleFetchProxyAudio, handleExportAnkiAudio,
-  API_BASE_URL, DEFAULT_SETTINGS,
+  API_BASE_URL, DEFAULT_SETTINGS, getRateLimitState,
 } from './js/bg-api.js';
 import { hasSupportedLocalFileExtension } from './js/utils.js';
 
@@ -37,6 +37,18 @@ const i18nApi = runtimeApi?.i18n;
 function t(key, fallback) {
   const message = i18nApi?.getMessage?.(key);
   return message || fallback;
+}
+
+function serializeApiError(error) {
+  return {
+    error: error?.message || 'Request failed',
+    ...(error?.status && { status: error.status }),
+    ...(error?.errorCode && { errorCode: error.errorCode }),
+    ...(error?.operation && { operation: error.operation }),
+    ...(error?.rateLimitType && { rateLimitType: error.rateLimitType }),
+    ...(error?.retryAfter != null && { retryAfter: error.retryAfter }),
+    ...(error?.retryAt != null && { retryAt: error.retryAt }),
+  };
 }
 
 function isSupportedTabUrl(url = '') {
@@ -108,17 +120,19 @@ if (chrome.contextMenus) {
 
 // Process furigana requests coming from the content script so we can bypass site CORS
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'getRateLimitState') {
+    getRateLimitState()
+      .then((state) => sendResponse({ success: true, state }))
+      .catch((error) => sendResponse({ success: false, error: error?.message || 'Could not read rate-limit state' }));
+    return true;
+  }
+
   if (message.action === 'processFurigana') {
     handleFuriganaRequest(message.payload)
       .then((result) => sendResponse({ success: true, ...result }))
       .catch((error) => {
         console.error('Furigana request failed', error);
-        sendResponse({
-          success: false,
-          error: error.message,
-          ...(error.rateLimitType && { rateLimitType: error.rateLimitType }),
-          ...(error.retryAfter != null && { retryAfter: error.retryAfter }),
-        });
+        sendResponse({ success: false, ...serializeApiError(error) });
       });
     return true; // Keep the message channel open for async response
   }
@@ -128,13 +142,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then((data) => sendResponse({ success: true, data }))
       .catch((error) => {
         console.error('Definition lookup failed', error);
-        sendResponse({
-          success: false,
-          error: error.message,
-          ...(error.status && { status: error.status }),
-          ...(error.rateLimitType && { rateLimitType: error.rateLimitType }),
-          ...(error.retryAfter != null && { retryAfter: error.retryAfter }),
-        });
+        sendResponse({ success: false, ...serializeApiError(error) });
       });
     return true;
   }
@@ -144,13 +152,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then((data) => sendResponse({ success: true, data }))
       .catch((error) => {
         console.error('Example sentence fetch failed', error);
-        sendResponse({
-          success: false,
-          error: error.message,
-          ...(error.status && { status: error.status }),
-          ...(error.rateLimitType && { rateLimitType: error.rateLimitType }),
-          ...(error.retryAfter != null && { retryAfter: error.retryAfter }),
-        });
+        sendResponse({ success: false, ...serializeApiError(error) });
       });
     return true;
   }
@@ -160,13 +162,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then((data) => sendResponse({ success: true, data }))
       .catch((error) => {
         console.error('Kanji breakdown fetch failed', error);
-        sendResponse({
-          success: false,
-          error: error.message,
-          ...(error.status && { status: error.status }),
-          ...(error.rateLimitType && { rateLimitType: error.rateLimitType }),
-          ...(error.retryAfter != null && { retryAfter: error.retryAfter }),
-        });
+        sendResponse({ success: false, ...serializeApiError(error) });
       });
     return true;
   }

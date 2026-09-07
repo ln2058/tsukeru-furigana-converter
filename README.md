@@ -1,166 +1,101 @@
 <div align="center">
-  <img src="chrome/icons/icon128.png" alt="Tsukeru Logo" width="128">
-  <h1>Tsukeru – Furigana Converter</h1>
-  <p>Chrome/Edge + Firefox Extension</p>
-  <a href="https://ko-fi.com/riamua" target="_blank">
-    <img src="https://storage.ko-fi.com/cdn/kofi_button_stroke.png" alt="Support on Ko-fi" style="height: 44px !important;width: 158px !important;">
-  </a>
+  <img src="chrome/icons/icon128.png" alt="Tsukeru icon" width="128">
+  <h1>Tsukeru</h1>
+  <p>Furigana and dictionary tools for Japanese webpages.</p>
 </div>
 
-Tsukeru is a furigana extension for Chrome and Firefox. It injects hiragana readings above kanji on any Japanese webpage, with offline dictionary tooltips, vocabulary saving, and JLPT-level filtering. Powered by the open-source [EZFurigana](https://www.ezfurigana.com) API.
+Tsukeru is a browser extension for Chrome, Microsoft Edge, and Firefox. It adds readings above kanji while preserving the layout of the page, and includes dictionary lookup, page-word navigation, vocabulary saving, and export tools.
 
-![Wikipedia Example](screenshots/wikipedia.png)
-
----
+![Furigana on a Japanese Wikipedia article](screenshots/wikipedia.png)
 
 ## Features
 
-### 🎌 YouTube & Dynamic Site Support
+- Add furigana to Japanese text on ordinary and dynamic webpages.
+- Choose a minimum JLPT level and adjust reading size, colour, weight, and display style.
+- Look up annotated words for English definitions, parts of speech, JLPT level, example sentences, kanji details, and audio. English entries prefer TKGJE data and fall back to JMdict.
+- Browse the words processed on the current page and jump back to them.
+- Save vocabulary locally, export it as CSV, or download an Anki-ready ZIP with audio.
+- Handle changing content on sites such as YouTube and X when dynamic-page processing is enabled.
+- Use English or Japanese extension controls.
 
-Custom CSS overrides and Intersection Observers ensure furigana renders correctly on heavily structured sites like YouTube — no title clipping, no layout breaks.
+![Furigana on YouTube subtitles](screenshots/youtubesubtitles.png)
+![Furigana on YouTube comments](screenshots/youtubecomments.png)
+![Furigana on X](screenshots/twitter.png)
 
-![YouTube Subtitles](screenshots/youtubesubtitles.png)
-![YouTube Comments](screenshots/youtubecomments.png)
+## Using Tsukeru
 
-### 🐦 Social Media
+Open the extension and select **Apply Furigana**. You can also use the context menu or the keyboard shortcut:
 
-Read Japanese tweets directly in your feed.
+- Chrome and Edge: `Ctrl+Shift+Z` (`Command+Shift+Z` on macOS)
+- Firefox: `Ctrl+Shift+F` (`Command+Shift+F` on macOS)
 
-![Twitter Example](screenshots/twitter.png)
+On shorter pages, Tsukeru can process the available Japanese text at once. On long pages, it starts with visible and nearby sections, then processes more as you scroll. This keeps the page responsive and avoids sending unseen content in the background. The Page Words list grows as more sections are processed.
 
-### 🔤 Offline Dictionary Tooltips & JLPT Filtering
+The extension sends text in bounded batches to the [EZFurigana](https://www.ezfurigana.com) service. Returned markup is sanitized before it is added to the page. Results are cached for a limited time to avoid repeated requests.
 
-Click any word for instant definitions, kanji breakdowns, and example sentences. In Settings, filter out N5/N4 kana readings to reduce visual clutter on pages you're already comfortable with.
+## Local HTML files
 
-### 💾 Vocabulary Builder & Anki Export
+Tsukeru can process saved HTML files opened with `file://`.
 
-Save words directly from the tooltip into a built-in vocabulary list. Export to a `.zip` containing CSVs and native TTS audio — formatted for one-click Anki import.
+For Chrome and Edge, open the extension's details page and enable **Allow access to file URLs**. Firefox does not require a separate file-access toggle. Local filesystem paths are not sent to the service or stored with saved vocabulary.
 
----
+## Privacy and permissions
 
-## How It Works
+Tsukeru contains no analytics or advertising code.
 
-Clicking "Apply Furigana" extracts Japanese text from the active tab. On short pages, processing may finish eagerly. On long ordinary pages, Tsukeru sends only the visible paragraphs and a generous area above and below the viewport first; additional blocks are processed as you scroll them into that buffer. The text is sent to the EZFurigana backend, which returns ruby-annotated HTML. The extension sanitizes and injects the annotations back into the page.
+Settings are kept in browser sync storage. Saved vocabulary, temporary API caches, and service cooldowns are kept in local browser storage. The extension sends data to EZFurigana only when a feature requires it:
 
-Page words reflects the portions processed so far and grows as later sections are annotated. Opening or refreshing Page words does not trigger full-page annotation, and unseen long-page content is not processed in the background.
+- Japanese text when you apply furigana.
+- A word and its reading for dictionary, example, kanji, or audio requests.
+- Vocabulary terms when you request an Anki audio export.
+- The fields shown in the reading-report form when you submit a report.
 
-You can also toggle furigana on/off with a keyboard shortcut:
-**`Ctrl+Shift+Z`** on Chrome/Edge or **`Ctrl+Shift+F`** on Firefox (Mac: `⌘+Shift+Z` or `⌘+Shift+F`).
+Content scripts are declared for webpages so the extension can respond when you use it. They do not annotate a page or submit its text until you choose Apply, use the shortcut, or select the context-menu action. After Apply, optional dynamic-page processing can continue while the page changes.
 
-Nothing runs before you trigger it. No text is sent unless you explicitly apply furigana, and long-page processing remains limited to the current viewport buffer while you use the page.
+The extension uses these permissions:
 
----
+- `activeTab` and `scripting` to work with the current page.
+- `storage` for settings, vocabulary, caches, and cooldown state.
+- `contextMenus` for Apply and Clear commands.
+- host permissions for the EZFurigana API.
 
-## Local HTML Files
+See the [EZFurigana privacy policy](https://www.ezfurigana.com/privacy) for information about the service.
 
-Chrome, Microsoft Edge, and Firefox can apply furigana to saved local HTML files opened with `file://`.
+## Install from source
 
-On Chrome and Edge, open the extension details page and enable **Allow access to file URLs** for Tsukeru before using that flow. Firefox supports local HTML files without a separate file-URL toggle.
+There is no build step.
 
-For privacy, Tsukeru does not send local filesystem paths to the furigana backend. Saved vocabulary from local files also stores a redacted local-file source label instead of the full `file://` path.
+For Chrome or Edge:
 
----
+1. Open the browser's extensions page.
+2. Enable developer mode.
+3. Choose **Load unpacked** and select the `chrome` folder.
 
-## Architecture
+For Firefox:
 
-Pure Vanilla MV3 with native ES Modules — no bundler, no build step. The source is exactly what runs in the browser, making it straightforward to read and contribute to.
+1. Open `about:debugging#/runtime/this-firefox`.
+2. Choose **Load Temporary Add-on**.
+3. Select `firefox/manifest.json`.
 
----
+The Firefox installation is temporary and is removed when Firefox restarts.
 
-## Privacy
+## Development checks
 
-Tsukeru does not collect, track, or store user data.
+Chrome and Firefox contain separate copies of the extension source. Changes that affect shared behavior should be applied to both.
 
-Text is sent to the EZFurigana backend only when you explicitly apply furigana. It is processed server-side to generate readings and discarded immediately after. No text is logged, retained, or associated with a user.
-
-No personal information, browsing history, or page content is collected.
-
-For more details, see the full [privacy policy](https://www.ezfurigana.com/privacy).
-
----
-
-## Extension Folders
-
-- `chrome`: MV3 build for Chrome and Microsoft Edge
-- `firefox`: MV3 build for Firefox
-
-## Staging / Debug Builds
-
-Generate local staging extension folders that send backend requests to `https://staging.ezfurigana.com` instead of production. Source files remain untouched.
-
-```bash
-node scripts/build-staging-extensions.js
-```
-
-This creates `dist/chrome-staging/` and `dist/firefox-staging/` (gitignored).
-
-To load:
-
-- **Chrome/Edge**: Open `chrome://extensions`, enable Developer mode, click **Load unpacked**, select `dist/chrome-staging/`.
-- **Firefox**: Open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on**, select `dist/firefox-staging/manifest.json`.
-
-Verify requests target staging by checking the Network panel or service worker logs.
-
-### GitHub-Current Staging Build
-
-Generate staging extension folders from the GitHub-current version (`origin/main`), not from your local working tree. This is useful for testing the current published code against the staging backend.
-
-```bash
-$env:TSUKERU_STAGING_BASIC_USER = "liam"
-$env:TSUKERU_STAGING_BASIC_PASS = "your-staging-password"
-node scripts/build-github-staging-extensions.js
-```
-
-This creates `dist/chrome-staging-github/` and `dist/firefox-staging-github/` (gitignored). These come from `origin/main`, not your local files.
-
-To load:
-
-- **Chrome/Edge**: Open `chrome://extensions`, enable Developer mode, click **Load unpacked**, select `dist/chrome-staging-github/`.
-- **Firefox**: Open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on**, select `dist/firefox-staging-github/manifest.json`.
-
-To override the git ref, set `TSUKERU_GITHUB_STAGING_REF` (e.g., `origin/develop`).
-
-## Locale Validation
-
-Run locale validation before every unpacked load/reload:
+Validate locale files with:
 
 ```bash
 node scripts/validate-locales.js
 ```
 
-The validator checks:
-- locale JSON syntax
-- placeholder syntax rules
-- key parity across `chrome`/`firefox` and `en`/`ja`
-- referenced i18n keys from JS/HTML/manifest tokens
+JavaScript files can be checked directly with `node --check`. Load both browser versions manually to verify changes that affect page interaction or visual behaviour.
 
-If it fails, fix missing/extra keys or malformed placeholders before loading the extension.
+## Support
 
----
+Issues and feature requests can be filed in the [GitHub repository](https://github.com/ln2058/tsukeru-furigana-converter/issues). Security problems should be reported privately as described in [SECURITY.md](SECURITY.md).
 
-## Permissions
-
-The extension uses the strictest minimum permissions across all browsers:
-
-- **activeTab & scripting**
-  Injects furigana logic only after explicit user action on the active tab. Long pages are indexed structurally after Apply, but unseen text is not sent or annotated in the background.
-  This also covers saved local HTML files. Chrome/Edge require browser-level file URL access to be enabled; Firefox does not use a separate toggle.
-- **storage**
-  Stores user settings and optional vocabulary data locally.
-- **contextMenus**
-  Provides Apply and Clear actions via right-click.
-- **host_permissions**
-  Network access is hard-restricted to `https://www.ezfurigana.com/*`. No wildcard `<all_urls>` access is requested.
-
----
-
-## Submission Notes
-
-- Manual activation only. The extension does not run automatically on pages.
-- No page content is processed unless the user clicks "Apply Furigana" (or uses the keyboard shortcut).
-- No analytics, trackers, or third-party scripts are included.
-
----
+If you find Tsukeru useful, you can [support its development on Ko-fi](https://ko-fi.com/riamua).
 
 ## License
 

@@ -437,6 +437,18 @@
   "status_failed_with_reason": {
     "message": "Failed: $1"
   },
+  "rate_limit_wait": {
+    "message": "Furigana paused. Try again in $1."
+  },
+  "rate_limit_ready": {
+    "message": "Ready to retry."
+  },
+  "rate_limit_countdown_suffix": {
+    "message": "Try again in $1."
+  },
+  "rate_limit_service_unavailable": {
+    "message": "Service temporarily unavailable. Please try again."
+  },
   "contextMenuApplyFurigana": {
     "message": "Apply Furigana to Page"
   },
@@ -453,11 +465,11 @@
     "message": "Unexpected error. Please try again."
   },
   "rate_limit_toast_request_count": {
-    "message": "Processing paused. Retrying in $1s.",
+    "message": "Processing paused. Retrying in $1.",
     "description": "Toast shown when request-count rate limit is hit"
   },
   "rate_limit_toast_char_rate": {
-    "message": "Processing paused. Retrying in $1s.",
+    "message": "Processing paused. Retrying in $1.",
     "description": "Toast shown when char burst rate limit is hit"
   },
   "rate_limit_toast_hourly": {

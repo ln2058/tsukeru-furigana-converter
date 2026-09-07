@@ -57,7 +57,7 @@ function delayWithAbort(ms, signal) {
   });
 }
 
-async function sendFuriganaWithRateLimitRetry(payload, maxRetries = 3, isValid = () => true, signal = null) {
+async function sendFuriganaWithRateLimitRetry(payload, maxRetries = 1, isValid = () => true, signal = null) {
   if (typeof maxRetries === 'function') {
     isValid = maxRetries;
     maxRetries = 3;
@@ -81,7 +81,9 @@ async function sendFuriganaWithRateLimitRetry(payload, maxRetries = 3, isValid =
     if (response?.nonceRateLimit) {
       showRateLimitToast(
         response.nonceRateLimit.rateLimitType,
-        response.nonceRateLimit.retryAfter
+        response.nonceRateLimit.retryAfter,
+        response.nonceRateLimit.retryAt,
+        'nonce',
       );
     }
 
@@ -89,16 +91,21 @@ async function sendFuriganaWithRateLimitRetry(payload, maxRetries = 3, isValid =
       return response;
     }
 
-    if (
+    if (response?.errorCode === 'service_unavailable') {
+      showRateLimitToast('service_unavailable', response.retryAfter, response.retryAt, response.operation || 'furigana');
+    } else if (
       response?.rateLimitType
       && RETRYABLE_TYPES.includes(response.rateLimitType)
-      && retries < maxRetries
+      && retries < Math.min(1, maxRetries)
     ) {
       retries += 1;
       const retryAfter = response.retryAfter || 60;
-      const toastId = showRateLimitToast(response.rateLimitType, retryAfter);
+      const retryAt = Number(response.retryAt) > Date.now()
+        ? Number(response.retryAt)
+        : Date.now() + retryAfter * 1000;
+      const toastId = showRateLimitToast(response.rateLimitType, retryAfter, retryAt, 'furigana');
       try {
-        await delayWithAbort(retryAfter * 1000, signal);
+        await delayWithAbort(Math.max(0, retryAt - Date.now()), signal);
       } catch (error) {
         dismissToast(toastId);
         throw error;
@@ -111,16 +118,18 @@ async function sendFuriganaWithRateLimitRetry(payload, maxRetries = 3, isValid =
     if (response?.rateLimitType && RETRYABLE_TYPES.includes(response.rateLimitType)) {
       showRetryExhaustedToast();
     } else if (response?.rateLimitType && ['daily_chars', 'hourly_chars'].includes(response.rateLimitType)) {
-      showRateLimitToast(response.rateLimitType, response.retryAfter);
+      showRateLimitToast(response.rateLimitType, response.retryAfter, response.retryAt, 'furigana');
     } else if (response?.rateLimitType) {
-      showRateLimitToast(response.rateLimitType, response.retryAfter);
+      showRateLimitToast(response.rateLimitType, response.retryAfter, response.retryAt, 'furigana');
     }
 
     const err = new Error(response?.error || 'Request failed');
-    if (response?.rateLimitType) {
-      err.rateLimitType = response.rateLimitType;
-      err.retryAfter = response.retryAfter;
-    }
+    err.rateLimitType = response?.rateLimitType;
+    err.retryAfter = response?.retryAfter;
+    err.retryAt = response?.retryAt;
+    err.status = response?.status;
+    err.errorCode = response?.errorCode;
+    err.operation = response?.operation || 'furigana';
     throw err;
   }
 }

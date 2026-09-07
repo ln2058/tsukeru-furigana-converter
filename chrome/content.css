@@ -543,7 +543,11 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 .tsukeru-word-tooltip .tsukeru-sense-row:last-of-type { border-bottom: 0 !important; }
 .tsukeru-word-tooltip .tsukeru-sense-pos { margin-bottom: 3px !important; color: var(--tsukeru-secondary) !important; font-family: var(--tsukeru-mono) !important; font-size: 10px !important; font-weight: 500 !important; letter-spacing: .04em !important; text-transform: uppercase !important; }
 .tsukeru-word-tooltip .tsukeru-sense-gloss { color: var(--tsukeru-text) !important; font-size: 14px !important; font-weight: 500 !important; line-height: 1.42 !important; overflow-wrap: anywhere !important; }
+.tsukeru-word-tooltip .tsukeru-sense-explanation { margin-top: 4px !important; color: var(--tsukeru-secondary) !important; font-size: 11px !important; line-height: 1.4 !important; overflow-wrap: anywhere !important; }
+.tsukeru-word-tooltip .tsukeru-sense-attached-example { margin-top: 6px !important; }
 .tsukeru-word-tooltip .tsukeru-sense-more { margin: 2px 0 8px !important; color: var(--tsukeru-secondary) !important; font-family: var(--tsukeru-mono) !important; font-size: 10px !important; text-align: center !important; }
+.tsukeru-word-tooltip .tsukeru-dictionary-source { margin-top: 10px !important; color: var(--tsukeru-secondary) !important; font-family: var(--tsukeru-mono) !important; font-size: 10px !important; letter-spacing: .04em !important; }
+.tsukeru-word-tooltip .tsukeru-dictionary-source a { color: var(--tsukeru-blue) !important; text-decoration: underline !important; text-underline-offset: 2px !important; }
 
 .tsukeru-word-tooltip .tsukeru-tooltip-loading,
 .tsukeru-word-tooltip .tsukeru-tooltip-error,

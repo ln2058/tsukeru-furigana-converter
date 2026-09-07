@@ -52,6 +52,11 @@ export function getEntryId(item) {
   return `${item?.word || ''}::${item?.reading || ''}::${item?.timestamp || ''}::${item?.url || ''}`;
 }
 
+export function neutralizeCsvFormulaCell(value) {
+  const text = String(value ?? '');
+  return /^[\s\u0000-\u001f\u007f]*[=+\-@]/.test(text) ? `'${text}` : text;
+}
+
 function normalizeVocabularySourceUrl(url = '') {
   return /^file:\/\//i.test(url) ? LOCAL_FILE_SOURCE : (url || '');
 }
@@ -204,6 +209,34 @@ export function getDefinitionText(item) {
 }
 
 export function normalizeDefinitionData(data) {
+  const richEntry = data?.source === 'je_dict' && data.entry && typeof data.entry === 'object'
+    ? data.entry
+    : null;
+  if (richEntry) {
+    const senses = [];
+    const seen = new Set();
+    const addSense = (gloss, explanation = '') => {
+      const cleaned = String(gloss || '').trim();
+      if (!cleaned || seen.has(cleaned.toLocaleLowerCase())) return;
+      seen.add(cleaned.toLocaleLowerCase());
+      senses.push({ glosses: [cleaned], pos: [], explanation: String(explanation || '').trim() });
+    };
+    getTextValuesForVocabulary(richEntry.gloss).forEach(gloss => addSense(gloss));
+    if (Array.isArray(richEntry.definitions)) {
+      richEntry.definitions.forEach(definition => {
+        if (!definition || typeof definition !== 'object') return;
+        const explanation = getTextValuesForVocabulary(definition.explanation)[0] || '';
+        getTextValuesForVocabulary(definition.gloss).forEach(gloss => addSense(gloss, explanation));
+      });
+    }
+    const trimmed = senses.slice(0, 6);
+    if (trimmed.length > 0) {
+      return {
+        senses: trimmed,
+        reading: String(richEntry.reading || '').trim()
+      };
+    }
+  }
   if (!data || !Array.isArray(data.entries) || data.entries.length === 0) return null;
   const entry = data.entries[0];
   const senses = Array.isArray(entry.senses) ? entry.senses : [];
@@ -221,6 +254,12 @@ export function normalizeDefinitionData(data) {
     senses: trimmed,
     reading: Array.isArray(entry.kana) && entry.kana.length ? entry.kana.join('、') : ''
   };
+}
+
+function getTextValuesForVocabulary(value) {
+  if (typeof value === 'string') return value.trim() ? [value.trim()] : [];
+  if (Array.isArray(value)) return value.filter(item => typeof item === 'string' && item.trim()).map(item => item.trim());
+  return [];
 }
 
 const definitionCache = new Map();
@@ -566,8 +605,9 @@ export function exportVocabulary() {
 
   const csv = rows.map(row =>
     row.map(cell => {
-      const escaped = String(cell).replace(/"/g, '""');
-      return /[",\n]/.test(cell) ? `"${escaped}"` : escaped;
+      const safeCell = neutralizeCsvFormulaCell(cell);
+      const escaped = safeCell.replace(/"/g, '""');
+      return /[",\n]/.test(safeCell) ? `"${escaped}"` : escaped;
     }).join(',')
   ).join('\n');
 

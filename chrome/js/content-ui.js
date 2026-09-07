@@ -34,15 +34,17 @@ const RATE_LIMIT_MESSAGE_KEYS = {
   daily_chars: 'rate_limit_toast_daily',
   nonce: 'rate_limit_toast_nonce',
   retry_exhausted: 'rate_limit_toast_retry_exhausted',
+  service_unavailable: 'rate_limit_service_unavailable',
 };
 
 const RATE_LIMIT_FALLBACK_MESSAGES = {
-  request_count: 'Processing paused. Retrying in $1s.',
-  char_rate: 'Processing paused. Retrying in $1s.',
+  request_count: 'Processing paused. Retrying in $1.',
+  char_rate: 'Processing paused. Retrying in $1.',
   hourly_chars: 'You have processed a lot of text recently. Please try again later.',
   daily_chars: 'Daily text limit reached. Please try again tomorrow.',
   nonce: 'Tsukeru had trouble connecting. Please try again in a moment.',
   retry_exhausted: 'Tsukeru is still busy. Please try again later.',
+  service_unavailable: 'Service temporarily unavailable. Please try again.',
 };
 
 function _hasChromeI18n() {
@@ -81,6 +83,15 @@ function _normalizeRetryAfter(retryAfter) {
   return 60;
 }
 
+function _formatRemaining(ms) {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  if (totalSeconds >= 3600) {
+    return `${Math.floor(totalSeconds / 3600)}h ${Math.floor((totalSeconds % 3600) / 60)}m`;
+  }
+  if (totalSeconds >= 60) return `${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s`;
+  return `${totalSeconds}s`;
+}
+
 function _getToastMount() {
   return document.body || document.documentElement || null;
 }
@@ -113,6 +124,12 @@ function _buildToastMessage(type, retryAfter) {
     return _getMessage(key, [retryAfter], fallback);
   }
   return _getMessage(key, undefined, fallback);
+}
+
+function _withCountdown(type, remaining) {
+  const message = _buildToastMessage(type, remaining);
+  if (type === 'request_count' || type === 'char_rate') return message;
+  return `${message} ${_getMessage('rate_limit_countdown_suffix', [remaining], `Try again in ${remaining}.`)}`;
 }
 
 function _clearToastInterval() {
@@ -190,18 +207,53 @@ function showToast(message, options = {}) {
   return toastId;
 }
 
-function showRateLimitToast(rateLimitType, retryAfter) {
-  const normalizedRetryAfter = _normalizeRetryAfter(retryAfter);
+function showRateLimitToast(rateLimitType, retryAfter, retryAt = null, operation = 'furigana') {
+  const retryAfterNumber = Number(retryAfter);
+  const hasRetryAfter = Number.isFinite(retryAfterNumber) && retryAfterNumber > 0;
+  const normalizedRetryAfter = hasRetryAfter ? _normalizeRetryAfter(retryAfterNumber) : 0;
+  const retryAtNumber = Number(retryAt);
+  const hasRetryAt = Number.isFinite(retryAtNumber) && retryAtNumber > Date.now();
+  const canUseFallbackDeadline = retryAt == null && hasRetryAfter;
+  const absoluteRetryAt = hasRetryAt
+    ? retryAtNumber
+    : (canUseFallbackDeadline ? Date.now() + normalizedRetryAfter * 1000 : null);
+
+  if (absoluteRetryAt && rateLimitType !== 'nonce') {
+    const toastId = showToast(_withCountdown(rateLimitType, _formatRemaining(absoluteRetryAt - Date.now())), {
+      type: 'warning',
+      duration: Math.max(1000, absoluteRetryAt - Date.now() + 1000),
+      persistent: false,
+    });
+    _clearToastInterval();
+    _activeToastInterval = setInterval(() => {
+      if (_activeToastId !== toastId || !_activeToastMessageNode) {
+        _clearToastInterval();
+        return;
+      }
+      const remainingMs = absoluteRetryAt - Date.now();
+      if (remainingMs <= 0) {
+        _activeToastMessageNode.textContent = _getMessage('rate_limit_ready', undefined, 'Ready to retry.');
+        _clearToastInterval();
+        return;
+      }
+      _activeToastMessageNode.textContent = _withCountdown(
+        rateLimitType,
+        _formatRemaining(remainingMs),
+      );
+    }, 1000);
+    return toastId;
+  }
 
   if (rateLimitType === 'request_count' || rateLimitType === 'char_rate') {
-    const message = _buildToastMessage(rateLimitType, normalizedRetryAfter);
+    const effectiveRetryAfter = normalizedRetryAfter || _normalizeRetryAfter(null);
+    const message = _buildToastMessage(rateLimitType, _formatRemaining(effectiveRetryAfter * 1000));
     const toastId = showToast(message, {
       type: 'warning',
-      duration: normalizedRetryAfter * 1000 + 1000,
+      duration: effectiveRetryAfter * 1000 + 1000,
       persistent: false,
     });
 
-    let remaining = normalizedRetryAfter - 1;
+    let remaining = effectiveRetryAfter - 1;
     _clearToastInterval();
     _activeToastInterval = setInterval(() => {
       if (_activeToastId !== toastId || !_activeToastMessageNode) {
@@ -214,7 +266,7 @@ function showRateLimitToast(rateLimitType, retryAfter) {
         return;
       }
 
-      _activeToastMessageNode.textContent = _buildToastMessage(rateLimitType, remaining);
+      _activeToastMessageNode.textContent = _buildToastMessage(rateLimitType, _formatRemaining(remaining * 1000));
       remaining -= 1;
     }, 1000);
 
@@ -236,7 +288,8 @@ function showRateLimitToast(rateLimitType, retryAfter) {
     });
   }
 
-  return showToast(_buildToastMessage('retry_exhausted'), {
+  const fallbackType = RATE_LIMIT_MESSAGE_KEYS[rateLimitType] ? rateLimitType : 'retry_exhausted';
+  return showToast(_buildToastMessage(fallbackType), {
     type: 'warning',
     duration: 8000,
     persistent: false,

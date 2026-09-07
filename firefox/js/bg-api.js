@@ -10,7 +10,8 @@ Outputs:
 - Processed furigana HTML, reading-aware dictionary/enrichment payloads, base64 data URLs, and structured error metadata.
 
 Side Effects:
-- Performs network fetches, enforces in-memory rate limiting, and coalesces nonce acquisition/recovery across API requests.
+- Performs network fetches, tracks shared cooldown deadlines, and coalesces nonce acquisition/recovery across API requests.
+- Persists only validated cooldown metadata through extension-local storage; backend quotas remain authoritative.
 - Shares logical dictionary lookups and bounds completed in-memory dictionary results.
 - Reads/writes cached furigana fragments through `bg-cache`.
 
@@ -39,11 +40,137 @@ export const DEFAULT_SETTINGS = {
   removeCustomStyling: false,
 };
 
-const RATE_LIMIT_WINDOW_MS = 10_000;
-const RATE_LIMIT_MAX_CHARS = 50_000;
-const rateLimitBuckets = [];
 const BACKGROUND_DEFINITION_CACHE_MAX_ENTRIES = 200;
 const definitionInFlightCache = new Map();
+
+const COOLDOWN_OPERATIONS = new Set(['furigana', 'dictionary', 'examples', 'nonce']);
+const COOLDOWN_TYPES = new Set([
+  'request_count', 'char_rate', 'hourly_chars', 'daily_chars', 'lookup', 'examples', 'nonce',
+]);
+const LEGACY_RATE_LIMIT_FALLBACK_SECONDS = 60;
+const MAX_RETRY_AFTER_SECONDS = 86400;
+const MAX_AUDIO_RESPONSE_BYTES = 2 * 1024 * 1024;
+const MAX_ANKI_ZIP_RESPONSE_BYTES = 64 * 1024 * 1024;
+const MIN_AUDIO_RESPONSE_BYTES = 100;
+const AUDIO_RESPONSE_MIME_TYPES = new Set(['audio/mpeg']);
+const ANKI_ZIP_RESPONSE_MIME_TYPES = new Set(['application/zip']);
+let cooldownState = {};
+let cooldownHydrationPromise = null;
+
+function getStorageLocal() {
+  return globalThis.chrome?.storage?.local || globalThis.browser?.storage?.local || null;
+}
+
+async function readCooldownStorage() {
+  const storage = getStorageLocal();
+  if (!storage?.get) return {};
+  try {
+    const result = await storage.get('tsukeruRateLimitCooldowns');
+    return result?.tsukeruRateLimitCooldowns && typeof result.tsukeruRateLimitCooldowns === 'object'
+      ? result.tsukeruRateLimitCooldowns
+      : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+async function writeCooldownStorage() {
+  const storage = getStorageLocal();
+  if (!storage?.set) return;
+  try {
+    await storage.set({ tsukeruRateLimitCooldowns: cooldownState });
+  } catch (_) {
+    // The in-memory copy remains authoritative for this worker when storage is unavailable.
+  }
+}
+
+async function hydrateCooldownState() {
+  if (!cooldownHydrationPromise) {
+    cooldownHydrationPromise = readCooldownStorage().then((stored) => {
+      const now = Date.now();
+      cooldownState = Object.fromEntries(
+        Object.entries(stored).filter(([, value]) => (
+          value && typeof value === 'object'
+          && COOLDOWN_OPERATIONS.has(value.operation)
+          && Number.isFinite(value.expiresAt)
+          && value.expiresAt > now
+        ))
+      );
+      return cooldownState;
+    });
+  }
+  return cooldownHydrationPromise;
+}
+
+function normalizeOperation(operation, fallback = 'furigana') {
+  return COOLDOWN_OPERATIONS.has(operation) ? operation : fallback;
+}
+
+function normalizeRateLimitType(value) {
+  return COOLDOWN_TYPES.has(value) ? value : null;
+}
+
+function getActiveCooldown(operation) {
+  const normalizedOperation = normalizeOperation(operation);
+  const record = cooldownState[normalizedOperation];
+  if (!record || !Number.isFinite(record.expiresAt) || record.expiresAt <= Date.now()) {
+    if (record) {
+      delete cooldownState[normalizedOperation];
+      void writeCooldownStorage();
+    }
+    return null;
+  }
+  return { ...record };
+}
+
+function createLocalCooldownError(record) {
+  const error = new Error('Rate limit is active. Please wait before retrying.');
+  error.status = record.status || 429;
+  error.httpStatus = error.status;
+  error.errorCode = record.status === 503 ? 'service_unavailable' : 'rate_limited';
+  error.operation = record.operation;
+  if (record.rateLimitType) error.rateLimitType = record.rateLimitType;
+  error.retryAt = record.expiresAt;
+  error.expiresAt = record.expiresAt;
+  error.retryAfter = Math.max(1, Math.ceil((record.expiresAt - Date.now()) / 1000));
+  return error;
+}
+
+async function enforceCooldown(operation) {
+  await hydrateCooldownState();
+  const active = getActiveCooldown(operation);
+  if (active) throw createLocalCooldownError(active);
+}
+
+async function recordCooldown(error, expectedOperation) {
+  await hydrateCooldownState();
+  const delay = Number(error?.retryAfter);
+  if (!Number.isFinite(delay) || delay <= 0 || (error?.status !== 429 && error?.status !== 503)) return;
+  const operation = normalizeOperation(error.operation, expectedOperation);
+  const expiresAt = Date.now() + Math.min(Math.floor(delay), MAX_RETRY_AFTER_SECONDS) * 1000;
+  const current = cooldownState[operation];
+  if (!current || !Number.isFinite(current.expiresAt) || expiresAt > current.expiresAt) {
+    cooldownState[operation] = {
+      status: error.status,
+      operation,
+      expiresAt,
+      ...(normalizeRateLimitType(error.rateLimitType) && { rateLimitType: normalizeRateLimitType(error.rateLimitType) }),
+    };
+    await writeCooldownStorage();
+  }
+  error.retryAt = cooldownState[operation]?.expiresAt || expiresAt;
+  error.expiresAt = error.retryAt;
+}
+
+export async function getRateLimitState() {
+  await hydrateCooldownState();
+  const now = Date.now();
+  for (const [operation, record] of Object.entries(cooldownState)) {
+    if (!record?.expiresAt || record.expiresAt <= now) delete cooldownState[operation];
+  }
+  void writeCooldownStorage();
+  return { ...cooldownState };
+}
 
 function pruneDefinitionCache(now = Date.now()) {
   for (const [key, entry] of definitionCache.entries()) {
@@ -56,16 +183,6 @@ function pruneDefinitionCache(now = Date.now()) {
   }
 }
 
-function checkCharRateLimit(nextLen) {
-  const now = Date.now();
-  while (rateLimitBuckets.length && now - rateLimitBuckets[0].timestamp > RATE_LIMIT_WINDOW_MS) {
-    rateLimitBuckets.shift();
-  }
-  const used = rateLimitBuckets.reduce((sum, entry) => sum + entry.len, 0);
-  if (used + nextLen > RATE_LIMIT_MAX_CHARS) return false;
-  rateLimitBuckets.push({ timestamp: now, len: nextLen });
-  return true;
-}
 
 // Split a marker-embedded string into [{marker, text}] pairs.
 // Mirrors the split() strategy used by content.js's applyBatchResult — no lookahead needed.
@@ -106,12 +223,6 @@ export async function handleFuriganaRequest(payload) {
 
   // No markers: unusual edge case — rate-check the whole payload and fetch raw.
   if (!chunks.length) {
-    if (!checkCharRateLimit(textContent.length)) {
-      const error = new Error(`Rate limit exceeded: max ${RATE_LIMIT_MAX_CHARS} characters per ${RATE_LIMIT_WINDOW_MS / 1000}s`);
-      error.rateLimitType = 'char_rate';
-      error.retryAfter = RATE_LIMIT_WINDOW_MS / 1000;
-      throw error;
-    }
     return fetchFromAPI(textContent, settings, tabUrl);
   }
 
@@ -139,12 +250,6 @@ export async function handleFuriganaRequest(payload) {
   // ── Step 3: Fetch only missing chunks from the backend ───────────────────
   if (missingChunks.length > 0) {
     const missingChars = missingChunks.reduce((sum, c) => sum + c.text.length, 0);
-    if (!checkCharRateLimit(missingChars)) {
-      const error = new Error(`Rate limit exceeded: max ${RATE_LIMIT_MAX_CHARS} characters per ${RATE_LIMIT_WINDOW_MS / 1000}s`);
-      error.rateLimitType = 'char_rate';
-      error.retryAfter = RATE_LIMIT_WINDOW_MS / 1000;
-      throw error;
-    }
 
     const missingPayload = missingChunks.map(c => c.marker + c.text).join('');
     const result = await fetchFromAPI(missingPayload, settings, tabUrl);
@@ -211,25 +316,13 @@ async function _getExtNonce() {
     _nonceLastError = null;
     _nonceLog('nonce-fetch-start', { extSessionId: _EXT_SESSION_ID });
     try {
-      const res = await fetch(`${API_BASE_URL}/api/extension/nonce`, {
+      const res = await fetchWithCooldown(`${API_BASE_URL}/api/extension/nonce`, {
         method: 'GET',
         headers: { 'x-extension-session-id': _EXT_SESSION_ID },
         credentials: 'omit',
         mode: 'cors',
         cache: 'no-store',
-      });
-      if (!res.ok) {
-        const body = await parseErrorBody(res);
-        _nonceLastError = createApiError(res, body, 'Extension nonce request failed');
-        if (res.status === 429) {
-          _nonceRateLimitState = {
-            rateLimitType: body?.rate_limit_type || 'nonce',
-            retryAfter: _nonceLastError.retryAfter ?? 60,
-          };
-        }
-        _nonceLog('nonce-fetch-failed', { extSessionId: _EXT_SESSION_ID, status: res.status });
-        return null;
-      }
+      }, 'nonce');
       const data = await res.json();
       if (!data?.nonce) {
         _nonceLastError = new Error('Extension nonce response was missing a nonce');
@@ -250,6 +343,13 @@ async function _getExtNonce() {
       return _extNonce;
     } catch (err) {
       _nonceLastError = err instanceof Error ? err : new Error('Extension nonce request failed');
+      if (_nonceLastError.status === 429 || _nonceLastError.status === 503) {
+        _nonceRateLimitState = {
+          rateLimitType: _nonceLastError.rateLimitType || 'nonce',
+          retryAfter: _nonceLastError.retryAfter,
+          retryAt: _nonceLastError.retryAt,
+        };
+      }
       _nonceLog('nonce-fetch-failed', {
         extSessionId: _EXT_SESSION_ID,
         reason: 'network_exception',
@@ -282,6 +382,7 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
   let nonceResult = await _getExtNonceForFurigana();
   let nonce = nonceResult.nonce;
   let nonceRateLimit = nonceResult.rateLimit;
+  let nonceRetryUsed = false;
 
   for (const endpoint of endpoints) {
     try {
@@ -305,58 +406,38 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
         return fd;
       };
 
-      let response = await fetch(endpoint, {
+      let response;
+      try {
+        response = await fetchWithCooldown(endpoint, {
         method: 'POST',
         body: buildFormData(),
         headers: { 'x-extension-session-id': _EXT_SESSION_ID },
         credentials: 'omit',
         mode: 'cors',
-      });
-
-      // Nonce self-heal: a 403 on the extension endpoint almost always means the
-      // cached nonce is stale (server key rotation, service-worker restart after a
-      // redeploy, IP change). Clear the in-memory nonce and retry once without it.
-      // EXT_REQUIRE_NONCE=false ensures a nonce-free request is accepted.
-      // Only applies to the dedicated extension endpoint — the HTML fallback has no
-      // CORS headers so a 403 there would produce a network error, not an HTTP 403.
-      if (response.status === 403 && nonce && endpoint.includes('/api/extension/')) {
-        _resetExtNonce('furigana-403');
-        nonceResult = await _getExtNonceForFurigana();
-        nonce = nonceResult.nonce;
-        if (nonceResult.rateLimit) nonceRateLimit = nonceResult.rateLimit;
-        _nonceLog('nonce-refresh-after-403', {
-          extSessionId: _EXT_SESSION_ID,
-          refreshed: Boolean(nonce),
-        });
-        response = await fetch(endpoint, {
-          method: 'POST',
-          body: buildFormData(),
-          headers: { 'x-extension-session-id': _EXT_SESSION_ID },
-          credentials: 'omit',
-          mode: 'cors',
-        });
-      }
-
-      if (!response.ok) {
-        if (endpoint.includes('/api/extension/') && (response.status === 401 || response.status === 403)) {
-          lastError = new Error(`Extension auth failed: ${response.status}`);
-          console.error('Tsukeru extension auth failure', endpoint, response.status, response.statusText);
-          break;
-        }
-        if (response.status === 429) {
-          const body = await response.json().catch(() => ({}));
-          const retryAfterHeader = Number.parseInt(response.headers.get('Retry-After') || '', 10);
-          const retryAfter = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
-            ? Math.min(retryAfterHeader, 86400)
-            : 60;
-          const error = new Error(body.error || 'Rate limit exceeded');
-          error.rateLimitType = body.rate_limit_type || 'unknown';
-          error.retryAfter = retryAfter;
+        }, 'furigana');
+      } catch (error) {
+        if (
+          error?.status === 403
+          && nonce
+          && endpoint.includes('/api/extension/')
+          && !nonceRetryUsed
+          && isRecognizedNonceFailure(error.body)
+        ) {
+          nonceRetryUsed = true;
+          _resetExtNonce('furigana-403');
+          nonceResult = await _getExtNonceForFurigana();
+          nonce = nonceResult.nonce;
+          if (nonceResult.rateLimit) nonceRateLimit = nonceResult.rateLimit;
+          response = await fetchWithCooldown(endpoint, {
+            method: 'POST',
+            body: buildFormData(),
+            headers: { 'x-extension-session-id': _EXT_SESSION_ID },
+            credentials: 'omit',
+            mode: 'cors',
+          }, 'furigana');
+        } else {
           throw error;
         }
-        lastError = new Error(`API request failed: ${response.status} ${response.statusText}`);
-        console.error('Tsukeru backend error', endpoint, response.status, response.statusText);
-        continue;
       }
 
       const contentType = response.headers.get('content-type') || '';
@@ -364,22 +445,28 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
       if (contentType.includes('application/json')) {
         const data = await response.json();
         if (data?.html) processedHTML = data.html;
-        else { lastError = new Error('JSON response missing html field'); continue; }
+        else {
+          const malformed = new Error('JSON response missing html field');
+          malformed.status = 502;
+          throw malformed;
+        }
       } else {
         const responseText = await response.text();
         processedHTML = extractProcessedHtml(responseText);
       }
 
-      if (!processedHTML) { lastError = new Error('Could not read processed HTML from backend response.'); continue; }
+      if (!processedHTML) {
+        const malformed = new Error('Could not read processed HTML from backend response.');
+        malformed.status = 502;
+        throw malformed;
+      }
 
       return { processedHTML, ...(nonceRateLimit && { nonceRateLimit }) };
     } catch (err) {
       lastError = err;
       console.error('Tsukeru fetch exception', endpoint, err);
-      if (err.rateLimitType) {
-        break;
-      }
-      continue;
+      if (err?.status === 404 || err?.status === 405) continue;
+      throw err;
     }
   }
 
@@ -435,12 +522,71 @@ function extractProcessedHtml(htmlText) {
 }
 
 const MAX_API_ERROR_TEXT_LENGTH = 300;
-const MAX_RETRY_AFTER_SECONDS = 86400;
 const SUPPORTED_LOOKUP_READING_TYPES = new Set(['hiragana', 'katakana', 'romaji']);
 
 function safeErrorText(value) {
   if (typeof value !== 'string') return '';
   return value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, MAX_API_ERROR_TEXT_LENGTH);
+}
+
+export function normalizeResponseMimeType(value) {
+  return String(value || '').split(';', 1)[0].trim().toLowerCase();
+}
+
+function getResponseContentLength(response) {
+  const value = String(response?.headers?.get?.('Content-Length') || '').trim();
+  if (!/^\d+$/.test(value)) return null;
+  const length = Number(value);
+  return Number.isSafeInteger(length) ? length : null;
+}
+
+function responseTooLargeError() {
+  const error = new Error('Downloaded response exceeds the permitted size');
+  error.code = 'response_too_large';
+  return error;
+}
+
+export async function readBoundedResponseBlob(response, { maxBytes, allowedMimeTypes }) {
+  const mimeType = normalizeResponseMimeType(response?.headers?.get?.('Content-Type'));
+  const allowed = new Set(Array.from(allowedMimeTypes || [], normalizeResponseMimeType));
+  if (!allowed.has(mimeType)) {
+    throw new Error('Unexpected response content type');
+  }
+
+  const contentLength = getResponseContentLength(response);
+  if (contentLength != null && contentLength > maxBytes) {
+    throw responseTooLargeError();
+  }
+
+  if (response?.body && typeof response.body.getReader === 'function') {
+    const reader = response.body.getReader();
+    const chunks = [];
+    let totalBytes = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
+        totalBytes += chunk.byteLength;
+        if (totalBytes > maxBytes) {
+          try {
+            await reader.cancel();
+          } catch (_) {
+            // The size rejection remains the useful failure even if cancellation fails.
+          }
+          throw responseTooLargeError();
+        }
+        chunks.push(chunk);
+      }
+    } finally {
+      reader.releaseLock?.();
+    }
+    return new Blob(chunks, { type: mimeType });
+  }
+
+  const blob = await response.blob();
+  if (blob.size > maxBytes) throw responseTooLargeError();
+  return new Blob([blob], { type: mimeType });
 }
 
 function getErrorBodyText(body) {
@@ -462,13 +608,26 @@ async function parseErrorBody(response) {
 }
 
 function getRetryAfter(response, body) {
-  const headerValue = Number.parseInt(response?.headers?.get?.('Retry-After') || '', 10);
+  const headerText = String(response?.headers?.get?.('Retry-After') || '').trim();
+  const headerValue = /^\d+$/.test(headerText) ? Number(headerText) : NaN;
   const bodyValue = Number(body?.retry_after ?? body?.retryAfter);
-  const value = Number.isFinite(headerValue) && headerValue > 0 ? headerValue : bodyValue;
-  return Number.isFinite(value) && value > 0 ? Math.min(Math.floor(value), MAX_RETRY_AFTER_SECONDS) : null;
+  if (Number.isFinite(headerValue) && headerValue > 0) {
+    return Math.min(Math.floor(headerValue), MAX_RETRY_AFTER_SECONDS);
+  }
+  if (Number.isFinite(bodyValue) && bodyValue > 0) {
+    return Math.min(Math.floor(bodyValue), MAX_RETRY_AFTER_SECONDS);
+  }
+  const retryAtSeconds = Number(body?.retry_at ?? body?.retryAt);
+  if (Number.isFinite(retryAtSeconds) && retryAtSeconds > Math.floor(Date.now() / 1000)) {
+    return Math.min(
+      MAX_RETRY_AFTER_SECONDS,
+      Math.max(1, Math.ceil(retryAtSeconds - (Date.now() / 1000))),
+    );
+  }
+  return null;
 }
 
-function createApiError(response, body = {}, fallbackMessage = 'API request failed') {
+function createApiError(response, body = {}, fallbackMessage = 'API request failed', expectedOperation = 'furigana') {
   const status = Number(response?.status) || 0;
   const backendText = getErrorBodyText(body);
   const statusText = safeErrorText(response?.statusText);
@@ -477,13 +636,74 @@ function createApiError(response, body = {}, fallbackMessage = 'API request fail
   error.status = status;
   error.httpStatus = status;
   if (backendText) error.backendError = backendText;
-  const rateLimitType = safeErrorText(body?.rate_limit_type || body?.rateLimitType)
-    || (status === 429 ? 'unknown' : '');
+  const rawOperation = safeErrorText(body?.operation);
+  const operation = normalizeOperation(rawOperation, expectedOperation);
+  const rawRateLimitType = safeErrorText(body?.rate_limit_type || body?.rateLimitType);
+  const fallbackRateLimitType = operation === 'furigana'
+    ? 'char_rate'
+    : operation === 'nonce'
+      ? 'nonce'
+      : operation === 'examples'
+        ? 'examples'
+        : 'lookup';
+  const rateLimitType = normalizeRateLimitType(rawRateLimitType)
+    || (status === 429 ? fallbackRateLimitType : null);
   const retryAfter = getRetryAfter(response, body);
+  error.operation = operation;
+  error.errorCode = safeErrorText(body?.error_code || body?.errorCode)
+    || (status === 503 ? 'service_unavailable' : status === 429 ? 'rate_limited' : 'api_error');
   if (rateLimitType) error.rateLimitType = rateLimitType;
-  if (retryAfter != null) error.retryAfter = retryAfter;
-  else if (status === 429) error.retryAfter = 60;
+  if (retryAfter != null) {
+    error.retryAfter = retryAfter;
+    error.retryAt = Date.now() + retryAfter * 1000;
+    error.expiresAt = error.retryAt;
+  } else if (status === 429) {
+    error.retryAfter = LEGACY_RATE_LIMIT_FALLBACK_SECONDS;
+    error.retryAt = Date.now() + LEGACY_RATE_LIMIT_FALLBACK_SECONDS * 1000;
+    error.expiresAt = error.retryAt;
+  }
+  error.body = body;
   return error;
+}
+
+export async function fetchWithCooldown(url, options = {}, operation = 'furigana') {
+  await enforceCooldown(operation);
+  const Controller = globalThis.AbortController;
+  const controller = typeof Controller === 'function'
+    ? new Controller()
+    : { signal: options.signal, abort() {} };
+  const timeoutMs = Number(options.timeoutMs) > 0 ? Number(options.timeoutMs) : 20_000;
+  const timeoutId = typeof globalThis.setTimeout === 'function'
+    ? globalThis.setTimeout(() => controller.abort(), timeoutMs)
+    : null;
+  const callerSignal = options.signal;
+  const abortFromCaller = () => controller.abort();
+  if (callerSignal) {
+    if (callerSignal.aborted) controller.abort();
+    else callerSignal.addEventListener('abort', abortFromCaller, { once: true });
+  }
+  const { timeoutMs: _ignoredTimeout, signal: _ignoredSignal, ...requestOptions } = options;
+  try {
+    const response = await fetch(url, { ...requestOptions, signal: controller.signal });
+    if (response.ok) return response;
+    const body = await parseErrorBody(response);
+    const error = createApiError(response, body, 'API request failed', operation);
+    await recordCooldown(error, operation);
+    throw error;
+  } catch (error) {
+    if (error?.status) throw error;
+    if (error?.name === 'AbortError') {
+      const timeoutError = new Error('API request timed out');
+      timeoutError.name = 'TimeoutError';
+      throw timeoutError;
+    }
+    throw error instanceof Error ? error : new Error('API request failed');
+  } finally {
+    if (timeoutId !== null && typeof globalThis.clearTimeout === 'function') {
+      globalThis.clearTimeout(timeoutId);
+    }
+    callerSignal?.removeEventListener?.('abort', abortFromCaller);
+  }
 }
 
 function isRecognizedNonceFailure(body) {
@@ -543,9 +763,9 @@ function buildLegacyDefinitionUrl(args) {
 }
 
 async function getNonceForApiRequest() {
-  const nonce = await _getExtNonce();
-  if (!nonce && _nonceLastError?.rateLimitType) throw _nonceLastError;
-  return nonce;
+  // Nonces remain optional during the compatibility rollout. A nonce
+  // cooldown suppresses acquisition but does not block nonce-free endpoints.
+  return _getExtNonce();
 }
 
 async function refreshNonceForApiRequest(staleNonce) {
@@ -558,44 +778,41 @@ async function refreshNonceForApiRequest(staleNonce) {
   return nonce;
 }
 
-async function requestExtensionJsonWithNonce(url, nonce, retryState) {
+async function requestExtensionJsonWithNonce(url, nonce, retryState, operation = 'dictionary') {
   const requestUrl = new URL(url.toString());
   if (nonce) requestUrl.searchParams.set('ext_nonce', nonce);
 
-  let response;
   try {
-    response = await fetch(requestUrl.toString(), {
+    const response = await fetchWithCooldown(requestUrl.toString(), {
       method: 'GET',
       headers: { 'x-extension-session-id': _EXT_SESSION_ID },
       credentials: 'omit',
       mode: 'cors',
-    });
-  } catch (error) {
-    throw error instanceof Error ? error : new Error('API request failed');
-  }
-
-  if (response.ok) {
+    }, operation);
     try {
       return await response.json();
     } catch (_) {
-      throw createApiError(response, {}, 'API response was not valid JSON');
+      throw createApiError(response, {}, 'API response was not valid JSON', operation);
     }
+  } catch (error) {
+    if (error?.status === 403 && nonce && !retryState.nonceRetryUsed && isRecognizedNonceFailure(error.body)) {
+      retryState.nonceRetryUsed = true;
+      const refreshedNonce = await refreshNonceForApiRequest(nonce);
+      return requestExtensionJsonWithNonce(url, refreshedNonce, retryState, operation);
+    }
+    throw error instanceof Error ? error : new Error('API request failed');
   }
-
-  const body = await parseErrorBody(response);
-  if (response.status === 403 && nonce && !retryState.nonceRetryUsed && isRecognizedNonceFailure(body)) {
-    retryState.nonceRetryUsed = true;
-    const refreshedNonce = await refreshNonceForApiRequest(nonce);
-    return requestExtensionJsonWithNonce(url, refreshedNonce, retryState);
-  }
-
-  throw createApiError(response, body);
 }
 
 export async function requestExtensionJson(url, options = {}) {
   const retryState = options.retryState || { nonceRetryUsed: false };
   const nonce = await getNonceForApiRequest();
-  return requestExtensionJsonWithNonce(new URL(url.toString()), nonce, retryState);
+  return requestExtensionJsonWithNonce(
+    new URL(url.toString()),
+    nonce,
+    retryState,
+    normalizeOperation(options.operation, 'dictionary'),
+  );
 }
 
 function assertDefinitionPayload(data) {
@@ -627,10 +844,10 @@ export async function lookupDefinition(word, reading, readingType) {
     const retryState = { nonceRetryUsed: false };
     let data;
     try {
-      data = assertDefinitionPayload(await requestExtensionJson(buildDefinitionUrl('/api/extension/word-definition', args), { retryState }));
+      data = assertDefinitionPayload(await requestExtensionJson(buildDefinitionUrl('/api/extension/word-definition', args), { retryState, operation: 'dictionary' }));
     } catch (error) {
       if (error.status !== 404 && error.status !== 405) throw error;
-      data = assertDefinitionPayload(await requestExtensionJson(buildLegacyDefinitionUrl(args), { retryState }));
+      data = assertDefinitionPayload(await requestExtensionJson(buildLegacyDefinitionUrl(args), { retryState, operation: 'dictionary' }));
     }
     definitionCache.set(cacheKey, { data, timestamp: Date.now() });
     pruneDefinitionCache();
@@ -648,13 +865,13 @@ export async function lookupDefinition(word, reading, readingType) {
 export async function fetchExampleSentence(word) {
   const term = normalizeLookupValue(word, 'Word');
   const url = new URL(`${API_BASE_URL}/api/example-sentence/${encodeURIComponent(term)}`);
-  return assertJsonObject(await requestExtensionJson(url), 'Example sentence');
+  return assertJsonObject(await requestExtensionJson(url, { operation: 'examples' }), 'Example sentence');
 }
 
 export async function fetchKanjiBreakdown(word) {
   const term = normalizeLookupValue(word, 'Word');
   const url = new URL(`${API_BASE_URL}/api/kanji-breakdown/${encodeURIComponent(term)}`);
-  return assertJsonObject(await requestExtensionJson(url), 'Kanji breakdown');
+  return assertJsonObject(await requestExtensionJson(url, { operation: 'dictionary' }), 'Kanji breakdown');
 }
 
 export async function handlePlayAudio(word, reading) {
@@ -698,8 +915,11 @@ export async function handlePlayAudio(word, reading) {
       throw err;
     }
     if (!response.ok) continue;
-    const blob = await response.blob();
-    if (blob.size < 100) continue; // reject JP101's 52-byte empty placeholder audio
+    const blob = await readBoundedResponseBlob(response, {
+      maxBytes: MAX_AUDIO_RESPONSE_BYTES,
+      allowedMimeTypes: AUDIO_RESPONSE_MIME_TYPES,
+    });
+    if (blob.size < MIN_AUDIO_RESPONSE_BYTES) continue; // reject JP101's 52-byte empty placeholder audio
     const dataUrl = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result);
@@ -712,7 +932,6 @@ export async function handlePlayAudio(word, reading) {
 }
 
 export async function handlePlayAudioDirect(word, reading) {
-  // Firefox compatibility alias retained for older content-script message paths.
   return handlePlayAudio(word, reading);
 }
 
@@ -731,7 +950,10 @@ export async function handleFetchProxyAudio(url) {
 
   const response = await fetch(parsedUrl.toString());
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const blob = await response.blob();
+  const blob = await readBoundedResponseBlob(response, {
+    maxBytes: MAX_AUDIO_RESPONSE_BYTES,
+    allowedMimeTypes: AUDIO_RESPONSE_MIME_TYPES,
+  });
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve({ dataUrl: reader.result });
@@ -762,7 +984,10 @@ export async function handleExportAnkiAudio(payload) {
     }
     throw new Error(`Export failed: ${response.status} ${response.statusText}`);
   }
-  const blob = await response.blob();
+  const blob = await readBoundedResponseBlob(response, {
+    maxBytes: MAX_ANKI_ZIP_RESPONSE_BYTES,
+    allowedMimeTypes: ANKI_ZIP_RESPONSE_MIME_TYPES,
+  });
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve({ dataUrl: reader.result });

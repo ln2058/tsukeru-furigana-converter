@@ -17,7 +17,7 @@ function response(status, body, headers = {}) {
   };
 }
 
-function loadApi(browserName, route, { cacheLimit = 200 } = {}) {
+function loadApi(browserName, route, { cacheLimit = 200, storage = null } = {}) {
   const apiUrl = new URL(`../${browserName}/js/bg-api.js`, import.meta.url);
   let source = readFileSync(apiUrl, 'utf8')
     .replace(/import\s+\{[\s\S]*?\}\s+from\s+'\.\/bg-cache\.js';\s*/m, '')
@@ -42,6 +42,8 @@ function loadApi(browserName, route, { cacheLimit = 200 } = {}) {
       normalizeDefinitionLookupArgs,
       getDefinitionCacheKey,
       requestExtensionJson,
+      fetchWithCooldown,
+      getRateLimitState,
     };
   `;
   const calls = [];
@@ -53,6 +55,7 @@ function loadApi(browserName, route, { cacheLimit = 200 } = {}) {
       calls.push({ url: String(url), options });
       return Promise.resolve(route(new URL(String(url)), options));
     },
+    chrome: storage ? { storage: { local: storage } } : undefined,
   };
   vm.runInNewContext(source, sandbox, { filename: apiUrl.pathname });
   return { api: sandbox.__api, calls };
@@ -100,6 +103,21 @@ for (const browserName of ['chrome', 'firefox']) {
     await api.lookupDefinition('行く', 'いく', 'hiragana');
     await api.lookupDefinition('行く', 'ゆく', 'hiragana');
     assert.equal(calls.filter(({ url }) => url.includes('/word-definition?')).length, 2);
+  });
+
+  test(`${browserName} preserves additive TKGJE fields through the cached lookup`, async () => {
+    const rich = {
+      entries: [{ kanji: ['大人'], kana: ['おとな'], senses: [{ glosses: ['adult'], pos: ['noun'] }] }],
+      source: 'je_dict',
+      entry: { headword: '大人', reading: 'おとな', gloss: 'adult', examples: [] },
+      alternatives: [],
+    };
+    const fixture = loadApi(browserName, queuedRoute([response(200, rich)]));
+    const first = await fixture.api.lookupDefinition('大人', 'おとな', 'hiragana');
+    const second = await fixture.api.lookupDefinition('大人', 'おとな', 'hiragana');
+    assert.equal(first.source, 'je_dict');
+    assert.equal(second.entry.headword, '大人');
+    assert.equal(fixture.calls.filter(({ url }) => url.includes('/word-definition?')).length, 1);
   });
 
   test(`${browserName} shares identical pending lookups and retries after rejection`, async () => {
@@ -236,5 +254,60 @@ for (const browserName of ['chrome', 'firefox']) {
       concurrent.api.lookupDefinition('下', 'した', 'hiragana')
     ]);
     assert.equal(concurrent.calls.filter(({ url }) => url.endsWith('/api/extension/nonce')).length, 2);
+  });
+
+  test(`${browserName} stores one bounded cooldown per operation and honors Retry-After precedence`, async () => {
+    let stored = {};
+    const storage = {
+      async get() { return { tsukeruRateLimitCooldowns: stored }; },
+      async set(values) { stored = values.tsukeruRateLimitCooldowns || {}; },
+    };
+    const fixture = loadApi(browserName, (url) => {
+      if (url.pathname === '/api/extension/word-definition') {
+        return response(429, {
+          error: 'Lookup limited',
+          operation: 'dictionary',
+          rate_limit_type: 'lookup',
+          retry_after: 50,
+        }, { 'Retry-After': '12' });
+      }
+      return response(200, { ok: true });
+    }, { storage });
+
+    await assert.rejects(
+      () => fixture.api.fetchWithCooldown('https://api.test/api/extension/word-definition', {}, 'dictionary'),
+      (error) => error.status === 429 && error.retryAfter === 12 && error.operation === 'dictionary',
+    );
+    const state = await fixture.api.getRateLimitState();
+    assert.ok(state.dictionary?.expiresAt > Date.now());
+    assert.equal(state.dictionary.rateLimitType, 'lookup');
+
+    await assert.rejects(
+      () => fixture.api.fetchWithCooldown('https://api.test/api/extension/word-definition', {}, 'dictionary'),
+      (error) => error.status === 429 && error.operation === 'dictionary',
+    );
+    assert.equal(fixture.calls.length, 1, 'active cooldown prevents a duplicate request');
+
+    await fixture.api.fetchWithCooldown('https://api.test/api/example-sentence/%E7%8C%AB', {}, 'examples');
+    assert.equal(fixture.calls.length, 2, 'a different operation is not blocked');
+  });
+
+  test(`${browserName} keeps a delay-less 503 as availability feedback without a cooldown`, async () => {
+    let stored = {};
+    const storage = {
+      async get() { return { tsukeruRateLimitCooldowns: stored }; },
+      async set(values) { stored = values.tsukeruRateLimitCooldowns || {}; },
+    };
+    const fixture = loadApi(browserName, () => response(503, {
+      error: 'Rate-limit storage unavailable',
+      error_code: 'service_unavailable',
+      operation: 'furigana',
+    }), { storage });
+
+    await assert.rejects(
+      () => fixture.api.fetchWithCooldown('https://api.test/api/extension/furigana', {}, 'furigana'),
+      (error) => error.status === 503 && error.errorCode === 'service_unavailable' && error.retryAfter == null,
+    );
+    assert.equal(Object.keys(await fixture.api.getRateLimitState()).length, 0);
   });
 }
