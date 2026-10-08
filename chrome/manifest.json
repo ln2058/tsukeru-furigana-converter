@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_manifest_name__",
-  "version": "3.4.0",
+  "version": "4.0.0",
   "description": "__MSG_manifest_description__",
   "default_locale": "en",
   "permissions": [
@@ -11,8 +11,7 @@
     "contextMenus"
   ],
   "host_permissions": [
-    "https://www.ezfurigana.com/*",
-    "*://*.ezfurigana.com/*"
+    "https://www.ezfurigana.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -37,16 +36,27 @@
         "<all_urls>"
       ],
       "js": [
+        "js/ui-messages.js",
         "js/content-ui.js",
         "js/content-rate-limit.js",
         "js/content-dom.js",
         "js/tooltip-async-state.js",
+        "js/word-rules.js",
         "js/content-tooltip.js",
         "js/content-main.js"
       ],
       "css": [
         "content.css"
       ]
+    },
+    {
+      "matches": [
+        "https://www.ezfurigana.com/*"
+      ],
+      "js": [
+        "js/content-sync.js"
+      ],
+      "run_at": "document_idle"
     }
   ],
   "commands": {

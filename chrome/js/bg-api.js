@@ -1,13 +1,13 @@
 /*
 Module: bg-api
-Purpose: Execute backend workflows for furigana processing, dictionary data, audio proxying, and export.
+Purpose: Execute backend workflows for furigana processing, dictionary data, audio proxying and reading-error reports.
 
 Inputs:
 - Text chunk payloads, settings, tab URLs, and action parameters.
 - Network responses from EZFurigana API endpoints.
 
 Outputs:
-- Processed furigana HTML, reading-aware dictionary/enrichment payloads, base64 data URLs, and structured error metadata.
+- Processed furigana HTML, reading-aware dictionary/enrichment payloads, base64 data URLs, report completion, and structured error metadata (including network and timeout codes).
 
 Side Effects:
 - Performs network fetches, tracks shared cooldown deadlines, and coalesces nonce acquisition/recovery across API requests.
@@ -23,7 +23,9 @@ Failure Modes:
 Security Notes:
 - Treat all backend responses as untrusted until sanitized by content scripts.
 - Redacts non-web tab URLs before sending backend metadata.
+- Sends only the per-worker session ID and the manifest version as identifying headers; no stable install ID.
 - Keep endpoint configuration centralized to avoid host sprawl.
+- Audio proxy fetches accept only HTTPS www.ezfurigana.com on the default port and refuse redirects.
 */
 // External network requests, furigana pipeline, and audio for the service worker.
 import { sha256Hash, cacheGet, cacheSet, definitionCache, DEFINITION_CACHE_TTL } from './bg-cache.js';
@@ -32,12 +34,15 @@ import { kata2hira } from './utils.js';
 export const API_BASE_URL = 'https://www.ezfurigana.com';
 
 export const DEFAULT_SETTINGS = {
+  levelSystem: 'jlpt',
   jlptLevel: 5,
+  gradeLevel: 4,
   furiganaType: 'hiragana',
-  firstOccurrenceOnly: false,
   highlightMode: 'off',
   watchDynamic: false,
   removeCustomStyling: false,
+  hideKnownFurigana: true,
+  studyMode: false,
 };
 
 const BACKGROUND_DEFINITION_CACHE_MAX_ENTRIES = 200;
@@ -50,10 +55,8 @@ const COOLDOWN_TYPES = new Set([
 const LEGACY_RATE_LIMIT_FALLBACK_SECONDS = 60;
 const MAX_RETRY_AFTER_SECONDS = 86400;
 const MAX_AUDIO_RESPONSE_BYTES = 2 * 1024 * 1024;
-const MAX_ANKI_ZIP_RESPONSE_BYTES = 64 * 1024 * 1024;
 const MIN_AUDIO_RESPONSE_BYTES = 100;
 const AUDIO_RESPONSE_MIME_TYPES = new Set(['audio/mpeg']);
-const ANKI_ZIP_RESPONSE_MIME_TYPES = new Set(['application/zip']);
 let cooldownState = {};
 let cooldownHydrationPromise = null;
 
@@ -214,8 +217,9 @@ export function dismantlePayload(text) {
 export async function handleFuriganaRequest(payload) {
   const { textContent = '', settings = {}, tabUrl } = payload;
 
-  // Settings suffix shared by all chunks (JLPT excluded — filtered client-side via CSS)
-  const settingsSuffix = `|${settings.furiganaType || 'hiragana'}|${settings.firstOccurrenceOnly ? '1' : '0'}`;
+  // Settings suffix shared by all chunks (levels excluded — filtered client-side via CSS).
+  // The trailing |0 is the retired first-occurrence flag, kept so existing cache entries still match.
+  const settingsSuffix = `|${settings.furiganaType || 'hiragana'}|0`;
   let nonceRateLimit = null;
 
   // ── Step 1: Dismantle the payload into per-node chunks ────────────────────
@@ -290,6 +294,21 @@ const _EXT_NONCE_REFRESH_BEFORE_MS = 30_000; // refresh 30s before expiry
 const _EXT_SESSION_ID = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
   ? crypto.randomUUID()
   : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+// Additive header: the backend buckets usage and rate-limit analytics by release.
+const _EXT_VERSION = (() => {
+  try {
+    const version = chrome?.runtime?.getManifest?.()?.version;
+    return typeof version === 'string' && /^\d+(\.\d+){0,3}$/.test(version) ? version : '';
+  } catch {
+    return '';
+  }
+})();
+
+function _extensionHeaders() {
+  return _EXT_VERSION
+    ? { 'x-extension-session-id': _EXT_SESSION_ID, 'x-extension-version': _EXT_VERSION }
+    : { 'x-extension-session-id': _EXT_SESSION_ID };
+}
 
 function _nonceLog(event, detail = {}) {
   console.info('[tsukeru][nonce]', event, detail);
@@ -318,7 +337,7 @@ async function _getExtNonce() {
     try {
       const res = await fetchWithCooldown(`${API_BASE_URL}/api/extension/nonce`, {
         method: 'GET',
-        headers: { 'x-extension-session-id': _EXT_SESSION_ID },
+        headers: _extensionHeaders(),
         credentials: 'omit',
         mode: 'cors',
         cache: 'no-store',
@@ -395,7 +414,6 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
         // Always request jlpt_level=5 (max-render: backend annotates all words); JLPT filtering is CSS-driven client-side
         fd.append('jlpt_level', '5');
         fd.append('furigana_type', settings.furiganaType || DEFAULT_SETTINGS.furiganaType);
-        fd.append('first_occurrence_only', settings.firstOccurrenceOnly ? 'on' : '');
         fd.append('raw_text', textContent);
         // Never leak local filesystem paths or other non-web URLs to the backend.
         fd.append('website_url', backendWebsiteUrl);
@@ -411,7 +429,7 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
         response = await fetchWithCooldown(endpoint, {
         method: 'POST',
         body: buildFormData(),
-        headers: { 'x-extension-session-id': _EXT_SESSION_ID },
+        headers: _extensionHeaders(),
         credentials: 'omit',
         mode: 'cors',
         }, 'furigana');
@@ -431,7 +449,7 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
           response = await fetchWithCooldown(endpoint, {
             method: 'POST',
             body: buildFormData(),
-            headers: { 'x-extension-session-id': _EXT_SESSION_ID },
+            headers: _extensionHeaders(),
             credentials: 'omit',
             mode: 'cors',
           }, 'furigana');
@@ -684,7 +702,13 @@ export async function fetchWithCooldown(url, options = {}, operation = 'furigana
   }
   const { timeoutMs: _ignoredTimeout, signal: _ignoredSignal, ...requestOptions } = options;
   try {
-    const response = await fetch(url, { ...requestOptions, signal: controller.signal });
+    let response;
+    try {
+      response = await fetch(url, { ...requestOptions, signal: controller.signal });
+    } catch (error) {
+      if (error?.name === 'AbortError') throw error;
+      throw Object.assign(new Error('API request failed'), { errorCode: 'network_error' });
+    }
     if (response.ok) return response;
     const body = await parseErrorBody(response);
     const error = createApiError(response, body, 'API request failed', operation);
@@ -695,6 +719,7 @@ export async function fetchWithCooldown(url, options = {}, operation = 'furigana
     if (error?.name === 'AbortError') {
       const timeoutError = new Error('API request timed out');
       timeoutError.name = 'TimeoutError';
+      timeoutError.errorCode = 'timeout';
       throw timeoutError;
     }
     throw error instanceof Error ? error : new Error('API request failed');
@@ -785,7 +810,7 @@ async function requestExtensionJsonWithNonce(url, nonce, retryState, operation =
   try {
     const response = await fetchWithCooldown(requestUrl.toString(), {
       method: 'GET',
-      headers: { 'x-extension-session-id': _EXT_SESSION_ID },
+      headers: _extensionHeaders(),
       credentials: 'omit',
       mode: 'cors',
     }, operation);
@@ -895,7 +920,7 @@ export async function handlePlayAudio(word, reading) {
 
   let waitedOnRateLimit = false;
   for (const audioUrl of urlsToTry) {
-    const response = await fetch(audioUrl);
+    const response = await fetch(audioUrl, { redirect: 'error' });
     if (response.status === 429) {
       const body = await response.json().catch(() => ({}));
       const retryAfterHeader = Number.parseInt(response.headers.get('Retry-After') || '', 10);
@@ -939,12 +964,12 @@ export async function handleFetchProxyAudio(url) {
     throw new Error('Invalid URL');
   }
   if (parsedUrl.protocol !== 'https:') throw new Error('Disallowed audio protocol');
-  if (parsedUrl.hostname !== 'www.ezfurigana.com' && !parsedUrl.hostname.endsWith('.ezfurigana.com')) {
+  if (parsedUrl.hostname !== 'www.ezfurigana.com') {
     throw new Error('Disallowed audio host');
   }
   if (parsedUrl.port !== '' && parsedUrl.port !== '443') throw new Error('Disallowed audio port');
 
-  const response = await fetch(parsedUrl.toString());
+  const response = await fetch(parsedUrl.toString(), { redirect: 'error' });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const blob = await readBoundedResponseBlob(response, {
     maxBytes: MAX_AUDIO_RESPONSE_BYTES,
@@ -958,36 +983,33 @@ export async function handleFetchProxyAudio(url) {
   });
 }
 
-export async function handleExportAnkiAudio(payload) {
-  const response = await fetch(`${API_BASE_URL}/api/export-anki-zip`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ words: payload }),
-    credentials: 'omit',
-    mode: 'cors',
-  });
-  if (!response.ok) {
-    if (response.status === 429) {
-      const body = await response.json().catch(() => ({}));
-      const retryAfterHeader = Number.parseInt(response.headers.get('Retry-After') || '', 10);
-      const retryAfter = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
-        ? Math.min(retryAfterHeader, 86400)
-        : 60;
-      const err = new Error(body?.error || 'Export rate limited');
-      err.rateLimitType = body?.rate_limit_type || 'audio_export';
-      err.retryAfter = retryAfter;
-      throw err;
-    }
-    throw new Error(`Export failed: ${response.status} ${response.statusText}`);
+/** Reading reports keep the existing request format and need no extension nonce. */
+export async function handleReportReadingError(payload = {}, source) {
+  if (!payload || typeof payload.word !== 'string' || typeof payload.reading !== 'string') {
+    throw Object.assign(new Error('Invalid report'), { errorCode: 'invalid_report' });
   }
-  const blob = await readBoundedResponseBlob(response, {
-    maxBytes: MAX_ANKI_ZIP_RESPONSE_BYTES,
-    allowedMimeTypes: ANKI_ZIP_RESPONSE_MIME_TYPES,
-  });
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve({ dataUrl: reader.result });
-    reader.onerror = () => reject(new Error('Failed to convert ZIP to Base64'));
-    reader.readAsDataURL(blob);
-  });
+  const { word, reading, context_sentence, correct_reading, suggested_reading, consent_given } = payload;
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}/api/report-error`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Source': source },
+      credentials: 'omit',
+      body: JSON.stringify({
+        word, reading, context_sentence,
+        correct_reading: correct_reading || suggested_reading || null,
+        consent_given,
+      }),
+    });
+  } catch (_) {
+    throw Object.assign(new Error('Report connection failed'), { errorCode: 'network_error' });
+  }
+  if (!response.ok) {
+    const body = await parseErrorBody(response);
+    const error = createApiError(response, body, 'Report failed');
+    // Report quotas are separate from furigana processing and its shared cooldown.
+    error.operation = 'report';
+    if (response.status === 429) error.rateLimitType = 'report';
+    throw error;
+  }
 }

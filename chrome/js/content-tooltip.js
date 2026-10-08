@@ -1,30 +1,36 @@
 /*
 Module: content-tooltip
-Purpose: Manage the instrument-styled dictionary tooltip, lazy enrichment, word interactions, reporting, vocabulary capture, and scoped saved-word highlighting on pages.
+Purpose: Manage the instrument-styled dictionary tooltip, lazy enrichment, word interactions, reporting, My Words capture with the Learning / Known switch, Study mode reveals, and learning/known word marks on pages.
 
 Inputs:
 - Pointer/selection events, wrapper metadata, reading-aware background lookup/audio responses, and the shared lazy-state coordinator.
+- Word states from the background store, word storage changes, and My Words display settings (Study mode, hidden readings on known words).
+- The shared content-ui theme helper for extension-owned surfaces.
 
 Outputs:
-- Tooltip rendering updates, saved vocabulary entries, and report payload messages.
+- Tooltip rendering updates, checked-word and Learning/Known requests to the background store, and report payload messages.
+- `tsukeru-learning`, `tsukeru-known`, and `tsukeru-revealed` classes and Study/known-reading attributes on the page.
+- A throttled `pageWordsChanged` runtime notice when furigana is applied or cleared, so an open popup re-lists the page's words.
 
 Side Effects:
 - Creates/removes tooltip DOM, fixed-position listeners, and disclosure state.
-- Reads/writes `chrome.storage.local` vocabulary data.
-- Excludes tooltip-owned metadata from page-word double-click capture and saved-word highlighting.
+- Registers tooltip and report surfaces with content-ui to follow the saved UI theme.
+- Opening the dictionary on a kanji word, or revealing it in Study mode, adds it to Learning (a known word stays known).
+- Excludes tooltip-owned metadata from word capture and word-state marks.
 
 Failure Modes:
 - Lookup/audio/report/enrichment requests can fail with preserved runtime status/rate-limit metadata and trigger fallback/no-op paths; stale or dismissed responses are ignored.
-- Missing metadata prevents save/play actions for a target word.
+- Missing metadata prevents capture/play actions for a target word; kana-only words are not tracked.
 - Completed dictionary results are TTL-bound and size-bounded; shared in-flight requests are retained only until settlement.
 
 Security Notes:
-- Escapes/sanitizes rendered content before DOM injection.
+- Escapes/sanitizes rendered content before DOM injection; report failures use localized messages from structured metadata.
+- Report opening/submission requires trusted clicks; word, reading, and context are held in isolated-script state rather than read back from page fields.
 - Avoids direct third-party media fetches from page context.
-- Redacts local file paths before saving vocabulary source metadata.
+- Checked words carry only the word, reading, JLPT level, part of speech, and a short plain-text sentence; no page URL.
 */
 // ============================================================================
-// content-tooltip.js — Dictionary tooltip, vocabulary saving, TTS, report modal
+// content-tooltip.js — Dictionary tooltip, My Words states, TTS, report modal
 // Loaded as a plain content script after content-dom.js.
 // References shared globals declared as var in content-main.js:
 //   dictionaryTooltip, dictionaryEventsBound, definitionCache
@@ -58,10 +64,6 @@ function createRuntimeResponseError(response, fallbackMessage) {
   return error;
 }
 
-function normalizeVocabularySourceUrl(url = '') {
-  return /^file:\/\//i.test(url) ? 'local-file' : (url || '');
-}
-
 // ── Dictionary tooltip: enable / click handling ───────────────────────────────
 
 function enableDictionaryPopups() {
@@ -80,11 +82,11 @@ function enableDictionaryPopups() {
     window.removeEventListener('resize', document.__tsukeruResizeHandler__);
   }
 
+  // Older versions saved words on double-click; checking a word now adds it to Learning.
   document.__tsukeruClickHandler__ = handleDictionaryClick;
-  document.__tsukeruDblClickHandler__ = handleRubyDoubleClick;
+  document.__tsukeruDblClickHandler__ = null;
 
   document.addEventListener('click', handleDictionaryClick, true);
-  document.addEventListener('dblclick', handleRubyDoubleClick, true);
   document.__tsukeruScrollHandler__ = (event) => {
     const target = event.target;
     if (dictionaryTooltip && target && typeof target.nodeType === 'number' && dictionaryTooltip.contains(target)) {
@@ -131,6 +133,10 @@ function handleDictionaryClick(event) {
   event.preventDefault();
   event.stopPropagation();
 
+  if (handleStudyReveal(targetEl, wordInfo)) {
+    hideDefinitionTooltip();
+    return;
+  }
   showDefinitionTooltip(targetEl, wordInfo);
 }
 
@@ -171,6 +177,8 @@ async function showDefinitionTooltip(ruby, wordInfo) {
   positionTooltip(ruby, tooltip);
   tooltip.classList.add('show');
   addTooltipInteractionHandlers();
+  // Checking a word adds it to Learning, as on the website.
+  const recordPromise = captureCheckedWord(ruby, wordInfo, 'lookup');
 
   try {
     const definitionData = await lookupDefinition(
@@ -180,6 +188,8 @@ async function showDefinitionTooltip(ruby, wordInfo) {
     );
     if (tooltip._lookupVersion !== myToken || tooltip.dataset.word !== wordInfo.word) return;
     renderDefinitionTooltip(tooltip, wordInfo, definitionData);
+    bindTooltipProgress(tooltip, recordPromise, myToken);
+    rememberWordDefinition(recordPromise, definitionData);
   } catch (err) {
     if (tooltip._lookupVersion !== myToken || tooltip.dataset.word !== wordInfo.word) return;
     console.error('Tsukeru: dictionary lookup failed', err);
@@ -191,22 +201,26 @@ async function showDefinitionTooltip(ruby, wordInfo) {
       t('content_error_loading_definition', undefined, 'Error loading definition')
     );
     addTooltipInteractionHandlers();
+    bindTooltipProgress(tooltip, recordPromise, myToken);
   }
 }
 
 function ensureDictionaryTooltip() {
   // dictionaryTooltip is a var global from content-main.js
   if (dictionaryTooltip && dictionaryTooltip.isConnected) {
+    applyTsukeruUiTheme(dictionaryTooltip);
     return dictionaryTooltip;
   }
   const existing = document.getElementById('tsukeru-word-tooltip');
   if (existing) {
     dictionaryTooltip = existing;
+    applyTsukeruUiTheme(existing);
     return existing;
   }
   dictionaryTooltip = document.createElement('div');
   dictionaryTooltip.id = 'tsukeru-word-tooltip';
   dictionaryTooltip.className = 'tsukeru-word-tooltip';
+  applyTsukeruUiTheme(dictionaryTooltip);
   document.body.appendChild(dictionaryTooltip);
   return dictionaryTooltip;
 }
@@ -257,7 +271,7 @@ function positionTooltip(ruby, tooltip) {
 
 // ── Tooltip interaction handlers ──────────────────────────────────────────────
 
-function addTooltipInteractionHandlers() {
+function addTooltipInteractionHandlers(reportInfo = null) {
   const tooltip = ensureDictionaryTooltip();
   const closeBtn = tooltip.querySelector('.tsukeru-tooltip-close');
   if (closeBtn) {
@@ -275,97 +289,17 @@ function addTooltipInteractionHandlers() {
     };
   }
 
-  const saveBtn = tooltip.querySelector('.tsukeru-tooltip-save');
-  if (saveBtn) {
-    saveBtn.onclick = async (e) => {
-      e.stopPropagation();
-      const word = tooltip.dataset.word;
-      if (!word) return;
-      const requestVersion = tooltip._lookupVersion;
-
-      if (saveBtn.classList.contains('saved')) {
-        try {
-          await removeFromVocabulary(word);
-          // Highlight refresh belongs to the page state, not the tooltip instance.
-          await refreshSavedVocabularyHighlights();
-          if (!isCurrentTooltipLookup(tooltip, requestVersion, word)) return;
-          saveBtn.classList.remove('saved');
-          saveBtn.title = t('content_save_word', undefined, 'Save word');
-        } catch (err) {
-          console.error('Tsukeru: unsave failed', err);
-        }
-        return;
-      }
-
-      const reading = tooltip.querySelector('.tsukeru-reading-text')?.textContent?.trim() || '';
-      const activeInfo = tooltip._activeWordInfo || (tooltip._activeRuby ? extractWordInfo(tooltip._activeRuby) : {});
-      const jlptRaw = tooltip.querySelector('.tsukeru-badge-jlpt')?.textContent?.replace('N', '').trim();
-      const jlpt = jlptRaw ? Number(jlptRaw) : null;
-      const pos = tooltip.querySelector('.tsukeru-badge-pos')?.textContent?.trim() || null;
-      let sentence = tooltip._activeRuby ? extractSentenceContext(tooltip._activeRuby) : '';
-      if (sentence) {
-        const stripped = getPlainTextFromHtml(sentence);
-        if (stripped.length <= (word + reading).length + 2) sentence = '';
-      }
-      const tatoebaJpEl = tooltip.querySelector('.tsukeru-example-jp');
-      const tatoebaEnEl = tooltip.querySelector('.tsukeru-example-en');
-      const entry = {
-        id: generateEntryId(),
-        word,
-        reading,
-        surface: activeInfo.surface || word,
-        surfaceReading: activeInfo.surfaceReading || reading,
-        sentence,
-        tatoebaJp: tatoebaJpEl ? tatoebaJpEl.innerHTML : null,
-        tatoebaEn: tatoebaEnEl ? tatoebaEnEl.textContent.replace(/^- /, '').trim() : null,
-        jlpt,
-        pos,
-        url: normalizeVocabularySourceUrl(window.location.href),
-        timestamp: Date.now()
-      };
-      try {
-        await attachDefinitionToEntry(entry, {
-          lookupReading: activeInfo.lookupReading,
-          readingType: activeInfo.lookupReadingType
-        });
-        await saveToVocabulary(entry);
-        // Keep page highlights accurate even if the tooltip was dismissed or replaced.
-        await refreshSavedVocabularyHighlights();
-        if (!isCurrentTooltipLookup(tooltip, requestVersion, word)) return;
-        saveBtn.classList.add('saved');
-        saveBtn.title = t('content_saved', undefined, 'Saved!');
-        showVocabSavedToast(word);
-      } catch (err) {
-        console.error('Tsukeru: save from tooltip failed', err);
-      }
-    };
-
-    // Pre-check: mark button as saved immediately if word is already in vocabulary
-    (async () => {
-      try {
-        const word = tooltip.dataset.word;
-        if (!word) return;
-        const requestVersion = tooltip._lookupVersion;
-        const { vocabulary = [] } = await chrome.storage.local.get(['vocabulary']);
-        if (!isCurrentTooltipLookup(tooltip, requestVersion, word)) return;
-        if (vocabulary.some(v => v.word === word)) {
-          saveBtn.classList.add('saved');
-          saveBtn.title = t('content_already_saved', undefined, 'Already saved');
-        }
-      } catch (_) { }
-    })();
-  }
-
   const reportBtn = tooltip.querySelector('.tsukeru-tooltip-report-btn');
   if (reportBtn) {
     reportBtn.onclick = (e) => {
+      if (!e.isTrusted || !reportInfo) return;
       e.stopPropagation();
-      const word = reportBtn.dataset.word;
-      const reading = reportBtn.dataset.reading;
+      const { word, reading } = reportInfo;
       let sentence = tooltip._activeRuby ? extractSentenceContext(tooltip._activeRuby) : '';
       if (sentence) sentence = getPlainTextFromHtml(sentence).substring(0, 200);
 
       const modal = ensureContentReportModal();
+      pendingReadingReport = { word, reading, context: sentence };
       document.getElementById('tsukeru-crm-word').value = word;
       document.getElementById('tsukeru-crm-reading').value = reading;
       document.getElementById('tsukeru-crm-context').value = sentence;
@@ -674,9 +608,6 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
   const readingText = String(wordInfo.reading || normalized.reading || '');
   const displayWord = wordInfo.word;
   let html = renderTooltipHeaderHtml(headerWordInfo, `
-    <button type="button" class="tooltip-save tsukeru-tooltip-save" aria-label="${escapeHtml(t('content_save_word', undefined, 'Save word'))}" title="${escapeHtml(t('content_save_word', undefined, 'Save word'))}">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
-    </button>
     <button type="button" class="tooltip-close tsukeru-tooltip-close" aria-label="${escapeHtml(t('content_close', undefined, 'Close'))}">&times;</button>
   `);
 
@@ -747,7 +678,7 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
   tooltip.innerHTML = html;
   appendAttachedExamples(tooltip, sensesToShow);
   tooltip.classList.add('show');
-  addTooltipInteractionHandlers();
+  addTooltipInteractionHandlers({ word: displayWord, reading: readingText });
   requestAnimationFrame(() => positionTooltip(tooltip._activeRuby, tooltip));
 }
 
@@ -1041,18 +972,25 @@ async function loadKanjiBreakdown(word) {
 
 // ── Report modal (in-page) ────────────────────────────────────────────────────
 
+// Content-script lexical state is inaccessible to the page's scripts.
+let pendingReadingReport = null;
+
 function ensureContentReportModal() {
   let modal = document.getElementById('tsukeru-content-report-modal');
-  if (modal) return modal;
+  if (modal) {
+    applyTsukeruUiTheme(modal);
+    return modal;
+  }
 
   modal = document.createElement('div');
   modal.id = 'tsukeru-content-report-modal';
   modal.className = 'tsukeru-content-report-modal hidden';
+  applyTsukeruUiTheme(modal);
 
   modal.innerHTML = `
     <div class="tsukeru-crm-content">
       <div class="tsukeru-crm-header">
-        <span>${escapeHtml(t('content_report_title', undefined, 'Report Reading'))}</span>
+        <span>${escapeHtml(t('content_report_title', undefined, 'Report an incorrect reading'))}</span>
         <button type="button" id="tsukeru-crm-close" aria-label="${escapeHtml(t('content_close', undefined, 'Close'))}">&times;</button>
       </div>
       <div class="tsukeru-crm-body">
@@ -1060,11 +998,11 @@ function ensureContentReportModal() {
         <div id="tsukeru-crm-success" class="tsukeru-crm-msg tsukeru-crm-success hidden"></div>
         <label class="tsukeru-crm-label">${escapeHtml(t('content_report_label_word', undefined, 'Word:'))}</label>
         <input type="text" id="tsukeru-crm-word" class="tsukeru-crm-input" readonly>
-        <label class="tsukeru-crm-label">${escapeHtml(t('content_report_label_wrong_reading', undefined, 'Wrong Reading:'))}</label>
+        <label class="tsukeru-crm-label">${escapeHtml(t('content_report_label_wrong_reading', undefined, 'Incorrect reading:'))}</label>
         <input type="text" id="tsukeru-crm-reading" class="tsukeru-crm-input" readonly>
         <label class="tsukeru-crm-label">${escapeHtml(t('content_report_label_context', undefined, 'Context:'))}</label>
         <textarea id="tsukeru-crm-context" class="tsukeru-crm-textarea" rows="2" readonly></textarea>
-        <label class="tsukeru-crm-label">${escapeHtml(t('content_report_label_correction_optional', undefined, 'Correction (Optional):'))}</label>
+        <label class="tsukeru-crm-label">${escapeHtml(t('content_report_label_correction_optional', undefined, 'Correct reading (optional):'))}</label>
         <input type="text" id="tsukeru-crm-correct" class="tsukeru-crm-input">
         <button type="button" id="tsukeru-crm-submit" class="tsukeru-crm-submit">${escapeHtml(t('content_report_submit', undefined, 'Submit Report'))}</button>
       </div>
@@ -1074,13 +1012,13 @@ function ensureContentReportModal() {
   document.body.appendChild(modal);
 
   document.getElementById('tsukeru-crm-close').onclick = () => {
+    pendingReadingReport = null;
     modal.classList.add('hidden');
   };
 
-  document.getElementById('tsukeru-crm-submit').onclick = () => {
-    const word = document.getElementById('tsukeru-crm-word').value;
-    const reading = document.getElementById('tsukeru-crm-reading').value;
-    const context = document.getElementById('tsukeru-crm-context').value;
+  document.getElementById('tsukeru-crm-submit').onclick = (event) => {
+    if (!event.isTrusted || !pendingReadingReport) return;
+    const { word, reading, context } = pendingReadingReport;
     const correction = document.getElementById('tsukeru-crm-correct').value.trim();
     const errorDiv = document.getElementById('tsukeru-crm-error');
     const successDiv = document.getElementById('tsukeru-crm-success');
@@ -1108,9 +1046,8 @@ function ensureContentReportModal() {
         successDiv.classList.remove('hidden');
         setTimeout(() => modal.classList.add('hidden'), 2000);
       } else {
-        const msg = (response && response.error)
-          ? response.error
-          : t('content_report_failed', undefined, 'Submission failed. Please try again.');
+        const failure = chrome.runtime.lastError ? {} : response;
+        const msg = TsukeruUiMessages.errorMessage(failure, 'report', t);
         errorDiv.textContent = msg;
         errorDiv.classList.remove('hidden');
       }
@@ -1162,200 +1099,255 @@ function extractSentenceContext(element) {
   return cleanedHTML;
 }
 
-// ── Double-click save ─────────────────────────────────────────────────────────
+// ── My Words: checked words, Learning / Known, Study mode ─────────────────────
+// Word rules come from word-rules.js (globalThis.TsukeruWords). The background
+// store is the only writer; this file sends it requests and follows storage
+// changes to mark words on the page.
 
-async function handleRubyDoubleClick(event) {
-  // ORPHAN CHECK: If the extension was reloaded, this script context is dead.
-  if (!chrome.runtime?.id) {
-    document.removeEventListener('dblclick', handleRubyDoubleClick, true);
-    return;
-  }
+function wordRules() {
+  return globalThis.TsukeruWords || null;
+}
 
-  if (!event.isTrusted) return;
+function wordIdentityOf(element) {
+  const rules = wordRules();
+  return rules && element ? rules.identityForWordInfo(getAnalysisWordData(element)) : null;
+}
 
-  if (event.target.closest('#tsukeru-word-tooltip')) return;
-
-  const targetEl = resolveAnalysisWordElement(event.target);
-  if (!targetEl) return;
-
-  event.preventDefault();
-  event.stopPropagation();
-
-  const wordInfo = extractWordInfo(targetEl);
-  if (!wordInfo.word) return;
-
-  let sentenceContext = extractSentenceContext(targetEl);
-  const strippedCtx = getPlainTextFromHtml(sentenceContext);
-  if (strippedCtx.length <= (wordInfo.word + (wordInfo.reading || '')).length + 2) sentenceContext = '';
-
-  const entry = {
-    id: generateEntryId(),
-    word: wordInfo.word,
-    reading: wordInfo.reading || wordInfo.surfaceReading || wordInfo.surface,
-    surface: wordInfo.surface || wordInfo.word,
-    surfaceReading: wordInfo.surfaceReading || wordInfo.reading || '',
-    sentence: sentenceContext,
-    jlpt: wordInfo.jlpt,
-    pos: wordInfo.pos,
-    url: normalizeVocabularySourceUrl(window.location.href),
-    timestamp: Date.now()
-  };
-
+/** The plain sentence around a word, without readings, at most 120 characters. */
+function plainWordSentence(element, word) {
   try {
-    await attachDefinitionToEntry(entry, {
-      lookupReading: wordInfo.lookupReading,
-      readingType: wordInfo.lookupReadingType
+    return wordRules()?.fitSentence(getPlainTextFromHtml(extractSentenceContext(element)), word) || '';
+  } catch (_) {
+    return '';
+  }
+}
+
+function noteLocalWordState(record) {
+  if (!record?.id) return;
+  if (record.state) wordStates.set(record.id, record.state);
+  else wordStates.delete(record.id);
+  scheduleWordStateRefresh();
+}
+
+/**
+ * Record that the reader checked a word on this page (dictionary lookup or
+ * Study reveal). A new word starts learning; a known word stays known.
+ * Resolves to {id, word, reading, state}, or null for kana-only words.
+ */
+async function captureCheckedWord(element, wordInfo, source) {
+  const identity = wordIdentityOf(element);
+  if (!identity || !chrome.runtime?.id) return null;
+  const countCheck = !countedWordIds.has(identity.id);
+  countedWordIds.add(identity.id);
+  try {
+    const response = await chrome.runtime.sendMessage({
+      action: 'wordsCapture',
+      word: identity.word,
+      reading: identity.reading,
+      sentence: plainWordSentence(element, wordInfo?.surface || identity.word),
+      level: wordInfo?.jlpt || '',
+      pos: wordInfo?.pos || '',
+      countCheck,
+      source,
     });
-    await saveToVocabulary(entry);
-    await refreshSavedVocabularyHighlights();
-    showVocabSavedToast(wordInfo.surface || wordInfo.word);
-  } catch (err) {
-    console.error('Tsukeru: failed to save vocabulary entry', err);
+    const record = response?.success ? response.record : null;
+    if (record) noteLocalWordState(record);
+    return record;
+  } catch (error) {
+    console.warn('Tsukeru: could not record the checked word', error?.message);
+    return null;
   }
 }
 
-// ── Vocabulary storage ────────────────────────────────────────────────────────
-
-async function attachDefinitionToEntry(entry, lookupOptions = {}) {
+async function setCheckedWordState(record, state, element) {
   try {
-    const data = await lookupDefinition(entry.word, lookupOptions.lookupReading, lookupOptions.readingType);
-    const normalized = normalizeDefinitionData(data);
-    if (normalized) {
-      entry.definition = normalized.senses.slice(0, DICTIONARY_MAX_SENSES).map(s => (s.glosses || []).join('; ')).filter(Boolean).join(' | ');
-      entry.definitions = normalized.senses;
-      if (!entry.reading && normalized.reading) {
-        entry.reading = normalized.reading;
-      }
-    }
-  } catch (err) {
-    console.warn('Tsukeru: could not attach dictionary data to vocab entry', err);
+    const response = await chrome.runtime.sendMessage({
+      action: 'wordsSetState',
+      word: record.word,
+      reading: record.reading,
+      state,
+      sentence: element ? plainWordSentence(element, record.word) : '',
+    });
+    const updated = response?.success ? response.record : null;
+    if (updated) noteLocalWordState(updated);
+    return updated;
+  } catch (error) {
+    console.warn('Tsukeru: could not change the word state', error?.message);
+    return null;
   }
 }
 
-function getVocabularyMatchKeys(item = {}) {
-  return {
-    word: String(item.word || '').trim(),
-    surface: String(item.surface || '').trim(),
-    reading: String(item.reading || '').trim(),
-    surfaceReading: String(item.surfaceReading || '').trim(),
-  };
+/** Keep the first definition the reader saw with the word, for My Words exports. */
+async function rememberWordDefinition(recordPromise, data) {
+  const record = await recordPromise;
+  if (!record) return;
+  const normalized = normalizeDefinitionData(data);
+  const definition = (normalized?.senses || [])
+    .slice(0, 2)
+    .map((sense) => (sense.glosses || []).join('; '))
+    .filter(Boolean)
+    .join('; ');
+  if (!definition) return;
+  chrome.runtime.sendMessage({
+    action: 'wordsSetDefinition',
+    word: record.word,
+    reading: record.reading,
+    definition,
+  }).catch(() => {});
 }
 
-function getRubyMatchKeys(element) {
-  if (!element) return {};
-  const info = getAnalysisWordData(element);
-  const rtText = info.surfaceReading || '';
-  const baseText = info.surface || '';
-  return {
-    dictForm: String(info.dictForm || '').trim(),
-    surface: String(info.surface || '').trim(),
-    dictReading: String(info.reading || '').trim(),
-    reading: String(info.surfaceReading || '').trim(),
-    rtText: String(rtText || '').trim(),
-    baseText: String(baseText || '').trim(),
-  };
+/** The Learning / Known switch, the same two-state control as the website popup. */
+function renderTooltipProgress(tooltip, record) {
+  tooltip.querySelectorAll('.tooltip-progress').forEach((node) => node.remove());
+  if (!record) return;
+  const host = tooltip.querySelector('.tsukeru-reading-actions');
+  const header = tooltip.querySelector('.tsukeru-header-row');
+  if (!host && !header) return;
+  const group = document.createElement('div');
+  group.className = 'tooltip-progress';
+  group.setAttribute('role', 'group');
+  group.setAttribute('aria-label', t('content_word_state_for', [record.word], `Status of ${record.word}`));
+  const options = [
+    ['learning', t('content_state_learning', undefined, 'Learning')],
+    ['known', t('content_state_known', undefined, 'Known')],
+  ].map(([state, label]) => {
+    const option = document.createElement('button');
+    option.type = 'button';
+    option.className = 'tooltip-progress-option';
+    option.dataset.state = state;
+    option.textContent = label;
+    option.setAttribute('aria-pressed', record.state === state ? 'true' : 'false');
+    option.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      if (option.getAttribute('aria-pressed') === 'true') return;
+      const updated = await setCheckedWordState(record, state, tooltip._activeRuby);
+      if (!updated) return;
+      options.forEach((other) => {
+        other.setAttribute('aria-pressed', other.dataset.state === updated.state ? 'true' : 'false');
+      });
+    });
+    return option;
+  });
+  group.append(...options);
+  if (host) {
+    host.prepend(group);
+  } else {
+    group.classList.add('tooltip-progress-row');
+    header.insertAdjacentElement('afterend', group);
+  }
 }
 
-function setSavedVocabularyClass(savedWords, savedPairs) {
-  savedVocabularyWords = savedWords;
-  savedVocabularyPairs = savedPairs;
-  applySavedVocabularyHighlightsTo(document);
+async function bindTooltipProgress(tooltip, recordPromise, token) {
+  const record = await recordPromise;
+  if (tooltip._lookupVersion !== token || !tooltip.classList.contains('show')) return;
+  renderTooltipProgress(tooltip, record);
+  requestAnimationFrame(() => positionTooltip(tooltip._activeRuby, tooltip));
 }
 
-function applySavedVocabularyHighlightsTo(root) {
-  if (!root || !savedVocabularyWords.size && !savedVocabularyPairs.size) return;
-  getAnalysisWordElements(root).forEach((el) => {
-    const keys = getRubyMatchKeys(el);
-    const standaloneMatch = savedVocabularyWords.has(keys.dictForm) ||
-      savedVocabularyWords.has(keys.surface) ||
-      savedVocabularyWords.has(keys.baseText);
-    const pairMatch =
-      savedVocabularyPairs.has(`${keys.dictForm}|${keys.dictReading}`) ||
-      savedVocabularyPairs.has(`${keys.dictForm}|${keys.reading}`) ||
-      savedVocabularyPairs.has(`${keys.surface}|${keys.dictReading}`) ||
-      savedVocabularyPairs.has(`${keys.surface}|${keys.reading}`) ||
-      savedVocabularyPairs.has(`${keys.dictForm}|${keys.rtText}`) ||
-      savedVocabularyPairs.has(`${keys.surface}|${keys.rtText}`) ||
-      savedVocabularyPairs.has(`${keys.dictForm}|${keys.baseText}`) ||
-      savedVocabularyPairs.has(`${keys.surface}|${keys.baseText}`);
-    el.classList.toggle('vocab-saved', standaloneMatch || pairMatch);
+function isStudyModeOn() {
+  return document.documentElement.getAttribute('data-tsukeru-study') === 'on';
+}
+
+function hasVisibleReading(element) {
+  const reading = element.querySelector?.('rt');
+  if (!reading) return false;
+  try {
+    return window.getComputedStyle(reading).display !== 'none';
+  } catch (_) {
+    return true;
+  }
+}
+
+/**
+ * Study mode: the first click on a word with a reading reveals it and counts
+ * as a check; the next click opens the dictionary as usual.
+ */
+function handleStudyReveal(element, wordInfo) {
+  if (!isStudyModeOn() || element.classList.contains('tsukeru-revealed') || !hasVisibleReading(element)) return false;
+  element.classList.add('tsukeru-revealed');
+  captureCheckedWord(element, wordInfo, 'study');
+  return true;
+}
+
+function clearStudyReveals() {
+  document.querySelectorAll('.tsukeru-revealed').forEach((element) => element.classList.remove('tsukeru-revealed'));
+}
+
+/** Study mode and hidden readings on known words; both come from settings. */
+function applyWordDisplaySettings(settings = {}) {
+  const root = document.documentElement;
+  const study = settings.studyMode === true ? 'on' : 'off';
+  if (root.getAttribute('data-tsukeru-study') !== study) clearStudyReveals();
+  root.setAttribute('data-tsukeru-study', study);
+  root.setAttribute('data-tsukeru-hide-known', settings.hideKnownFurigana === false ? 'off' : 'on');
+}
+
+function clearWordDisplaySettings() {
+  clearStudyReveals();
+  document.documentElement.removeAttribute('data-tsukeru-study');
+  document.documentElement.removeAttribute('data-tsukeru-hide-known');
+  notePageWordsChanged();
+}
+
+/** Tell an open popup that furigana was added or removed, so Words in this text re-lists the page. */
+function notePageWordsChanged() {
+  if (pageWordsNoticeTimer) return;
+  pageWordsNoticeTimer = setTimeout(() => {
+    pageWordsNoticeTimer = 0;
+    // No listener when the popup is closed; that is expected.
+    chrome.runtime.sendMessage({ action: 'pageWordsChanged' })?.catch?.(() => {});
+  }, 400);
+}
+
+/** Mark learning and known words: known words lose their readings, learning words keep them. */
+function applyWordStatesTo(root) {
+  notePageWordsChanged();
+  const whole = root === document;
+  if (!root || (!wordStates.size && !(whole && wordStatesApplied))) return;
+  if (whole) wordStatesApplied = wordStates.size > 0;
+  getAnalysisWordElements(root).forEach((element) => {
+    const identity = wordIdentityOf(element);
+    const state = identity ? wordStates.get(identity.id) : undefined;
+    element.classList.toggle('tsukeru-learning', state === 'learning');
+    element.classList.toggle('tsukeru-known', state === 'known');
   });
 }
 
-async function refreshSavedVocabularyHighlights() {
-  try {
-    const { vocabulary = [] } = await chrome.storage.local.get(['vocabulary']);
-    const savedWords = new Set();
-    const savedPairs = new Set();
-    vocabulary.forEach((item) => {
-      const { word, surface, reading, surfaceReading } = getVocabularyMatchKeys(item);
-      if (word) savedWords.add(word);
-      if (surface) savedWords.add(surface);
-      if (word && reading) savedPairs.add(`${word}|${reading}`);
-      if (surface && reading) savedPairs.add(`${surface}|${reading}`);
-      if (word && surfaceReading) savedPairs.add(`${word}|${surfaceReading}`);
-      if (surface && surfaceReading) savedPairs.add(`${surface}|${surfaceReading}`);
-    });
-    setSavedVocabularyClass(savedWords, savedPairs);
-  } catch (err) {
-    console.warn('Tsukeru: failed to refresh saved vocabulary highlights', err);
-  }
+function scheduleWordStateRefresh() {
+  if (!isFuriganaActive || wordStateRefreshFrame) return;
+  wordStateRefreshFrame = requestAnimationFrame(() => {
+    wordStateRefreshFrame = 0;
+    applyWordStatesTo(document);
+  });
 }
 
-async function saveToVocabulary(entry) {
+async function refreshWordStates() {
   try {
-    if (!entry.id) {
-      entry.id = generateEntryId();
+    const response = await chrome.runtime.sendMessage({ action: 'wordsGetStates' });
+    if (response?.success && response.states && typeof response.states === 'object') {
+      wordStates = new Map(Object.entries(response.states));
     }
-    const result = await chrome.storage.local.get(['vocabulary']);
-    const vocabulary = result.vocabulary || [];
-
-    const existingIndex = vocabulary.findIndex(v => v.word === entry.word && v.reading === entry.reading);
-
-    if (existingIndex >= 0) {
-      vocabulary[existingIndex] = {
-        ...vocabulary[existingIndex],
-        ...entry,
-        timestamp: Date.now()
-      };
-    } else {
-      vocabulary.unshift(entry);
-    }
-
-    if (vocabulary.length > 50) {
-      vocabulary.length = 50;
-    }
-
-    await chrome.storage.local.set({ vocabulary });
-  } catch (err) {
-    console.error('Failed to save vocabulary:', err);
+  } catch (error) {
+    console.warn('Tsukeru: could not read word states', error?.message);
   }
+  applyWordStatesTo(document);
 }
 
-async function removeFromVocabulary(wordToRemove) {
-  try {
-    const result = await chrome.storage.local.get(['vocabulary']);
-    let vocabulary = result.vocabulary || [];
-    const initialLength = vocabulary.length;
-    vocabulary = vocabulary.filter(v => v.word !== wordToRemove);
-    if (vocabulary.length !== initialLength) {
-      await chrome.storage.local.set({ vocabulary });
+/** Follow word changes made anywhere (other tabs, the popup, EZFurigana sync). */
+function noteWordStateChanges(changes) {
+  let touched = false;
+  Object.entries(changes || {}).forEach(([key, change]) => {
+    if (!key.startsWith('w:')) return;
+    let id;
+    try {
+      id = decodeURIComponent(key.slice(2));
+    } catch (_) {
+      return;
     }
-  } catch (err) {
-    console.error('Tsukeru: Failed to remove vocabulary:', err);
-    throw err;
-  }
-}
-
-// ── Toast notifications ───────────────────────────────────────────────────────
-
-function showVocabSavedToast(word) {
-  const toast = document.createElement('div');
-  toast.className = 'tsukeru-vocab-saved-toast';
-  toast.textContent = t('content_saved_toast_with_word', [word], `Saved: ${word}`);
-  document.body.appendChild(toast);
-
-  setTimeout(() => {
-    toast.remove();
-  }, 1500);
+    const state = change?.newValue?.state;
+    if (state) wordStates.set(id, state);
+    else wordStates.delete(id);
+    touched = true;
+  });
+  if (touched) scheduleWordStateRefresh();
 }

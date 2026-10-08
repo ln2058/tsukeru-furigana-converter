@@ -17,7 +17,7 @@ function response(status, body, headers = {}) {
   };
 }
 
-function loadApi(browserName, route, { cacheLimit = 200, storage = null } = {}) {
+function loadApi(browserName, route, { cacheLimit = 200, storage = null, manifestVersion = null } = {}) {
   const apiUrl = new URL(`../${browserName}/js/bg-api.js`, import.meta.url);
   let source = readFileSync(apiUrl, 'utf8')
     .replace(/import\s+\{[\s\S]*?\}\s+from\s+'\.\/bg-cache\.js';\s*/m, '')
@@ -44,6 +44,7 @@ function loadApi(browserName, route, { cacheLimit = 200, storage = null } = {}) 
       requestExtensionJson,
       fetchWithCooldown,
       getRateLimitState,
+      handleReportReadingError,
     };
   `;
   const calls = [];
@@ -55,7 +56,12 @@ function loadApi(browserName, route, { cacheLimit = 200, storage = null } = {}) 
       calls.push({ url: String(url), options });
       return Promise.resolve(route(new URL(String(url)), options));
     },
-    chrome: storage ? { storage: { local: storage } } : undefined,
+    chrome: storage || manifestVersion
+      ? {
+        ...(storage && { storage: { local: storage } }),
+        ...(manifestVersion && { runtime: { getManifest: () => ({ version: manifestVersion }) } }),
+      }
+      : undefined,
   };
   vm.runInNewContext(source, sandbox, { filename: apiUrl.pathname });
   return { api: sandbox.__api, calls };
@@ -69,6 +75,34 @@ function queuedRoute(nonNonceResponses, nonceResponses = [response(200, { nonce:
 }
 
 for (const browserName of ['chrome', 'firefox']) {
+  test(`${browserName} reading reports preserve their request contract and expose structured failure metadata`, async () => {
+    const source = browserName === 'chrome' ? 'Chrome-Extension-TSUKERU' : 'Firefox-Extension-TSUKERU';
+    const payload = { word: '猫', reading: 'ねこ', context_sentence: '猫です', suggested_reading: 'ネコ', consent_given: true };
+    const fixture = loadApi(browserName, () => response(200, {}));
+    await fixture.api.handleReportReadingError(payload, source);
+    assert.equal(fixture.calls.length, 1, 'reports do not acquire a nonce');
+    const call = fixture.calls[0];
+    assert.equal(new URL(call.url).pathname, '/api/report-error');
+    assert.equal(call.options.headers['X-Source'], source);
+    assert.equal(call.options.credentials, 'omit');
+    assert.deepEqual(JSON.parse(call.options.body), {
+      word: '猫', reading: 'ねこ', context_sentence: '猫です', correct_reading: 'ネコ', consent_given: true,
+    });
+    await assert.rejects(() => fixture.api.handleReportReadingError({ word: {} }, source), e => e.errorCode === 'invalid_report');
+    assert.equal(fixture.calls.length, 1, 'malformed reports are not sent');
+
+    const limited = loadApi(browserName, () => response(429, { error: 'technical details' }, { 'Retry-After': '90' }));
+    await assert.rejects(() => limited.api.handleReportReadingError(payload, source), e =>
+      e.status === 429 && e.errorCode === 'rate_limited' && e.rateLimitType === 'report' && e.retryAfter === 90);
+    assert.deepEqual(Object.keys(await limited.api.getRateLimitState()), [], 'report limits do not pause furigana');
+  });
+
+  test(`${browserName} network failures retain error codes`, async () => {
+    const offline = loadApi(browserName, () => { throw new TypeError('Failed to fetch'); });
+    await assert.rejects(() => offline.api.fetchWithCooldown('https://api.test/', {}, 'furigana'), e => e.errorCode === 'network_error');
+    await assert.rejects(() => offline.api.handleReportReadingError({ word: '猫', reading: 'ねこ' }, 'test'), e => e.errorCode === 'network_error');
+  });
+
   test(`${browserName} validates lookup arguments and builds reading-aware requests`, async () => {
     const { api, calls } = loadApi(browserName, queuedRoute([
       response(200, { entries: [{ kana: ['たべる'], senses: [] }] })
@@ -222,6 +256,24 @@ for (const browserName of ['chrome', 'firefox']) {
       assert.equal(legacyUrl.searchParams.get('reading'), 'みる');
       assert.equal(legacyUrl.searchParams.get('reading_type'), 'hiragana');
     }
+  });
+
+  test(`${browserName} sends the manifest version header only when it is valid`, async () => {
+    const versioned = loadApi(browserName, queuedRoute([response(200, { entries: [] })]), { manifestVersion: '3.4.1' });
+    await versioned.api.lookupDefinition('猫', '', '');
+    assert.ok(versioned.calls.length >= 2);
+    for (const call of versioned.calls) {
+      assert.equal(call.options.headers['x-extension-version'], '3.4.1');
+      assert.equal(call.options.headers['x-extension-session-id'], `${browserName}-session`);
+    }
+
+    const invalid = loadApi(browserName, queuedRoute([response(200, { entries: [] })]), { manifestVersion: 'dev build' });
+    await invalid.api.lookupDefinition('猫', '', '');
+    assert.ok(invalid.calls.every((call) => !('x-extension-version' in call.options.headers)));
+
+    const missing = loadApi(browserName, queuedRoute([response(200, { entries: [] })]));
+    await missing.api.lookupDefinition('猫', '', '');
+    assert.ok(missing.calls.every((call) => !('x-extension-version' in call.options.headers)));
   });
 
   test(`${browserName} uses the same nonce/session JSON helper for enrichment endpoints`, async () => {

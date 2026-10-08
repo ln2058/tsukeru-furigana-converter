@@ -12,10 +12,11 @@ Outputs:
 Side Effects:
 - Toggles page classes/attributes/styles and shared runtime globals.
 - Starts/stops observers, long-page block state, dictionary popup behavior, lazy tooltip lookup sessions, and live appearance updates.
+- Applies My Words display settings (Study mode, hidden readings on known words) and follows word state changes from `chrome.storage.onChanged`.
 
 Failure Modes:
 - Concurrent apply requests are ignored while an operation token is active; stale viewport work is cancelled cooperatively.
-- Runtime messaging/API failures surface as logged errors and toast notifications via shared retry helpers.
+- Runtime messaging/API failures surface as localized toast notifications via structured error metadata and shared retry helpers.
 
 Security Notes:
 - Sends only required text payloads to background processing.
@@ -29,7 +30,8 @@ Security Notes:
 //   js/content-rate-limit.js (retry helper)
 //   js/content-dom.js       (utilities, observers, HTML processing)
 //   js/tooltip-async-state.js (lazy tooltip request coordination)
-//   js/content-tooltip.js   (dictionary tooltip, vocab saving)
+//   js/word-rules.js        (My Words identity rules)
+//   js/content-tooltip.js   (dictionary tooltip, My Words states)
 //
 // Guard pattern: state variables and the message listener are initialized
 // only once per page context. Functions (applyFurigana etc.) are defined
@@ -44,20 +46,7 @@ function t(key, substitutions, fallback = '') {
 }
 
 function getUserFacingApplyError(error) {
-  const rawMessage = String(error?.message || '').trim();
-  if (/(auth|nonce|401|403)/i.test(rawMessage)) {
-    return t(
-      'content_toast_connection_error',
-      undefined,
-      'Tsukeru had trouble connecting. Please try again in a moment.'
-    );
-  }
-
-  return rawMessage || t(
-    'content_toast_generic_error',
-    undefined,
-    'Tsukeru could not finish this page. Please reload and try again.'
-  );
+  return TsukeruUiMessages.errorMessage(error, 'apply', t);
 }
 
 function invalidateContentLifecycle() {
@@ -94,13 +83,11 @@ async function applyFurigana(settings) {
   const pageRoot = document.body || document.documentElement;
 
   // Soft-hide bypass: if DOM is intact but hidden, and reprocess-critical settings
-  // (furiganaType, firstOccurrenceOnly) haven't changed, just reveal the DOM.
+  // (furiganaType) haven't changed, just reveal the DOM.
   const softHidden = Boolean(pageRoot?.classList.contains('tsukeru-furigana-disabled'));
   const hasRubyDom = softHidden && document.querySelectorAll('[data-tsukeru-wrapper="1"]').length > 0;
   if (hasRubyDom && lastAppliedSettings) {
-    const needsReprocess =
-      settings.furiganaType !== lastAppliedSettings.furiganaType ||
-      settings.firstOccurrenceOnly !== lastAppliedSettings.firstOccurrenceOnly;
+    const needsReprocess = settings.furiganaType !== lastAppliedSettings.furiganaType;
     if (!needsReprocess) {
       const operation = {
         token: Symbol('apply'),
@@ -116,7 +103,8 @@ async function applyFurigana(settings) {
           'data-tsukeru-custom-style',
           settings?.removeCustomStyling ? 'off' : 'on'
         );
-        document.documentElement.setAttribute('data-tsukeru-jlpt', String(settings?.jlptLevel ?? 5));
+        setLevelFilter(settings);
+        applyWordDisplaySettings(settings);
         let revealPending = false;
         if (wasLongPage) {
           const siteConfig = SITE_CONFIGS[currentSite] || SITE_CONFIGS.default;
@@ -131,15 +119,15 @@ async function applyFurigana(settings) {
             const plan = collectLongPagePlan(revealRoot || pageRoot);
             installLongPagePlan(plan, { force: true, rootNode: revealRoot || pageRoot });
           }
-          await refreshSavedVocabularyHighlights();
+          await refreshWordStates();
           startLongPageProcessing(settings);
         } else if (settings.watchDynamic) {
-          refreshSavedVocabularyHighlights();
+          refreshWordStates();
           startWatchingDynamicContent(settings);
           const siteConfig = SITE_CONFIGS[currentSite] || SITE_CONFIGS.default;
           if (siteConfig.useIntersectionObserver) startIntersectionObserver(settings);
         } else {
-          refreshSavedVocabularyHighlights();
+          refreshWordStates();
         }
         if (currentSite === 'youtube') startYoutubeCaptionsObserver(settings);
         return { pending: revealPending };
@@ -170,7 +158,8 @@ async function applyFurigana(settings) {
   document.documentElement.style.setProperty('--tsukeru-ruby-size', `${settings?.rubySize ?? 0.65}em`);
   document.documentElement.style.setProperty('--tsukeru-ruby-color', settings?.rubyColor || '#475569');
   document.documentElement.style.setProperty('--tsukeru-ruby-weight', settings?.rubyWeight || 'normal');
-  document.documentElement.setAttribute('data-tsukeru-jlpt', String(settings?.jlptLevel ?? 5));
+  setLevelFilter(settings);
+  applyWordDisplaySettings(settings);
 
   try {
     const siteConfig = SITE_CONFIGS[currentSite] || SITE_CONFIGS.default;
@@ -183,7 +172,7 @@ async function applyFurigana(settings) {
       viewportProcessingPending = true;
       longPageFirstWorkState = 'pending';
       enableDictionaryPopups();
-      await refreshSavedVocabularyHighlights();
+      await refreshWordStates();
       if (!isValid()) return;
       startLongPageProcessing(settings);
       if (currentSite === 'youtube') startYoutubeCaptionsObserver(settings);
@@ -197,7 +186,7 @@ async function applyFurigana(settings) {
     });
     const longPagePlan = discovery.plan;
     if (!longPagePlan.blocks.length) {
-      throw new Error(t('content_error_no_text_found', undefined, 'No text content found on page'));
+      throw Object.assign(new Error('No eligible text'), { errorCode: 'no_text' });
     }
 
     if (shouldUseViewportProcessing(longPagePlan, siteConfig)) {
@@ -208,7 +197,7 @@ async function applyFurigana(settings) {
       isFuriganaActive = true;
       lastAppliedSettings = { ...settings };
       enableDictionaryPopups();
-      await refreshSavedVocabularyHighlights();
+      await refreshWordStates();
       if (!isValid()) return;
       startLongPageProcessing(settings);
       return;
@@ -217,7 +206,7 @@ async function applyFurigana(settings) {
     const textNodes = discovery.textNodes
       .filter((node) => node.isConnected !== false && isProcessableTextNode(node));
     if (!textNodes.length) {
-      throw new Error(t('content_error_no_text_found', undefined, 'No text content found on page'));
+      throw Object.assign(new Error('No eligible text'), { errorCode: 'no_text' });
     }
 
     const batches = buildBatches(textNodes);
@@ -259,7 +248,7 @@ async function applyFurigana(settings) {
     lastAppliedSettings = { ...settings };
 
     enableDictionaryPopups();
-    refreshSavedVocabularyHighlights();
+    refreshWordStates();
 
     if (settings.watchDynamic) {
       startWatchingDynamicContent(settings);
@@ -276,12 +265,13 @@ async function applyFurigana(settings) {
 
   } catch (error) {
     if (!isValid() || error.cancelled) return;
-    console.error('Error applying furigana:', error);
+    console.warn('Tsukeru: apply failed', error?.errorCode || 'unknown');
     if (error.rateLimitType || error.errorCode === 'service_unavailable') {
       // Rate-limit and service-availability toasts are guaranteed by the retry helper.
     } else {
       showToast(getUserFacingApplyError(error), { type: 'error', duration: 8000 });
       setHighlightMode('off');
+      clearWordDisplaySettings();
     }
     throw error;
   } finally {
@@ -306,6 +296,7 @@ function clearFurigana() {
   stopYoutubeCaptionsObserver();
   clearLongPageRuntime({ retainClassification: true });
   setHighlightMode('off');
+  clearWordDisplaySettings();
 }
 
 // Full DOM teardown — used before re-applying with changed settings.
@@ -343,6 +334,7 @@ function hardClearFurigana() {
   stopYoutubeCaptionsObserver();
   clearLongPageRuntime();
   setHighlightMode('off');
+  clearWordDisplaySettings();
 }
 
 // ── Initialization guard ──────────────────────────────────────────────────────
@@ -397,8 +389,18 @@ if (!window.__TSUKERU_LOADED__) {
   var longPageBatchSerial = 0;
   var cleanupPending = false;
   var viewportProcessingPending = false;
-  var savedVocabularyWords = new Set();
-  var savedVocabularyPairs = new Set();
+  // My Words: word id -> learning/known/ignored, kept current from storage.
+  var wordStates = new Map();
+  var wordStatesApplied = false;
+  var wordStateRefreshFrame = 0;
+  // Each word counts as checked at most once per page, like a website result.
+  var countedWordIds = new Set();
+  // Throttles the notice that tells an open popup to re-list the page's words.
+  var pageWordsNoticeTimer = 0;
+
+  chrome.storage?.onChanged?.addListener((changes, area) => {
+    if (area === 'local') noteWordStateChanges(changes);
+  });
 
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'applyFurigana') {
@@ -453,8 +455,13 @@ if (!window.__TSUKERU_LOADED__) {
       sendResponse(result);
     }
 
-    if (request.action === 'updateJLPT') {
-      document.documentElement.setAttribute('data-tsukeru-jlpt', String(request.level ?? 5));
+    if (request.action === 'updateWordDisplay') {
+      if (isFuriganaActive) applyWordDisplaySettings(request.settings || {});
+      sendResponse({ ok: true });
+    }
+
+    if (request.action === 'updateLevel') {
+      setLevelFilter(request.settings || {});
       sendResponse({ ok: true });
     }
     if (request.action === 'updateAppearance') {
@@ -462,6 +469,7 @@ if (!window.__TSUKERU_LOADED__) {
       if (request.size) document.documentElement.style.setProperty('--tsukeru-ruby-size', request.size);
       if (request.weight) document.documentElement.style.setProperty('--tsukeru-ruby-weight', request.weight);
       const hasManagedRuby = document.querySelector('[data-tsukeru-wrapper="1"]');
+      if (request.highlightMode && (isFuriganaActive || hasManagedRuby)) setHighlightMode(request.highlightMode);
       if (typeof request.removeCustomStyling === 'boolean' && (isFuriganaActive || hasManagedRuby)) {
         document.documentElement.setAttribute(
           'data-tsukeru-custom-style',

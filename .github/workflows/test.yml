@@ -1,0 +1,35 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check JavaScript syntax
+        run: |
+          for file in $(git ls-files 'chrome/*.js' 'firefox/*.js' 'scripts/*.js' 'scripts/*.mjs'); do
+            node --check "$file"
+          done
+      - name: Validate locales
+        run: node scripts/validate-locales.js
+      - name: Run tests
+        run: node --test scripts/*.test.mjs
+      - name: Check manifest versions match
+        run: |
+          node -e "
+            const chrome = require('./chrome/manifest.json').version;
+            const firefox = require('./firefox/manifest.json').version;
+            if (chrome !== firefox) { console.error('Manifest versions differ:', chrome, firefox); process.exit(1); }
+            console.log('Manifest version', chrome);
+          "

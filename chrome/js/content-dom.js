@@ -20,6 +20,7 @@ Failure Modes:
 
 Security Notes:
 - Enforces strict allowlist sanitization before HTML insertion.
+- Escapes quotes as well as markup delimiters for HTML text and quoted attributes.
 - Excludes sensitive/non-text targets from processing.
 */
 // ============================================================================
@@ -254,6 +255,9 @@ function getAnalysisWordData(target) {
     pos: getDataAttribute(element, 'pos').trim(),
     altReadings: getDataAttribute(element, 'alt-readings')
       .split(',').map((value) => value.trim()).filter(Boolean),
+    // Set on number + counter units (2024年 → 年 ねん) by current backends.
+    counter: getDataAttribute(element, 'counter').trim(),
+    counterReading: getDataAttribute(element, 'counter-reading').trim(),
   };
 }
 
@@ -351,7 +355,7 @@ function generateEntryId() {
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text || '';
-  return div.innerHTML;
+  return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function escapeRegex(str) {
@@ -435,6 +439,24 @@ function setHighlightMode(mode = 'off') {
   // currentHighlightMode is a var declared in content-main.js
   currentHighlightMode = allowed.includes(mode) ? mode : 'off';
   document.documentElement.setAttribute('data-tsukeru-highlight', currentHighlightMode);
+}
+
+// ── Level filter ──────────────────────────────────────────────────────────────
+
+// EZFurigana's level rule (static/js/furigana-settings-core.js), applied by content.css:
+// JLPT 5 keeps every reading and 6 ("Beyond N1") only readings outside the JLPT lists;
+// grade mode hides readings on words taught before the chosen grade (2-8).
+function setLevelFilter(settings = {}) {
+  const root = document.documentElement;
+  if (settings.levelSystem === 'grade') {
+    const grade = Number(settings.gradeLevel);
+    root.setAttribute('data-tsukeru-jlpt', '5');
+    root.setAttribute('data-tsukeru-grade', String(Number.isInteger(grade) && grade >= 2 && grade <= 8 ? grade : 4));
+    return;
+  }
+  const jlpt = Number(settings.jlptLevel);
+  root.setAttribute('data-tsukeru-jlpt', String(Number.isInteger(jlpt) && jlpt >= 1 && jlpt <= 6 ? jlpt : 5));
+  root.removeAttribute('data-tsukeru-grade');
 }
 
 // ── Node visibility and filtering ─────────────────────────────────────────────
@@ -1233,7 +1255,7 @@ async function processOversizedNode(batch, settings, operation, {
 
 async function processOversizedLongPageNode(batch, settings, operation) {
   return processOversizedNode(batch, settings, operation, {
-    onInserted: (wrapper) => applySavedVocabularyHighlightsTo(wrapper),
+    onInserted: (wrapper) => applyWordStatesTo(wrapper),
   });
 }
 
@@ -2067,7 +2089,7 @@ async function drainLongPageQueue(settings, container, generation) {
         {
           signal: operation.controller.signal,
           operationIsCurrent: () => isDynamicOperationCurrent(operation),
-          onInserted: (wrapper) => applySavedVocabularyHighlightsTo(wrapper),
+          onInserted: (wrapper) => applyWordStatesTo(wrapper),
         }
       );
     }
@@ -2461,7 +2483,7 @@ function processVisibleElements(elements, settings) {
   enqueueDynamicTargets(elements, settings, dynamicContainer, lifecycleGeneration, 0);
 }
 
-// ── Page word extraction (for Vocab Mode) ─────────────────────────────────────
+// ── Page word extraction (for the popup's Words on this page) ────────────────
 
 function extractAllPageWords() {
   const wordElements = getAnalysisWordElements(document);
@@ -2502,6 +2524,8 @@ function extractAllPageWords() {
           occurrenceIndex: occurrenceCounter++,
           snippet: snippet,
           altReadings: wordInfo.altReadings || [],
+          counter: wordInfo.counter || '',
+          counterReading: wordInfo.counterReading || '',
         });
       } else {
         const existing = wordMap.get(key);
@@ -2513,21 +2537,29 @@ function extractAllPageWords() {
   return Array.from(wordMap.values()).sort((a, b) => a.occurrenceIndex - b.occurrenceIndex);
 }
 
+/**
+ * Whether a page unit is the given word. A number + counter unit (2024年)
+ * also matches its counter (年 ねん), which the page-word list shows as 〜年.
+ */
+function analysisWordMatches(wordInfo, word, reading) {
+  if (wordInfo.counter && wordInfo.counter === word && (!reading || wordInfo.counterReading === reading)) {
+    return true;
+  }
+  const dictForm = wordInfo.dictForm || '';
+  const surface = wordInfo.surface || '';
+  if (dictForm !== word && surface !== word) return false;
+  const readings = new Set([wordInfo.reading, wordInfo.surfaceReading, wordInfo.lookupReading].filter(Boolean));
+  return !reading || readings.has(reading);
+}
+
 function scrollToAndHighlightWord(word, reading) {
   const wordElements = getAnalysisWordElements(document);
   let foundElement = null;
 
   for (const element of wordElements) {
-    const wordInfo = getAnalysisWordData(element);
-    const dictForm = wordInfo.dictForm || '';
-    const surface = wordInfo.surface || '';
-    const readings = new Set([wordInfo.reading, wordInfo.surfaceReading, wordInfo.lookupReading].filter(Boolean));
-
-    if (dictForm === word || surface === word) {
-      if (!reading || readings.has(reading)) {
-        foundElement = element;
-        break;
-      }
+    if (analysisWordMatches(getAnalysisWordData(element), word, reading)) {
+      foundElement = element;
+      break;
     }
   }
 
@@ -2559,16 +2591,9 @@ function getWordContextSentence(word, reading) {
   let foundElement = null;
 
   for (const element of wordElements) {
-    const wordInfo = getAnalysisWordData(element);
-    const dictForm = wordInfo.dictForm || '';
-    const surface = wordInfo.surface || '';
-    const readings = new Set([wordInfo.reading, wordInfo.surfaceReading, wordInfo.lookupReading].filter(Boolean));
-
-    if (dictForm === word || surface === word) {
-      if (!reading || readings.has(reading)) {
-        foundElement = element;
-        break;
-      }
+    if (analysisWordMatches(getAnalysisWordData(element), word, reading)) {
+      foundElement = element;
+      break;
     }
   }
 

@@ -11,6 +11,12 @@
     "message": "ふりがなの表示/非表示を切り替え",
     "description": "ふりがなの表示切り替えショートカットの説明"
   },
+  "theme_switch_to_light": {
+    "message": "ライトモードに切り替える"
+  },
+  "theme_switch_to_dark": {
+    "message": "ダークモードに切り替える"
+  },
   "header_by_label": {
     "message": "by EZFurigana"
   },
@@ -29,8 +35,8 @@
   "utility_support": {
     "message": "サポート"
   },
-  "header_title_support_kofi": {
-    "message": "Ko-fiでサポート"
+  "header_title_become_supporter": {
+    "message": "サポーターになる"
   },
   "header_title_review_chrome": {
     "message": "Chrome ウェブストアでレビュー"
@@ -43,12 +49,6 @@
   },
   "header_title_open_ezfurigana": {
     "message": "EZFuriganaを開く"
-  },
-  "tab_saved": {
-    "message": "保存済み"
-  },
-  "tab_vocab_mode": {
-    "message": "ページの単語"
   },
   "tab_settings": {
     "message": "設定"
@@ -74,12 +74,6 @@
   "settings_label_color": {
     "message": "色"
   },
-  "settings_label_weight": {
-    "message": "太さ"
-  },
-  "settings_option_weight_normal": {
-    "message": "通常"
-  },
   "settings_option_weight_bold": {
     "message": "太字"
   },
@@ -87,31 +81,64 @@
     "message": "ふりがなオプション"
   },
   "settings_watch_dynamic": {
-    "message": "動的サイトで有効化（YouTube、X.com）"
+    "message": "新しく読み込まれた内容にも付ける"
   },
-  "settings_remove_custom_styling": {
-    "message": "カスタムスタイルを無効化"
+  "settings_watch_dynamic_hint": {
+    "message": "フィード、コメント、チャットなどが読み込まれるたびにふりがなを付けます（YouTube、Xなど）。"
   },
-  "settings_label_jlpt_level_filter": {
-    "message": "JLPT レベルフィルター"
+  "settings_custom_styling": {
+    "message": "ふりがなの見た目を変更"
   },
-  "settings_option_jlpt_n5": {
-    "message": "N5（初級）"
+  "settings_custom_styling_hint": {
+    "message": "オフにすると、ふりがなはサイト本来の見た目になり、JLPTレベルや品詞による色分けは表示されません。"
   },
-  "settings_option_jlpt_n4": {
-    "message": "N4"
+  "settings_size_smaller": {
+    "message": "ふりがなを小さく"
   },
-  "settings_option_jlpt_n3": {
-    "message": "N3"
+  "settings_size_larger": {
+    "message": "ふりがなを大きく"
   },
-  "settings_option_jlpt_n2": {
-    "message": "N2"
-  },
-  "settings_option_jlpt_n1": {
-    "message": "N1（上級）"
+  "settings_reset_style": {
+    "message": "スタイルをリセット"
   },
   "settings_label_reading_type": {
     "message": "読みの種類"
+  },
+  "settings_label_level": {
+    "message": "ふりがなを付ける範囲"
+  },
+  "settings_level_all": {
+    "message": "すべての漢字"
+  },
+  "settings_level_beyond_n1": {
+    "message": "N1超"
+  },
+  "settings_level_grade": {
+    "message": "学年"
+  },
+  "settings_level_grade_n": {
+    "message": "小$1"
+  },
+  "settings_level_junior_high": {
+    "message": "中学"
+  },
+  "settings_level_non_joyo": {
+    "message": "常用漢字以外"
+  },
+  "settings_level_desc_all": {
+    "message": "漢字を含むすべての単語にふりがなを付けます。"
+  },
+  "settings_level_desc_jlpt": {
+    "message": "$1の単語と、JLPTの語彙リストにない単語にふりがなを付けます。"
+  },
+  "settings_level_desc_beyond_n1": {
+    "message": "JLPTの語彙リストにない単語だけにふりがなを付けます。"
+  },
+  "settings_level_desc_grade": {
+    "message": "$1以降に習う漢字と、特別な読み・複数の読みがある単語にふりがなを付けます。"
+  },
+  "settings_level_desc_non_joyo": {
+    "message": "常用外の漢字、特別な読み、複数の読みがある単語にだけふりがなを付けます。"
   },
   "settings_option_reading_hiragana": {
     "message": "ひらがな"
@@ -122,23 +149,17 @@
   "settings_option_reading_romaji": {
     "message": "ローマ字"
   },
-  "settings_first_occurrence_only": {
-    "message": "最初の出現のみ"
-  },
   "settings_label_highlight_mode": {
-    "message": "ハイライトモード"
+    "message": "ハイライト"
   },
   "settings_highlight_off": {
     "message": "オフ"
   },
   "settings_highlight_pos": {
-    "message": "品詞カラー"
+    "message": "品詞"
   },
   "settings_highlight_jlpt": {
-    "message": "JLPTカラー"
-  },
-  "settings_color_legend": {
-    "message": "色の凡例"
+    "message": "JLPT"
   },
   "settings_color_slate": {
     "message": "スレート"
@@ -161,12 +182,6 @@
   "settings_color_white": {
     "message": "白"
   },
-  "settings_legend_jlpt": {
-    "message": "JLPT:"
-  },
-  "settings_legend_pos": {
-    "message": "品詞:"
-  },
   "settings_pos_noun": {
     "message": "名詞"
   },
@@ -185,101 +200,53 @@
   "settings_pos_other": {
     "message": "その他"
   },
-  "vocabmode_refresh": {
-    "message": "更新"
-  },
-  "vocabmode_search_placeholder": {
-    "message": "単語を検索..."
-  },
-  "vocabmode_sort_cycle_title": {
-    "message": "並び順を切り替え"
-  },
-  "vocabmode_filter_all": {
-    "message": "すべて"
-  },
-  "vocabmode_empty_text": {
-    "message": "単語が見つかりません"
-  },
-  "vocabmode_empty_hint": {
-    "message": "先にページへふりがなを適用してください"
-  },
   "vocab_export_anki": {
-    "message": "Ankiエクスポート"
+    "message": "Anki用に書き出す（.csv）"
   },
   "vocab_export_menu": {
     "message": "エクスポート"
   },
-  "vocab_export_audio": {
-    "message": "音声付きAnki"
-  },
-  "vocab_clear": {
-    "message": "クリア"
-  },
-  "vocab_search_placeholder": {
-    "message": "検索..."
-  },
-  "vocab_empty_text": {
-    "message": "まだ単語が保存されていません"
-  },
-  "vocab_empty_hint": {
-    "message": "ふりがな付き単語をダブルクリックで保存できます"
-  },
-  "vocab_no_results": {
-    "message": "検索結果がありません"
-  },
   "vocab_show_more": {
     "message": "さらに表示"
-  },
-  "vocab_unknown_source": {
-    "message": "不明なソース"
-  },
-  "vocab_local_file_source": {
-    "message": "ローカルHTMLファイル"
-  },
-  "vocab_listen": {
-    "message": "再生"
-  },
-  "vocab_source_tatoeba": {
-    "message": "（出典: Tatoeba）"
-  },
-  "vocab_delete": {
-    "message": "削除"
-  },
-  "vocab_delete_failed": {
-    "message": "削除に失敗しました"
   },
   "vocab_no_items_to_export": {
     "message": "エクスポートする単語がありません"
   },
-  "vocab_exporting": {
-    "message": "エクスポート中..."
-  },
   "vocab_export_failed_short": {
-    "message": "エクスポートに失敗しました"
+    "message": "エクスポートに失敗しました。もう一度お試しください。"
   },
   "vocab_export_failed_with_reason": {
     "message": "エクスポート失敗: $1"
   },
-  "vocab_audio_export_rate_limited": {
-    "message": "音声エクスポートは一時的に制限されています。$1秒後に再試行してください。"
-  },
-  "vocab_clear_confirm": {
-    "message": "$1件の単語をすべて削除しますか？"
-  },
   "actions_apply": {
-    "message": "適用"
+    "message": "ふりがなを付ける"
   },
   "actions_clear": {
-    "message": "クリア"
+    "message": "ふりがなを消す"
+  },
+  "actions_applying": {
+    "message": "ふりがなを追加中..."
+  },
+  "actions_applied": {
+    "message": "追加済み"
+  },
+  "actions_apply_again": {
+    "message": "現在の設定でもう一度ふりがなを付ける"
+  },
+  "notice_label_error": {
+    "message": "エラー"
+  },
+  "notice_label_limit": {
+    "message": "制限"
   },
   "report_modal_title": {
-    "message": "読みの報告"
+    "message": "読みの誤りを報告"
   },
   "report_label_word": {
     "message": "単語"
   },
   "report_label_current_reading_wrong": {
-    "message": "現在の読み（誤り）"
+    "message": "誤った読み"
   },
   "report_label_context": {
     "message": "文脈"
@@ -288,7 +255,7 @@
     "message": "正しい読み（任意）"
   },
   "report_correct_placeholder": {
-    "message": "修正案を入力..."
+    "message": "正しい読みを入力..."
   },
   "report_submit_button": {
     "message": "報告を送信"
@@ -300,10 +267,7 @@
     "message": "ありがとうございます。報告を送信しました。"
   },
   "report_submit_failed": {
-    "message": "送信に失敗しました。もう一度お試しください。"
-  },
-  "report_button_title": {
-    "message": "誤った読みを報告"
+    "message": "報告を送信できませんでした。もう一度お試しください。"
   },
   "content_close": {
     "message": "閉じる"
@@ -318,7 +282,7 @@
     "message": "辞書が利用できません"
   },
   "content_no_definition_found": {
-    "message": "意味が見つかりません"
+    "message": "辞書に見つかりませんでした"
   },
   "content_alt_readings_count": {
     "message": "別の読み ($1)"
@@ -341,18 +305,6 @@
   "content_kanji_count": {
     "message": "漢字 ($1)"
   },
-  "content_save_word": {
-    "message": "単語を保存"
-  },
-  "content_saved": {
-    "message": "保存済み!"
-  },
-  "content_already_saved": {
-    "message": "すでに保存済み"
-  },
-  "content_saved_toast_with_word": {
-    "message": "保存: $1"
-  },
   "content_play_pronunciation": {
     "message": "発音を再生"
   },
@@ -360,7 +312,7 @@
     "message": "誤った読みを報告"
   },
   "content_report_title": {
-    "message": "読みの報告"
+    "message": "読みの誤りを報告"
   },
   "content_report_label_word": {
     "message": "単語:"
@@ -372,7 +324,7 @@
     "message": "文脈:"
   },
   "content_report_label_correction_optional": {
-    "message": "修正案（任意）:"
+    "message": "正しい読み（任意）:"
   },
   "content_report_submit": {
     "message": "報告を送信"
@@ -384,10 +336,10 @@
     "message": "ご報告ありがとうございます！"
   },
   "content_report_failed": {
-    "message": "送信に失敗しました。もう一度お試しください。"
+    "message": "報告を送信できませんでした。もう一度お試しください。"
   },
   "content_error_no_text_found": {
-    "message": "ページ上にテキストが見つかりません"
+    "message": "このページに日本語のテキストが見つかりません。"
   },
   "content_error_backend_empty": {
     "message": "バックエンドから空の応答が返されました"
@@ -416,20 +368,17 @@
   "status_local_files_not_supported": {
     "message": "ローカル HTML ファイルのサポートはブラウザーの実行時権限に依存します。"
   },
-  "status_processing": {
-    "message": "処理中..."
-  },
   "status_furigana_applied": {
-    "message": "ふりがなを適用しました"
+    "message": "ふりがなを付けました"
   },
   "status_waiting_for_content": {
-    "message": "ページコンテンツを待機中..."
+    "message": "ページの内容が読み込まれるのを待っています..."
   },
   "status_furigana_cleared": {
-    "message": "ふりがなをクリアしました"
+    "message": "ふりがなを消しました"
   },
   "status_reload_and_retry": {
-    "message": "ページに接続できません。再読み込みして再試行してください。"
+    "message": "ページに接続できません。ページを再読み込みして、もう一度お試しください。"
   },
   "status_could_not_reach_page": {
     "message": "ページに接続できません"
@@ -447,13 +396,13 @@
     "message": "$1後に再試行できます。"
   },
   "rate_limit_service_unavailable": {
-    "message": "サービスを一時的に利用できません。しばらくしてから再試行してください。"
+    "message": "現在サービスを利用できません。しばらくしてからもう一度お試しください。"
   },
   "contextMenuApplyFurigana": {
-    "message": "ページにふりがなを適用"
+    "message": "ページにふりがなを付ける"
   },
   "contextMenuClearFurigana": {
-    "message": "ふりがなをクリア"
+    "message": "ふりがなを消す"
   },
   "errorRateLimitShort": {
     "message": "利用制限に達しました。1時間後に再試行してください。"
@@ -493,47 +442,11 @@
     "description": "認証または接続保護の問題でふりがなを適用できないときに表示するトースト"
   },
   "content_toast_generic_error": {
-    "message": "Tsukeru はこのページを処理できませんでした。ページを再読み込みしてからもう一度お試しください。",
+    "message": "ふりがなを付けられませんでした。もう一度お試しください。",
     "description": "ふりがなの適用に失敗し、より具体的な理由がないときに表示するトースト"
-  },
-  "word_singular": {
-    "message": "語"
-  },
-  "word_plural": {
-    "message": "語"
-  },
-  "vocab_count_saved": {
-    "message": "$1 $2保存済み"
-  },
-  "vocabmode_count_on_page": {
-    "message": "ページ内 $1 $2"
-  },
-  "vm_sort_occurrence": {
-    "message": "出現順"
-  },
-  "vm_sort_frequency": {
-    "message": "頻度順"
-  },
-  "vm_sort_word": {
-    "message": "五十音順"
-  },
-  "vm_sort_jlpt": {
-    "message": "JLPT順"
-  },
-  "vm_saved": {
-    "message": "保存済み"
-  },
-  "vm_save_word": {
-    "message": "単語を保存"
-  },
-  "vm_play_pronunciation": {
-    "message": "発音を再生"
   },
   "vm_jump_to_word": {
     "message": "ページ内の単語へ移動"
-  },
-  "vm_already_saved": {
-    "message": "すでに保存済み"
   },
   "csv_header_word": {
     "message": "単語"
@@ -544,20 +457,8 @@
   "csv_header_definition": {
     "message": "意味"
   },
-  "csv_header_sentence_with_furigana": {
-    "message": "例文（ふりがな付き）"
-  },
   "csv_header_sentence_plain_text": {
     "message": "例文（テキスト）"
-  },
-  "csv_header_tatoeba_with_furigana": {
-    "message": "Tatoeba（ふりがな付き）"
-  },
-  "csv_header_tatoeba_plain_text": {
-    "message": "Tatoeba（テキスト）"
-  },
-  "csv_header_tatoeba_english": {
-    "message": "Tatoeba（英訳）"
   },
   "csv_header_jlpt": {
     "message": "JLPT"
@@ -565,10 +466,163 @@
   "csv_header_pos": {
     "message": "品詞"
   },
-  "csv_header_url": {
-    "message": "URL"
-  },
   "csv_header_date": {
     "message": "日付"
+  },
+  "content_word_state_for": {
+    "message": "$1の状態"
+  },
+  "content_state_learning": {
+    "message": "学習中"
+  },
+  "content_state_known": {
+    "message": "覚えた"
+  },
+  "tab_this_page": {
+    "message": "このページ"
+  },
+  "tab_my_words": {
+    "message": "マイ単語"
+  },
+  "study_mode_label": {
+    "message": "学習モード"
+  },
+  "study_mode_hint": {
+    "message": "ふりがなを隠します。単語をクリックすると読みを表示し、もう一度クリックすると意味を表示します。"
+  },
+  "page_words_title": {
+    "message": "この文章の単語"
+  },
+  "page_words_hint": {
+    "message": "単語を「学習中」または「覚えた」に分類できます。学習中の単語はEZFuriganaで復習できます。覚えた単語のふりがなは非表示になりますが、設定でオフにできます。"
+  },
+  "page_words_empty_text": {
+    "message": "このページの単語はまだありません"
+  },
+  "page_words_empty_hint": {
+    "message": "ふりがなを付けると、この文章の単語が表示されます"
+  },
+  "review_nothing_yet": {
+    "message": "まだ復習する単語はありません"
+  },
+  "review_now": {
+    "message": "今すぐ復習"
+  },
+  "review_due_one": {
+    "message": "復習する単語：1語"
+  },
+  "review_due_many": {
+    "message": "復習する単語：$1語"
+  },
+  "review_caught_up": {
+    "message": "今のところ復習する単語はありません"
+  },
+  "review_start_hint": {
+    "message": "まだ登録していない単語の意味を調べるか、学習モードで読みを表示すると、学習リストに追加されます。"
+  },
+  "review_next_due": {
+    "message": "次の復習：$1"
+  },
+  "level_beyond_n1": {
+    "message": "N1超"
+  },
+  "state_learning": {
+    "message": "学習中"
+  },
+  "state_known": {
+    "message": "覚えた"
+  },
+  "learning_list_helper": {
+    "message": "意味を調べた単語や、学習モードで読みを表示した単語がここに追加されます。「覚えた」単語は追加されません。EZFuriganaで復習できます。"
+  },
+  "known_list_helper": {
+    "message": "覚えた単語は、どのページでもふりがなが非表示になります。設定でオフにできます。"
+  },
+  "clear_list": {
+    "message": "リストを消去"
+  },
+  "learning_empty_text": {
+    "message": "学習中の単語はまだありません"
+  },
+  "learning_empty_hint": {
+    "message": "ふりがなの付いた単語をクリックすると意味が表示されます。学習モードでは読みを表示できます。「覚えた」単語以外は学習リストに追加されます。"
+  },
+  "known_empty_text": {
+    "message": "覚えた単語はまだありません"
+  },
+  "known_empty_hint": {
+    "message": "辞書ポップアップや「この文章の単語」で「覚えた」にした単語がここに表示されます。"
+  },
+  "settings_hide_known_furigana": {
+    "message": "覚えた単語のふりがなを隠す"
+  },
+  "profile_learning": {
+    "message": "学習中：$1語"
+  },
+  "profile_known": {
+    "message": "覚えた単語：$1語"
+  },
+  "profile_words_one": {
+    "message": "1語"
+  },
+  "profile_words_many": {
+    "message": "$1語"
+  },
+  "profile_new": {
+    "message": "未登録：$1語"
+  },
+  "profile_coverage": {
+    "message": "覚えた単語の割合：$1%"
+  },
+  "known_readings_hidden": {
+    "message": "覚えた$1語のふりがなは非表示です"
+  },
+  "show_all_words": {
+    "message": "$1語をすべて表示"
+  },
+  "word_state_for": {
+    "message": "$1の状態"
+  },
+  "learn_again_word": {
+    "message": "$1をもう一度学習する"
+  },
+  "mark_known_word": {
+    "message": "$1を「覚えた」にする"
+  },
+  "remove_listed_word": {
+    "message": "$1をこのリストから削除"
+  },
+  "clear_learning_confirm": {
+    "message": "学習中の単語をすべて削除しますか？EZFuriganaからも削除されます。"
+  },
+  "clear_known_confirm": {
+    "message": "覚えた単語をすべて削除しますか？設定に応じて、この拡張機能とEZFuriganaでふりがなが再び表示されるようになります。"
+  },
+  "sync_last": {
+    "message": "復習はEZFuriganaでできます · 最終同期：$1"
+  },
+  "sync_never": {
+    "message": "復習はEZFuriganaでできます。一度開くと単語が同期されます。"
+  },
+  "duration_seconds": {
+    "message": "$1秒"
+  },
+  "duration_minutes_seconds": {
+    "message": "$1分$2秒"
+  },
+  "duration_hours_minutes": {
+    "message": "$1時間$2分"
+  },
+  "error_rate_limited_wait": {
+    "message": "リクエストが多すぎます。$1後にもう一度お試しください。"
+  },
+  "error_rate_limited": {
+    "message": "リクエストが多すぎます。しばらくしてからもう一度お試しください。"
+  },
+  "error_network": {
+    "message": "通信に失敗しました。インターネット接続を確認して、もう一度お試しください。"
+  },
+  "error_timeout": {
+    "message": "通信がタイムアウトしました。もう一度お試しください。"
   }
 }

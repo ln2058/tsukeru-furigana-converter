@@ -1,0 +1,49 @@
+name: Bug report
+description: Something in Tsukeru does not work as expected.
+labels: [bug]
+body:
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options:
+        - Chrome
+        - Edge
+        - Firefox
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Extension version
+      description: Shown on the browser's extensions page.
+      placeholder: "4.0.0"
+    validations:
+      required: true
+  - type: input
+    id: page
+    attributes:
+      label: Page where it happens
+      description: A public URL if possible. Do not include private or signed-in pages.
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Select Apply Furigana
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What happened, and what you expected
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or console messages
+      description: Messages from the browser console that start with "Tsukeru:" are helpful.

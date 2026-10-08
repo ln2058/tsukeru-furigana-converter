@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/ln2058/tsukeru-furigana-converter/security/advisories/new
+    about: Please report security problems privately, not in a public issue.
+  - name: EZFurigana website
+    url: https://www.ezfurigana.com
+    about: Questions about the EZFurigana service and account.

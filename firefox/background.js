@@ -4,10 +4,12 @@ Purpose: Route extension events and messages between popup/content scripts and b
 
 Inputs:
 - Runtime install, command, and context menu events.
-- Message actions and payloads from popup/content scripts.
+- Message actions and payloads from popup/content scripts, including My Words and EZFurigana sync actions.
+- Browser startup and tab activation, which refresh the review badge.
 
 Outputs:
-- Async message responses, reading-aware lookup/rate-limit metadata propagation, and tab-level apply/clear toggles.
+- Async message responses, structured API/report error metadata, and tab-level apply/clear toggles.
+- Toolbar badge with the number of words due for review (via `bg-words`).
 
 Side Effects:
 - Seeds and reads `chrome.storage.sync` defaults.
@@ -20,15 +22,17 @@ Failure Modes:
 
 Security Notes:
 - Delegates external network traffic to `bg-api` only.
+- Audio proxy messages accept only HTTPS www.ezfurigana.com URLs on the default port.
 - Avoid logging raw user page text in error paths.
 */
 // Background script — Firefox message router and command handler.
 // All API/cache logic lives in ./js/bg-api.js and ./js/bg-cache.js.
 import {
   handleFuriganaRequest, lookupDefinition, fetchExampleSentence, fetchKanjiBreakdown,
-  handlePlayAudio, handlePlayAudioDirect, handleFetchProxyAudio, handleExportAnkiAudio,
-  API_BASE_URL, DEFAULT_SETTINGS, getRateLimitState,
+  handlePlayAudio, handlePlayAudioDirect, handleFetchProxyAudio, handleReportReadingError,
+  DEFAULT_SETTINGS, getRateLimitState,
 } from './js/bg-api.js';
+import { handleWordsMessage, isWordsAction, refreshWordBadge } from './js/bg-words.js';
 import { hasSupportedLocalFileExtension } from './js/utils.js';
 
 const runtimeApi = typeof browser !== 'undefined' ? browser : chrome;
@@ -68,10 +72,11 @@ chrome.runtime.onInstalled.addListener(() => {
     chrome.storage.sync.set({
       jlptLevel: stored.jlptLevel ?? DEFAULT_SETTINGS.jlptLevel,
       furiganaType: stored.furiganaType || DEFAULT_SETTINGS.furiganaType,
-      firstOccurrenceOnly: stored.firstOccurrenceOnly ?? DEFAULT_SETTINGS.firstOccurrenceOnly,
       highlightMode: stored.highlightMode || DEFAULT_SETTINGS.highlightMode,
     });
   });
+  // "First occurrence only" was retired; drop the stored flag.
+  chrome.storage.sync.remove('firstOccurrenceOnly');
 });
 
 // Handle extension icon click
@@ -118,8 +123,28 @@ if (chrome.contextMenus) {
   console.warn('contextMenus API not available (missing permission?)');
 }
 
+// The review badge counts words that fall due over time, so refresh it when
+// the browser starts and whenever the reader switches tabs.
+refreshWordBadge();
+chrome.runtime.onStartup.addListener(() => {
+  refreshWordBadge();
+});
+chrome.tabs.onActivated.addListener(() => {
+  refreshWordBadge();
+});
+
 // Process furigana requests coming from the content script so we can bypass site CORS
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (isWordsAction(message?.action)) {
+    handleWordsMessage(message, sender)
+      .then(sendResponse)
+      .catch((error) => {
+        console.warn('Tsukeru: word storage failed', error?.message);
+        sendResponse({ success: false, error: 'Word storage failed' });
+      });
+    return true;
+  }
+
   if (message.action === 'getRateLimitState') {
     getRateLimitState()
       .then((state) => sendResponse({ success: true, state }))
@@ -194,7 +219,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: false, error: 'Disallowed audio protocol' });
         return true;
       }
-      if (parsed.hostname !== 'www.ezfurigana.com' && !parsed.hostname.endsWith('.ezfurigana.com')) {
+      if (parsed.hostname !== 'www.ezfurigana.com') {
         sendResponse({ success: false, error: 'Disallowed audio host' });
         return true;
       }
@@ -214,68 +239,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.action === 'exportAnkiAudio') {
-    handleExportAnkiAudio(message.payload)
-      .then((result) => sendResponse({ success: true, ...result }))
-      .catch((error) => {
-        console.error('Anki audio export failed', error);
-        sendResponse({
-          success: false,
-          error: error.message,
-          ...(error.rateLimitType && { rateLimitType: error.rateLimitType }),
-          ...(error.retryAfter != null && { retryAfter: error.retryAfter }),
-        });
-      });
-    return true;
-  }
-
   if (message.action === 'reportReadingError') {
-    const {
-      word,
-      reading,
-      context_sentence,
-      correct_reading,
-      suggested_reading,
-      consent_given
-    } = message.payload ?? {};
-    const normalizedCorrectReading = correct_reading || suggested_reading || null;
-    fetch(`${API_BASE_URL}/api/report-error`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Source': 'Firefox-Extension-TSUKERU'
-      },
-      credentials: 'omit',
-      body: JSON.stringify({
-        word,
-        reading,
-        context_sentence,
-        correct_reading: normalizedCorrectReading,
-        consent_given
-      })
-    })
-      .then(async (response) => {
-        if (response.ok) {
-          sendResponse({ success: true });
-        } else {
-          let errMsg = t('errorUnexpectedShort', 'Unexpected error. Please try again.');
-          if (response.status === 429) {
-            errMsg = t('errorRateLimitShort', 'Rate limit exceeded. Please try again in an hour.');
-          } else {
-            try {
-              const errData = await response.json();
-              if (errData.error) errMsg = errData.error;
-            } catch (e) {}
-          }
-          sendResponse({ success: false, error: errMsg });
-        }
-      })
-      .catch(() => {
-        sendResponse({
-          success: false,
-          error: t('errorNetworkShort', 'Network error. Please try again later.')
-        });
-      });
+    // Preserve the backend's browser-specific report source label.
+    handleReportReadingError(message.payload, 'Firefox-Extension-TSUKERU')
+      .then(() => sendResponse({ success: true }))
+      .catch((error) => sendResponse({ success: false, ...serializeApiError(error) }));
     return true;
   }
 });
@@ -335,10 +303,12 @@ async function ensureContentScript(tabId) {
   // The guard in content-main.js (window.__TSUKERU_LOADED__) prevents
   // double-initialization if the manifest already auto-injected them.
   for (const file of [
+    'js/ui-messages.js',
     'js/content-ui.js',
     'js/content-rate-limit.js',
     'js/content-dom.js',
     'js/tooltip-async-state.js',
+    'js/word-rules.js',
     'js/content-tooltip.js',
     'js/content-main.js',
   ]) {

@@ -1,25 +1,70 @@
 /*
 Module: content-ui
-Purpose: Render instrument-styled, non-blocking toast notifications for rate-limit and error feedback.
+Purpose: Apply the saved UI theme to extension-owned surfaces and render non-blocking toast notifications for rate-limit and error feedback.
 
 Inputs:
 - Toast message text and rate-limit metadata from content-script callers.
-- chrome.i18n message catalog entries when available.
+- chrome.i18n message catalog entries and the shared ui-messages formatter.
+- UI theme from sync storage and storage changes; extension-owned surface elements.
 
 Outputs:
 - Dismissible, locally styled toast elements and structured rate-limit toast IDs.
+- Light/dark theme attributes on extension-owned UI surfaces only.
 
 Side Effects:
 - Mutates the document body to add and remove toast elements.
 - Starts and clears toast timers for auto-dismiss and countdown updates.
+- Reads the saved theme and listens for changes; tracks only the current tooltip, report dialog, and toast, releasing disconnected elements.
 
 Failure Modes:
 - Missing document body prevents toast rendering.
 - Unknown rate-limit types fall back to a generic warning toast.
+- Theme storage failures leave surfaces following system colours.
 
 Security Notes:
 - Toast text is assigned via textContent only.
+- Validates light/dark values and never adds theme attributes to the host document.
 */
+
+// Only extension-owned surfaces are registered; theme changes never scan the page.
+let tsukeruUiTheme = null;
+let tsukeruUiThemeRevision = 0;
+const tsukeruUiThemeSurfaces = new Set();
+
+function applyTsukeruUiTheme(surface) {
+  for (const existing of tsukeruUiThemeSurfaces) {
+    if (!existing.isConnected) tsukeruUiThemeSurfaces.delete(existing);
+  }
+  tsukeruUiThemeSurfaces.add(surface);
+  if (tsukeruUiTheme) surface.dataset.tsukeruTheme = tsukeruUiTheme;
+  else surface.removeAttribute('data-tsukeru-theme');
+}
+
+function updateTsukeruUiTheme(value) {
+  tsukeruUiTheme = value === 'light' || value === 'dark' ? value : null;
+  for (const surface of tsukeruUiThemeSurfaces) {
+    if (!surface.isConnected) {
+      tsukeruUiThemeSurfaces.delete(surface);
+      continue;
+    }
+    if (tsukeruUiTheme) surface.dataset.tsukeruTheme = tsukeruUiTheme;
+    else surface.removeAttribute('data-tsukeru-theme');
+  }
+}
+
+// Start the small storage read before a user can open the dictionary.
+// Without an explicit choice, CSS follows live system theme changes.
+if (typeof chrome !== 'undefined' && chrome.storage?.sync && chrome.storage?.onChanged) {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'sync' || !changes.uiTheme) return;
+    tsukeruUiThemeRevision += 1;
+    updateTsukeruUiTheme(changes.uiTheme.newValue);
+  });
+  const loadRevision = tsukeruUiThemeRevision;
+  chrome.storage.sync.get('uiTheme').then((stored) => {
+    if (tsukeruUiThemeRevision === loadRevision) updateTsukeruUiTheme(stored.uiTheme);
+  }).catch(() => console.warn('Tsukeru: could not load the UI theme'));
+}
 
 let _toastId = 0;
 let _activeToastId = null;
@@ -44,7 +89,7 @@ const RATE_LIMIT_FALLBACK_MESSAGES = {
   daily_chars: 'Daily text limit reached. Please try again tomorrow.',
   nonce: 'Tsukeru had trouble connecting. Please try again in a moment.',
   retry_exhausted: 'Tsukeru is still busy. Please try again later.',
-  service_unavailable: 'Service temporarily unavailable. Please try again.',
+  service_unavailable: 'The service is temporarily unavailable. Please try again later.',
 };
 
 function _hasChromeI18n() {
@@ -84,12 +129,7 @@ function _normalizeRetryAfter(retryAfter) {
 }
 
 function _formatRemaining(ms) {
-  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
-  if (totalSeconds >= 3600) {
-    return `${Math.floor(totalSeconds / 3600)}h ${Math.floor((totalSeconds % 3600) / 60)}m`;
-  }
-  if (totalSeconds >= 60) return `${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s`;
-  return `${totalSeconds}s`;
+  return TsukeruUiMessages.formatDuration(ms, _getMessage);
 }
 
 function _getToastMount() {
@@ -118,7 +158,7 @@ function _buildToastMessage(type, retryAfter) {
   const key = RATE_LIMIT_MESSAGE_KEYS[type];
   const fallback = RATE_LIMIT_FALLBACK_MESSAGES[type];
   if (!key || !fallback) {
-    return 'Tsukeru is still busy. Please try again later.';
+    return _getMessage('rate_limit_toast_retry_exhausted', undefined, 'Tsukeru is still busy. Please try again later.');
   }
   if (type === 'request_count' || type === 'char_rate') {
     return _getMessage(key, [retryAfter], fallback);
@@ -146,6 +186,7 @@ function dismissToast(toastId) {
 
   _clearToastInterval();
 
+  tsukeruUiThemeSurfaces.delete(_activeToastElement);
   if (_activeToastElement && typeof _activeToastElement.remove === 'function') {
     _activeToastElement.remove();
   } else if (_activeToastElement?.parentNode) {
@@ -175,6 +216,7 @@ function showToast(message, options = {}) {
   toast.dataset.tsukeruToast = String(toastId);
   toast._toastId = toastId;
   toast.className = `tsukeru-toast tsukeru-toast--${type}`;
+  applyTsukeruUiTheme(toast);
   _applyToastStyles(toast);
 
   messageNode.className = 'tsukeru-toast__message';

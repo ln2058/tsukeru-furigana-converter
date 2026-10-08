@@ -1,19 +1,19 @@
 /*
 Module: popup-main
-Purpose: Bootstrap popup navigation and wire report modal submission behavior.
+Purpose: Bootstrap popup navigation, theme-toggle settings, and report modal submission behavior.
 
 Inputs:
-- Popup DOM events, runtime report responses, and browser user-agent/platform hints.
+- Popup DOM events, runtime report responses, browser UI language, and user-agent/platform hints.
 
 Outputs:
-- Active tab-pane state changes and report success/error UI feedback.
+- Active tab-pane state changes (This page opens first on pages with furigana) and report success/error UI feedback.
 
 Side Effects:
-- Mutates popup DOM state and sends `reportReadingError` messages.
+- Mutates popup DOM state, sets language-specific home/pricing links, requests coalesced page-word refreshes, and sends `reportReadingError` messages.
 - Applies Firefox shortcut label defaults in popup UI.
 
 Failure Modes:
-- Runtime messaging failures keep modal open with error feedback.
+- Runtime messaging failures keep the modal open with localized error feedback; raw backend messages are not displayed.
 - Missing expected DOM nodes can break event wiring.
 
 Security Notes:
@@ -21,30 +21,37 @@ Security Notes:
 - No secret handling or persistent sensitive data storage.
 */
 // Entry point: tab navigation, report modal wiring, and bootstrap.
-import { initSettingsForm, closeReportModal, applyI18nToPopupDom, t } from './popup-settings.js';
-import { initVocabularyTab, initVocabModeTab, loadVocabulary, loadVocabMode } from './popup-vocab.js';
+import {
+  applyI18nToPopupDom,
+  closeReportModal,
+  initSettingsForm,
+  initThemeToggle,
+  t,
+  userFacingError,
+} from './popup-settings.js';
+import { initMyWordsTab, initPageTab, loadMyWords, requestPageWordsRefresh } from './popup-vocab.js';
 
 // ── Tab navigation ────────────────────────────────────────────────────────────
 
+function selectTab(targetTab) {
+  document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === targetTab));
+  document.querySelectorAll('.tab-content').forEach((c) => c.classList.toggle('active', c.id === `${targetTab}-tab`));
+  if (targetTab === 'words') {
+    loadMyWords();
+  } else if (targetTab === 'page') {
+    requestPageWordsRefresh();
+  }
+}
+
 function initTabNavigation() {
-  const tabBtns = document.querySelectorAll('.tab-btn');
-  const tabContents = document.querySelectorAll('.tab-content');
-
-  tabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const targetTab = btn.dataset.tab;
-      tabBtns.forEach(b => b.classList.remove('active'));
-      tabContents.forEach(c => c.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById(`${targetTab}-tab`).classList.add('active');
-
-      if (targetTab === 'vocabulary') {
-        loadVocabulary();
-      } else if (targetTab === 'vocabmode') {
-        loadVocabMode();
-      }
-    });
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => selectTab(btn.dataset.tab));
   });
+}
+
+/** The popup always opens on This page, the leftmost tab. */
+function selectInitialTab() {
+  selectTab('page');
 }
 
 // ── Report modal event wiring (DOM is ready: module scripts are deferred) ─────
@@ -80,7 +87,7 @@ document.getElementById('extReportSubmit').addEventListener('click', () => {
       successDiv.classList.remove('hidden');
       setTimeout(closeReportModal, 1500);
     } else {
-      const errMsg = (response && response.error) || t('report_submit_failed', undefined, 'Submission failed. Please try again.');
+      const errMsg = userFacingError(chrome.runtime.lastError ? {} : response, 'report');
       errorDiv.textContent = errMsg;
       errorDiv.classList.remove('hidden');
       submitBtn.disabled = false;
@@ -96,8 +103,14 @@ function getEzfuriganaHomeUrl() {
   return lang.startsWith('ja') ? 'https://www.ezfurigana.com/jp' : 'https://www.ezfurigana.com/';
 }
 
+function getEzfuriganaPricingUrl() {
+  const lang = (chrome.i18n?.getUILanguage?.() || '').toLowerCase();
+  return lang.startsWith('ja') ? 'https://www.ezfurigana.com/jp/pricing' : 'https://www.ezfurigana.com/pricing';
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   applyI18nToPopupDom();
+  initThemeToggle();
 
   const reviewLink = document.getElementById('header-review-link');
   if (reviewLink) {
@@ -117,6 +130,11 @@ document.addEventListener('DOMContentLoaded', () => {
     ezfuriganaLink.href = getEzfuriganaHomeUrl();
   }
 
+  const supporterLink = document.getElementById('header-supporter-link');
+  if (supporterLink) {
+    supporterLink.href = getEzfuriganaPricingUrl();
+  }
+
   const shortcutText = document.getElementById('shortcut-text');
   if (shortcutText) {
     const isMac = /Mac|iPhone|iPod|iPad/.test(navigator.platform);
@@ -126,7 +144,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   initSettingsForm();
-  initVocabularyTab();
-  initVocabModeTab();
+  initMyWordsTab();
+  initPageTab();
   initTabNavigation();
+  selectInitialTab();
 });

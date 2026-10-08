@@ -1,8 +1,22 @@
 /* Shared tokens for every injected UI surface, including when custom page styling is disabled. */
 .tsukeru-word-tooltip,
 .tsukeru-content-report-modal,
-.tsukeru-vocab-saved-toast,
 .tsukeru-toast {
+  color-scheme: light !important;
+  --tsukeru-group-n1: #f0a8a0;
+  --tsukeru-group-n2: #f5c48a;
+  --tsukeru-group-n3: #ece38c;
+  --tsukeru-group-n4: #addcae;
+  --tsukeru-group-n5: #a9cff0;
+  --tsukeru-group-neutral: #deded8;
+  --tsukeru-pos-verb: #f2b0d0;
+  --tsukeru-pos-adjective: #bdc4f3;
+  --tsukeru-pos-noun: #9fd9cf;
+  --tsukeru-pos-particle: #cdd5db;
+  --tsukeru-pos-adverb: #dcc3a1;
+  --tsukeru-group-ink: #222522;
+  --tsukeru-tooltip-shadow: 0 16px 38px rgba(36, 52, 60, .24), inset 0 1px 0 rgba(255, 255, 255, .24);
+  --tsukeru-toast-shadow: 0 8px 22px rgba(36, 52, 60, .16);
   --tsukeru-canvas: #eceae5;
   --tsukeru-paper: #f3f2ee;
   --tsukeru-surface: #f1f2ee;
@@ -33,10 +47,24 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .tsukeru-word-tooltip,
-  .tsukeru-content-report-modal,
-  .tsukeru-vocab-saved-toast,
-  .tsukeru-toast {
+  .tsukeru-word-tooltip:not([data-tsukeru-theme="light"]),
+  .tsukeru-content-report-modal:not([data-tsukeru-theme="light"]),
+  .tsukeru-toast:not([data-tsukeru-theme="light"]) {
+    color-scheme: dark !important;
+    --tsukeru-group-n1: #77393a;
+    --tsukeru-group-n2: #7a5427;
+    --tsukeru-group-n3: #6b6524;
+    --tsukeru-group-n4: #2f6140;
+    --tsukeru-group-n5: #2b5a7d;
+    --tsukeru-group-neutral: #303735;
+    --tsukeru-pos-verb: #763a5a;
+    --tsukeru-pos-adjective: #44497f;
+    --tsukeru-pos-noun: #1f5f57;
+    --tsukeru-pos-particle: #3e4952;
+    --tsukeru-pos-adverb: #66513a;
+    --tsukeru-group-ink: #eef1ee;
+    --tsukeru-tooltip-shadow: 0 16px 38px rgba(0, 0, 0, .42), inset 0 1px 0 rgba(255, 255, 255, .04);
+    --tsukeru-toast-shadow: 0 8px 22px rgba(0, 0, 0, .34);
     --tsukeru-canvas: #101112;
     --tsukeru-paper: #151b20;
     --tsukeru-surface: #121920;
@@ -62,6 +90,51 @@
     --tsukeru-border-strong: #43525a;
     --tsukeru-paper-edge: #34414a;
   }
+}
+
+/* Keep this palette identical to the system-dark UI block (theme.test.mjs). */
+.tsukeru-word-tooltip[data-tsukeru-theme="dark"],
+.tsukeru-content-report-modal[data-tsukeru-theme="dark"],
+.tsukeru-toast[data-tsukeru-theme="dark"] {
+  color-scheme: dark !important;
+  --tsukeru-group-n1: #77393a;
+  --tsukeru-group-n2: #7a5427;
+  --tsukeru-group-n3: #6b6524;
+  --tsukeru-group-n4: #2f6140;
+  --tsukeru-group-n5: #2b5a7d;
+  --tsukeru-group-neutral: #303735;
+  --tsukeru-pos-verb: #763a5a;
+  --tsukeru-pos-adjective: #44497f;
+  --tsukeru-pos-noun: #1f5f57;
+  --tsukeru-pos-particle: #3e4952;
+  --tsukeru-pos-adverb: #66513a;
+  --tsukeru-group-ink: #eef1ee;
+  --tsukeru-tooltip-shadow: 0 16px 38px rgba(0, 0, 0, .42), inset 0 1px 0 rgba(255, 255, 255, .04);
+  --tsukeru-toast-shadow: 0 8px 22px rgba(0, 0, 0, .34);
+  --tsukeru-canvas: #101112;
+  --tsukeru-paper: #151b20;
+  --tsukeru-surface: #121920;
+  --tsukeru-surface-muted: #182129;
+  --tsukeru-surface-hover: #202a32;
+  --tsukeru-metal: #161f27;
+  --tsukeru-metal-highlight: #202a33;
+  --tsukeru-metal-shadow: #0a0e12;
+  --tsukeru-ink: #c6dce7;
+  --tsukeru-text: #eef1ee;
+  --tsukeru-secondary: #9ba7a2;
+  --tsukeru-muted: #9ba7a2;
+  --tsukeru-blue: #1a7ffc;
+  --tsukeru-blue-readable: #5aa6ff;
+  --tsukeru-blue-dark: #285d94;
+  --tsukeru-blue-soft: #102b4c;
+  --tsukeru-blue-border: #285d94;
+  --tsukeru-attention: #e17a5f;
+  --tsukeru-star: #efbd4a;
+  --tsukeru-success: #64c49a;
+  --tsukeru-error: #ff746f;
+  --tsukeru-border: #2b3740;
+  --tsukeru-border-strong: #43525a;
+  --tsukeru-paper-edge: #34414a;
 }
 
 /* Furigana styling - isolated to Tsukeru's document markers. */
@@ -95,17 +168,18 @@
   --tsukeru-ruby-color: #475569;
   --tsukeru-ruby-size: .65em;
   --tsukeru-ruby-weight: normal;
-  --tsukeru-group-n1: #d6a094;
-  --tsukeru-group-n2: #dfbd88;
-  --tsukeru-group-n3: #c8c68f;
-  --tsukeru-group-n4: #b4cba9;
-  --tsukeru-group-n5: #aec9dc;
+  /* JLPT runs N5 (blue) to N1 (red); part of speech uses the hues between, as on EZFurigana. */
+  --tsukeru-group-n1: #f0a8a0;
+  --tsukeru-group-n2: #f5c48a;
+  --tsukeru-group-n3: #ece38c;
+  --tsukeru-group-n4: #addcae;
+  --tsukeru-group-n5: #a9cff0;
   --tsukeru-group-neutral: #deded8;
-  --tsukeru-pos-verb: #d6a094;
-  --tsukeru-pos-adjective: #dfbd88;
-  --tsukeru-pos-noun: #aec9dc;
-  --tsukeru-pos-particle: #b4cba9;
-  --tsukeru-pos-adverb: #b7bec9;
+  --tsukeru-pos-verb: #f2b0d0;
+  --tsukeru-pos-adjective: #bdc4f3;
+  --tsukeru-pos-noun: #9fd9cf;
+  --tsukeru-pos-particle: #cdd5db;
+  --tsukeru-pos-adverb: #dcc3a1;
   --tsukeru-group-ink: #222522;
 }
 @media (prefers-color-scheme: dark) {
@@ -134,17 +208,17 @@
     --tsukeru-border: #2b3740;
     --tsukeru-border-strong: #43525a;
     --tsukeru-paper-edge: #34414a;
-    --tsukeru-group-n1: #6f403d;
-    --tsukeru-group-n2: #76572f;
-    --tsukeru-group-n3: #646c42;
-    --tsukeru-group-n4: #315c49;
-    --tsukeru-group-n5: #2e5674;
+    --tsukeru-group-n1: #77393a;
+    --tsukeru-group-n2: #7a5427;
+    --tsukeru-group-n3: #6b6524;
+    --tsukeru-group-n4: #2f6140;
+    --tsukeru-group-n5: #2b5a7d;
     --tsukeru-group-neutral: #303735;
-    --tsukeru-pos-verb: #6f403d;
-    --tsukeru-pos-adjective: #76572f;
-    --tsukeru-pos-noun: #2e5674;
-    --tsukeru-pos-particle: #315c49;
-    --tsukeru-pos-adverb: #4b5661;
+    --tsukeru-pos-verb: #763a5a;
+    --tsukeru-pos-adjective: #44497f;
+    --tsukeru-pos-noun: #1f5f57;
+    --tsukeru-pos-particle: #3e4952;
+    --tsukeru-pos-adverb: #66513a;
     --tsukeru-group-ink: #eef1ee;
   }
 }
@@ -154,17 +228,21 @@
   ruby-position: over;
   ruby-align: center;
   position: relative;
-  cursor: pointer;
   white-space: nowrap;
 }
 
 :root[data-tsukeru-custom-style="on"] span[data-jlpt] {
   position: relative;
+}
+
+/* Dictionary feedback remains available with custom appearance off.
+   The active-page marker is removed on clear; tint only outer word containers. */
+:root[data-tsukeru-custom-style] [data-tsukeru-wrapper="1"] :is(.analysis-word, .srt-word, ruby[data-surface], ruby[data-dict-form], span[data-jlpt], span[data-surface], span[data-dict-form]) {
   cursor: pointer;
 }
 
-:root[data-tsukeru-custom-style="on"] ruby:hover,
-:root[data-tsukeru-custom-style="on"] span[data-jlpt]:hover {
+:root[data-tsukeru-custom-style] [data-tsukeru-wrapper="1"] :is(.analysis-word, .srt-word):hover,
+:root[data-tsukeru-custom-style] [data-tsukeru-wrapper="1"] :is(ruby[data-surface], ruby[data-dict-form], span[data-jlpt], span[data-surface], span[data-dict-form]):not(:is(.analysis-word, .srt-word) *):hover {
   background-color: rgba(26, 127, 252, .12);
   border-radius: 2px;
 }
@@ -233,8 +311,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root[data-tsukeru-custom-style="on"] rt { opacity: .9; }
-  :root[data-tsukeru-custom-style="on"] ruby:hover,
-  :root[data-tsukeru-custom-style="on"] span[data-jlpt]:hover { background-color: rgba(90, 166, 255, .14); }
+  :root[data-tsukeru-custom-style] [data-tsukeru-wrapper="1"] :is(.analysis-word, .srt-word):hover,
+  :root[data-tsukeru-custom-style] [data-tsukeru-wrapper="1"] :is(ruby[data-surface], ruby[data-dict-form], span[data-jlpt], span[data-surface], span[data-dict-form]):not(:is(.analysis-word, .srt-word) *):hover { background-color: rgba(90, 166, 255, .14); }
 }
 
 @media print {
@@ -250,23 +328,40 @@
 
 @media (prefers-contrast: high) {
   :root[data-tsukeru-custom-style="on"] rt { color: inherit; font-weight: 600; }
-  :root[data-tsukeru-custom-style="on"] ruby:hover,
-  :root[data-tsukeru-custom-style="on"] span[data-jlpt]:hover { outline: 2px solid currentColor; background-color: transparent; }
+  :root[data-tsukeru-custom-style] [data-tsukeru-wrapper="1"] :is(.analysis-word, .srt-word):hover,
+  :root[data-tsukeru-custom-style] [data-tsukeru-wrapper="1"] :is(ruby[data-surface], ruby[data-dict-form], span[data-jlpt], span[data-surface], span[data-dict-form]):not(:is(.analysis-word, .srt-word) *):hover { outline: 2px solid currentColor; background-color: transparent; }
 }
 
 :root[data-tsukeru-custom-style="on"] ruby::selection { background: rgba(26, 127, 252, .2); }
 :root[data-tsukeru-custom-style="on"] rt::selection { background: transparent; }
 
-/* Saved words use a static accent so saving never changes layout or scales the page. */
-:root[data-tsukeru-custom-style="on"] ruby.vocab-saved,
-:root[data-tsukeru-custom-style="on"] span.vocab-saved {
-  background-color: rgba(52, 122, 92, .12) !important;
+/* My Words, as on EZFurigana: known words lose their readings (a setting, on by
+   default), learning words keep theirs even below the JLPT filter level. */
+:root[data-tsukeru-hide-known="on"] body:not(.tsukeru-furigana-disabled) [data-tsukeru-wrapper="1"] .tsukeru-known rt { display: none !important; }
+:root[data-tsukeru-jlpt] body:not(.tsukeru-furigana-disabled) [data-tsukeru-wrapper="1"] .tsukeru-learning.tsukeru-learning rt { display: revert !important; }
+
+/* Study mode hides readings in place, so revealing one never shifts text. Learning
+   words carry a faint underline in the review colour; a revealed word is tinted. */
+:root[data-tsukeru-study="on"] body:not(.tsukeru-furigana-disabled) [data-tsukeru-wrapper="1"] rt { visibility: hidden !important; }
+:root[data-tsukeru-study="on"] body:not(.tsukeru-furigana-disabled) [data-tsukeru-wrapper="1"] .tsukeru-revealed rt {
+  visibility: visible !important;
+  color: var(--tsukeru-blue-readable, #126edc) !important;
+}
+:root[data-tsukeru-study="on"] [data-tsukeru-wrapper="1"] :is(.analysis-word, .srt-word):has(rt),
+:root[data-tsukeru-study="on"] [data-tsukeru-wrapper="1"] ruby[data-surface]:not(:is(.analysis-word, .srt-word) *) {
+  background-image: linear-gradient(to top, var(--tsukeru-mechanism-line, rgba(82, 77, 70, .3)) 0 1px, transparent 1px);
+  cursor: pointer;
+}
+:root[data-tsukeru-study="on"] [data-tsukeru-wrapper="1"] .tsukeru-learning:has(rt) {
+  background-image: linear-gradient(to top, color-mix(in srgb, var(--tsukeru-star, #d29a27) 70%, transparent) 0 2px, transparent 2px);
+}
+:root[data-tsukeru-study="on"] [data-tsukeru-wrapper="1"] .tsukeru-revealed {
   border-radius: 2px;
+  background-color: var(--tsukeru-blue-soft, #e9f0f7);
 }
 
 /* Highlight animation used by page-word navigation. */
-:root[data-tsukeru-custom-style="on"] ruby.tsukeru-highlight,
-:root[data-tsukeru-custom-style="on"] span.tsukeru-highlight {
+.tsukeru-highlight {
   animation: tsukeruHighlight 3s ease;
   background-color: rgba(210, 154, 39, .4) !important;
   border-radius: 3px;
@@ -279,9 +374,14 @@
   100% { background-color: transparent; box-shadow: none; }
 }
 
-/* Page highlight modes: the page may retain the backend's original data values. */
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt],
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt],
+@media (prefers-reduced-motion: reduce) {
+  .tsukeru-highlight { animation: none; }
+}
+
+/* Page highlight modes: the page may retain the backend's original data values.
+   As on EZFurigana, JLPT mode tints only N5-N1 vocabulary; particles and Beyond N1 words stay plain. */
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt]:is([data-jlpt="1"], [data-jlpt="2"], [data-jlpt="3"], [data-jlpt="4"], [data-jlpt="5"]):not([data-pos="Particle" i]),
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt]:is([data-jlpt="1"], [data-jlpt="2"], [data-jlpt="3"], [data-jlpt="4"], [data-jlpt="5"]):not([data-pos="Particle" i]),
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos],
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos] {
   position: relative;
@@ -290,8 +390,8 @@
   border-radius: 2px;
 }
 
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt]::before,
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt]::before,
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt]:is([data-jlpt="1"], [data-jlpt="2"], [data-jlpt="3"], [data-jlpt="4"], [data-jlpt="5"]):not([data-pos="Particle" i])::before,
+:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt]:is([data-jlpt="1"], [data-jlpt="2"], [data-jlpt="3"], [data-jlpt="4"], [data-jlpt="5"]):not([data-pos="Particle" i])::before,
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos]::before,
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos]::before {
   position: absolute;
@@ -316,8 +416,6 @@
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt="2"] { --tsukeru-highlight: var(--tsukeru-group-n2); color: var(--tsukeru-group-ink); }
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby[data-jlpt="1"],
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt="1"] { --tsukeru-highlight: var(--tsukeru-group-n1); color: var(--tsukeru-group-ink); }
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] ruby:not([data-jlpt]),
-:root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt]:not([data-jlpt="1" i]):not([data-jlpt="2" i]):not([data-jlpt="3" i]):not([data-jlpt="4" i]):not([data-jlpt="5" i]) { --tsukeru-highlight: var(--tsukeru-group-neutral); color: var(--tsukeru-group-ink); }
 
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos="Noun" i],
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos="Noun" i],
@@ -373,6 +471,18 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 :root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] .srt-word[data-jlpt="3"] rt,
 :root[data-tsukeru-jlpt="1"] [data-tsukeru-wrapper="1"] .srt-word[data-jlpt="2"] rt { display: none !important; }
 
+/* Beyond N1: readings only on words outside the JLPT lists. */
+:root[data-tsukeru-jlpt="6"] [data-tsukeru-wrapper="1"] :is(ruby, .analysis-word, .srt-word):is([data-jlpt="1"], [data-jlpt="2"], [data-jlpt="3"], [data-jlpt="4"], [data-jlpt="5"]) rt { display: none !important; }
+
+/* School grade: readings from the chosen grade up; words without grade data keep theirs. */
+:root[data-tsukeru-grade="2"] [data-tsukeru-wrapper="1"] :is(ruby, .analysis-word, .srt-word):is([data-grade="1"]) rt { display: none !important; }
+:root[data-tsukeru-grade="3"] [data-tsukeru-wrapper="1"] :is(ruby, .analysis-word, .srt-word):is([data-grade="1"], [data-grade="2"]) rt { display: none !important; }
+:root[data-tsukeru-grade="4"] [data-tsukeru-wrapper="1"] :is(ruby, .analysis-word, .srt-word):is([data-grade="1"], [data-grade="2"], [data-grade="3"]) rt { display: none !important; }
+:root[data-tsukeru-grade="5"] [data-tsukeru-wrapper="1"] :is(ruby, .analysis-word, .srt-word):is([data-grade="1"], [data-grade="2"], [data-grade="3"], [data-grade="4"]) rt { display: none !important; }
+:root[data-tsukeru-grade="6"] [data-tsukeru-wrapper="1"] :is(ruby, .analysis-word, .srt-word):is([data-grade="1"], [data-grade="2"], [data-grade="3"], [data-grade="4"], [data-grade="5"]) rt { display: none !important; }
+:root[data-tsukeru-grade="7"] [data-tsukeru-wrapper="1"] :is(ruby, .analysis-word, .srt-word):is([data-grade="1"], [data-grade="2"], [data-grade="3"], [data-grade="4"], [data-grade="5"], [data-grade="6"]) rt { display: none !important; }
+:root[data-tsukeru-grade="8"] [data-tsukeru-wrapper="1"] :is(ruby, .analysis-word, .srt-word):is([data-grade="1"], [data-grade="2"], [data-grade="3"], [data-grade="4"], [data-grade="5"], [data-grade="6"], [data-grade="7"]) rt { display: none !important; }
+
 /* Site-specific layout corrections retained for YouTube. */
 :root[data-tsukeru-custom-style="on"] h1.ytd-watch-metadata:has(ruby[data-surface]),
 :root[data-tsukeru-custom-style="on"] #title.ytd-watch-metadata h1:has(ruby[data-surface]) { max-height: none !important; overflow: visible !important; }
@@ -409,7 +519,7 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
   direction: ltr !important;
   text-align: left !important;
   box-sizing: border-box !important;
-  box-shadow: 0 16px 38px rgba(36, 52, 60, .24), inset 0 1px 0 rgba(255, 255, 255, .24) !important;
+  box-shadow: var(--tsukeru-tooltip-shadow) !important;
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
@@ -510,7 +620,6 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 .tsukeru-word-tooltip .tsukeru-header-right,
 .tsukeru-word-tooltip .tsukeru-reading-actions { display: flex !important; align-items: center !important; gap: 2px !important; flex-shrink: 0 !important; }
 .tsukeru-word-tooltip .tsukeru-tooltip-close,
-.tsukeru-word-tooltip .tsukeru-tooltip-save,
 .tsukeru-word-tooltip .tsukeru-tooltip-speaker,
 .tsukeru-word-tooltip .tsukeru-tooltip-report-btn {
   display: inline-flex !important;
@@ -527,17 +636,53 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 }
 .tsukeru-word-tooltip .tsukeru-tooltip-close { font-size: 20px !important; line-height: 1 !important; }
 .tsukeru-word-tooltip .tsukeru-tooltip-close:hover,
-.tsukeru-word-tooltip .tsukeru-tooltip-save:hover,
 .tsukeru-word-tooltip .tsukeru-tooltip-speaker:hover,
 .tsukeru-word-tooltip .tsukeru-tooltip-report-btn:hover,
 .tsukeru-word-tooltip .tsukeru-tooltip-close:focus-visible,
-.tsukeru-word-tooltip .tsukeru-tooltip-save:focus-visible,
 .tsukeru-word-tooltip .tsukeru-tooltip-speaker:focus-visible,
 .tsukeru-word-tooltip .tsukeru-tooltip-report-btn:focus-visible { border-color: var(--tsukeru-blue) !important; background: var(--tsukeru-surface-hover) !important; color: var(--tsukeru-blue) !important; opacity: 1 !important; }
-.tsukeru-word-tooltip .tsukeru-tooltip-save.saved,
 .tsukeru-word-tooltip .tsukeru-tooltip-speaker.speaking { color: var(--tsukeru-blue) !important; }
-.tsukeru-word-tooltip .tsukeru-tooltip-save.saved svg { fill: currentColor; stroke: none; }
 .tsukeru-word-tooltip .tsukeru-tooltip-report-btn { color: var(--tsukeru-attention) !important; }
+
+/* Learning / Known switch: the same two-state control as EZFurigana's dictionary popup. */
+.tsukeru-word-tooltip .tooltip-progress {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  margin-right: 4px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--tsukeru-border) !important;
+  border-radius: 4px !important;
+  background: var(--tsukeru-surface) !important;
+}
+.tsukeru-word-tooltip .tooltip-progress-row { display: flex !important; width: max-content !important; margin: 0 0 10px !important; }
+.tsukeru-word-tooltip .tooltip-progress-option {
+  min-height: 26px !important;
+  padding: 0 9px !important;
+  border: 0 !important;
+  border-left: 1px solid var(--tsukeru-border) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--tsukeru-secondary) !important;
+  cursor: pointer !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  transition: color .14s ease, background-color .14s ease !important;
+}
+.tsukeru-word-tooltip .tooltip-progress-option:first-child { border-left: 0 !important; }
+.tsukeru-word-tooltip .tooltip-progress-option:hover:not([aria-pressed="true"]) { background: var(--tsukeru-surface-muted) !important; color: var(--tsukeru-text) !important; }
+.tsukeru-word-tooltip .tooltip-progress-option:focus-visible { outline: 2px solid var(--tsukeru-blue) !important; outline-offset: -2px !important; box-shadow: none !important; }
+.tsukeru-word-tooltip .tooltip-progress-option[data-state="learning"][aria-pressed="true"] {
+  background: var(--tsukeru-blue-soft) !important;
+  box-shadow: inset 0 0 0 1px var(--tsukeru-blue-border) !important;
+  color: var(--tsukeru-blue-readable) !important;
+}
+.tsukeru-word-tooltip .tooltip-progress-option[data-state="known"][aria-pressed="true"] {
+  background: color-mix(in srgb, var(--tsukeru-success) 13%, var(--tsukeru-surface)) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tsukeru-success) 42%, transparent) !important;
+  color: var(--tsukeru-success) !important;
+}
 
 .tsukeru-word-tooltip .tsukeru-sense-row { margin: 0 0 8px !important; padding: 0 0 8px !important; border-bottom: 1px solid var(--tsukeru-border) !important; }
 .tsukeru-word-tooltip .tsukeru-sense-row:last-of-type { border-bottom: 0 !important; }
@@ -640,7 +785,7 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
   background: var(--tsukeru-paper) !important;
   background-image: var(--tsukeru-paper-texture) !important;
   color: var(--tsukeru-toast-accent) !important;
-  box-shadow: 0 8px 22px rgba(36, 52, 60, .16) !important;
+  box-shadow: var(--tsukeru-toast-shadow) !important;
   font-family: var(--tsukeru-sans) !important;
   font-size: 12px !important;
   line-height: 1.4 !important;
@@ -684,15 +829,10 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 .tsukeru-content-report-modal .tsukeru-crm-submit:hover:not(:disabled) { filter: brightness(1.06); }
 .tsukeru-content-report-modal .tsukeru-crm-submit:disabled { cursor: wait !important; opacity: .65 !important; }
 
-.tsukeru-vocab-saved-toast { position: fixed !important; top: 16px !important; right: 16px !important; z-index: 2147483647 !important; max-width: min(90vw, 360px) !important; padding: 9px 12px !important; border: 1px solid var(--tsukeru-success) !important; border-radius: 3px !important; background: var(--tsukeru-paper) !important; background-image: var(--tsukeru-paper-texture) !important; color: var(--tsukeru-ink) !important; box-shadow: 0 8px 22px rgba(36, 52, 60, .16) !important; font: 600 12px/1.4 var(--tsukeru-sans) !important; }
 
 #tsukeru-word-tooltip [data-jlpt]::before,
 #tsukeru-word-tooltip [data-pos]::before { display: none !important; content: none !important; }
 
-@media (prefers-color-scheme: dark) {
-  .tsukeru-word-tooltip { box-shadow: 0 16px 38px rgba(0, 0, 0, .42), inset 0 1px 0 rgba(255, 255, 255, .04) !important; }
-  .tsukeru-toast { box-shadow: 0 8px 22px rgba(0, 0, 0, .34) !important; }
-}
 
 @media (prefers-reduced-motion: reduce) {
   .tsukeru-word-tooltip,
@@ -701,7 +841,6 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
   .tsukeru-word-tooltip *::after,
   .tsukeru-content-report-modal,
   .tsukeru-content-report-modal *,
-  .tsukeru-vocab-saved-toast,
   .tsukeru-toast,
   .tsukeru-toast * { transition: none !important; animation: none !important; }
 }

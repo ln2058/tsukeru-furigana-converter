@@ -39,6 +39,7 @@ function loadRenderer(tooltipUrl) {
     URL,
     escapeHtml,
     requestAnimationFrame() {},
+    applyTsukeruUiTheme() {},
     document: {
       createElement() {
         let text = '';

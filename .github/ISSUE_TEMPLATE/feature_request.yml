@@ -1,0 +1,20 @@
+name: Feature request
+description: Suggest an idea for Tsukeru.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: Describe the problem or the way you read Japanese that this would help with.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could Tsukeru help?
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Example pages, screenshots, or similar tools.
