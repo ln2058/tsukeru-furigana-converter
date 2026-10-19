@@ -306,6 +306,8 @@ for (const browser of ['chrome', 'firefox']) {
       addEventListener() {},
     }));
     const links = Object.fromEntries(['header-ezfurigana-link', 'header-supporter-link', 'shortcut-text'].map(id => [id, {}]));
+    links['header-review-link'] = { setAttribute() {} };
+    const reviewPrompts = [];
     let bootstrap;
     let translated = false;
     Object.assign(fixture.sandbox, {
@@ -323,6 +325,8 @@ for (const browser of ['chrome', 'firefox']) {
       initSettingsForm() {}, initMyWordsTab() {}, initPageTab() {},
       loadMyWords() { assert.fail('Settings reload should not load My Words'); },
       requestPageWordsRefresh() { assert.fail('Settings reload should not open This page'); },
+      storeReviewUrl: (store, language) => `${store}:${language}`,
+      initReviewPrompt(options) { reviewPrompts.push(options); },
       t: fixture.i18n.t,
     });
     vm.runInNewContext(read(browser, 'js/popup-main.js').replace(/^import\s[\s\S]*?;\r?\n/gm, ''), fixture.sandbox);
@@ -337,5 +341,8 @@ for (const browser of ['chrome', 'firefox']) {
     assert.equal(tabs.find(item => item.active).dataset.tab, 'settings');
     assert.equal(links['header-ezfurigana-link'].href, 'https://www.ezfurigana.com/ko');
     assert.equal(links['header-supporter-link'].href, 'https://www.ezfurigana.com/ko/pricing');
+    const store = browser === 'firefox' ? 'firefox' : 'chrome';
+    assert.equal(links['header-review-link'].href, `${store}:ko`);
+    assert.deepEqual(reviewPrompts.map(options => ({ ...options })), [{ store, language: 'ko' }]);
   });
 }

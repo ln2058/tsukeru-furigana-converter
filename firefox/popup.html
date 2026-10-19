@@ -146,6 +146,16 @@
         </label>
         <p class="page-study-hint" data-i18n="study_mode_hint">Hides readings. Click a word to reveal it; click again for its meaning.</p>
       </div>
+      <section id="reviewPrompt" class="review-prompt" aria-labelledby="reviewPromptTitle" hidden>
+        <svg class="review-prompt-stars" viewBox="0 0 39 7" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path d="M3 0h1v2H3zM0 2h7v1H0zM1 3h5v1H1zM2 4h3v1H2zM1 5h2v1H1zM4 5h2v1H4zM1 6h1v1H1zM5 6h1v1H5zM11 0h1v2H11zM8 2h7v1H8zM9 3h5v1H9zM10 4h3v1H10zM9 5h2v1H9zM12 5h2v1H12zM9 6h1v1H9zM13 6h1v1H13zM19 0h1v2H19zM16 2h7v1H16zM17 3h5v1H17zM18 4h3v1H18zM17 5h2v1H17zM20 5h2v1H20zM17 6h1v1H17zM21 6h1v1H21zM27 0h1v2H27zM24 2h7v1H24zM25 3h5v1H25zM26 4h3v1H26zM25 5h2v1H25zM28 5h2v1H28zM25 6h1v1H25zM29 6h1v1H29zM35 0h1v2H35zM32 2h7v1H32zM33 3h5v1H33zM34 4h3v1H34zM33 5h2v1H33zM36 5h2v1H36zM33 6h1v1H33zM37 6h1v1H37z"/></svg>
+        <h2 id="reviewPromptTitle" class="review-prompt-title" data-i18n="review_prompt_title">Enjoying Tsukeru?</h2>
+        <p class="review-prompt-text" data-i18n="review_prompt_text">A quick review helps other Japanese learners find Tsukeru.</p>
+        <div class="review-prompt-actions">
+          <a id="reviewPromptRate" class="primary-link" href="https://addons.mozilla.org/en-US/firefox/addon/tsukeru-for-ezfurigana/" target="_blank" rel="noopener noreferrer" data-i18n="review_prompt_rate">Leave a review</a>
+          <button type="button" id="reviewPromptLater" class="text-action" data-i18n="review_prompt_later">Later</button>
+          <button type="button" id="reviewPromptNever" class="text-action review-prompt-never" data-i18n="review_prompt_never">Don't ask again</button>
+        </div>
+      </section>
       <div id="pageProfile" class="result-profile" hidden>
         <span id="pageProfileMeter" class="result-profile-meter" role="img"></span>
         <p id="pageProfileSummary" class="result-profile-summary" aria-live="polite"></p>

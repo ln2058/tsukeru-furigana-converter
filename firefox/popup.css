@@ -464,6 +464,16 @@ input[type="text"]:focus { border-color: var(--blue); outline: none; }
 .word-review-strip-copy { display: grid; gap: 4px; min-width: 0; }
 .word-review-strip-title { margin: 0; color: var(--ink); font-size: 16px; font-weight: 700; line-height: 1.2; }
 .word-review-strip-meta { margin: 0; color: var(--muted); font-family: var(--mono); font-size: 9px; font-variant-numeric: tabular-nums; letter-spacing: .06em; text-transform: uppercase; }
+/* Store-review request: the same paper slip as the review strip, marked with the Supporter star colour. */
+.review-prompt { display: grid; justify-items: start; gap: 5px; margin: 12px 12px 0; padding: 12px 13px 11px 11px; border: 1px solid var(--paper-edge); border-left: 3px solid var(--star); border-radius: 4px; background: var(--paper); background-image: url("paper-texture.svg"); animation: popup-notice-rise 140ms ease-out; }
+.review-prompt[hidden] { display: none; }
+.review-prompt-stars { width: 78px; height: 14px; margin-bottom: 2px; color: var(--star); }
+.review-prompt-title { margin: 0; color: var(--ink); font-size: 15px; font-weight: 700; line-height: 1.25; }
+.review-prompt-text { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.review-prompt-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 5px; }
+.review-prompt-actions .primary-link { min-height: 30px; }
+.review-prompt-actions .review-prompt-never { color: var(--muted); }
+.review-prompt-actions .review-prompt-never:hover { color: var(--text); }
 .word-sync-note { margin: 6px 14px 0; color: var(--muted); font-size: 10px; line-height: 1.4; }
 .word-sync-note:empty { display: none; }
 

@@ -69,7 +69,7 @@ for (const browser of ['chrome', 'firefox']) {
     f.start();
     assert.equal(f.renders.length, 0);
     assert.equal(f.requests[0].message.cacheOnly, true);
-    assert.equal(f.button().disabled, true);
+    assert.equal(f.button(), null, 'no controls until the cache check answers');
     f.requests[0].callback({ success: true, data: { reason: 'not_cached' } });
     await tick();
     assert.equal(f.button().disabled, false);
@@ -112,11 +112,39 @@ for (const browser of ['chrome', 'firefox']) {
   test(`${browser} limit notes preserve English without automatic retries`, async () => {
     const f = fixture(browser);
     f.start();
-    f.requests[0].callback({ success: true, data: { reason: 'budget_exhausted' } });
+    f.requests[0].callback({ success: true, data: { reason: 'rate_limited' } });
+    await tick();
+    assert.doesNotMatch(f.tooltip.textContent, /Translation limit reached/, 'the passive check stays silent');
+    f.button().events.click(click(true));
+    f.requests[1].callback({ success: true, data: { reason: 'budget_exhausted' } });
     await tick();
     assert.match(f.tooltip.textContent, /Translation limit reached/);
     assert.equal(f.renders.length, 0);
-    assert.equal(f.requests.length, 1);
+    assert.equal(f.requests.length, 2);
+  });
+
+  test(`${browser} a disabled feature or missing route leaves the English tooltip unchanged`, async () => {
+    for (const reply of [{ success: true, data: { reason: 'disabled' } }, { success: false }]) {
+      const f = fixture(browser, 'ja');
+      f.start();
+      f.requests[0].callback(reply);
+      await tick();
+      assert.equal(f.button(), null);
+      assert.doesNotMatch(f.tooltip.textContent, /Translation unavailable/);
+      assert.equal(f.requests.length, 1);
+    }
+    const f = fixture(browser);
+    f.start();
+    f.requests[0].callback({ success: true, data: { reason: 'not_cached' } });
+    await tick();
+    f.button().events.click(click(true));
+    f.requests[1].callback({ success: false });
+    await tick();
+    assert.match(f.tooltip.textContent, /Translation unavailable/, 'a failed click explains itself');
+    f.button().events.click(click(true));
+    f.requests[2].callback({ success: true, data: { reason: 'disabled' } });
+    await tick();
+    assert.equal(f.button(), null, 'switching the feature off removes the controls');
   });
 
   test(`${browser} ruby parser creates only text and ruby nodes and preserves malformed braces`, () => {

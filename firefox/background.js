@@ -14,6 +14,7 @@ Outputs:
 Side Effects:
 - Serves private UI catalogs to this extension and updates localized menu titles.
 - Seeds and reads `chrome.storage.sync` defaults.
+- Records the review-prompt first-seen time and local days with successful furigana in `chrome.storage.local`.
 - Creates context menus, injects content scripts/CSS including tooltip dependencies in order, and handles Firefox direct-audio actions.
 - Routes optional lookup reading fields and API error metadata without persisting them.
 
@@ -35,10 +36,34 @@ import {
 } from './js/bg-api.js';
 import { handleWordsMessage, isWordsAction, refreshWordBadge } from './js/bg-words.js';
 import { hasSupportedLocalFileExtension } from './js/utils.js';
+import { REVIEW_USAGE_KEY, localDay, markFirstSeen, recordUsageDay } from './js/review-prompt.js';
 import './js/i18n.js';
 
 function t(key, fallback) {
   return TsukeruI18n.t(key, undefined, fallback);
+}
+
+// The background is the only writer of review-prompt usage; queued writes cannot overwrite each other.
+let reviewUsageWrites = Promise.resolve();
+let reviewUsageDay = '';
+
+function updateReviewUsage(update) {
+  reviewUsageWrites = reviewUsageWrites.then(async () => {
+    const stored = await chrome.storage.local.get(REVIEW_USAGE_KEY);
+    const { usage, changed } = update(stored[REVIEW_USAGE_KEY], Date.now());
+    if (changed) await chrome.storage.local.set({ [REVIEW_USAGE_KEY]: usage });
+  }).catch(() => {
+    reviewUsageDay = '';
+    console.warn('Tsukeru: could not record review prompt usage');
+  });
+}
+
+function recordSuccessfulFuriganaDay() {
+  // Pages send many batches; touch storage at most once per local day per worker.
+  const day = localDay(Date.now());
+  if (day === reviewUsageDay) return;
+  reviewUsageDay = day;
+  updateReviewUsage(recordUsageDay);
 }
 
 function serializeApiError(error) {
@@ -73,6 +98,8 @@ chrome.runtime.onInstalled.addListener(() => {
       highlightMode: stored.highlightMode || DEFAULT_SETTINGS.highlightMode,
     });
   });
+  // Existing users start the review-prompt clock at the update that adds it.
+  updateReviewUsage(markFirstSeen);
   // "First occurrence only" was retired; drop the stored flag.
   chrome.storage.sync.remove('firstOccurrenceOnly');
 });
@@ -177,7 +204,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.action === 'processFurigana') {
     handleFuriganaRequest(message.payload)
-      .then((result) => sendResponse({ success: true, ...result }))
+      .then((result) => {
+        recordSuccessfulFuriganaDay();
+        sendResponse({ success: true, ...result });
+      })
       .catch((error) => {
         console.error('Furigana request failed', error);
         sendResponse({ success: false, ...serializeApiError(error) });

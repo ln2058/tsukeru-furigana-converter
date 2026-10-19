@@ -669,5 +669,20 @@
   },
   "dictionary_translation_unavailable": {
     "message": "今は翻訳を表示できません。英語で表示します。"
+  },
+  "review_prompt_title": {
+    "message": "Tsukeruは役に立っていますか？"
+  },
+  "review_prompt_text": {
+    "message": "レビューをいただけると、ほかの日本語学習者がTsukeruを見つけやすくなります。"
+  },
+  "review_prompt_rate": {
+    "message": "レビューを書く"
+  },
+  "review_prompt_later": {
+    "message": "あとで"
+  },
+  "review_prompt_never": {
+    "message": "今後表示しない"
   }
 }

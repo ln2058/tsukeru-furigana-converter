@@ -9,7 +9,8 @@ Outputs:
 - Active tab-pane state changes (This page normally opens first; language changes reopen Settings) and report success/error UI feedback.
 
 Side Effects:
-- Mutates popup DOM state, sets language-specific home/pricing links, requests coalesced page-word refreshes, and sends `reportReadingError` messages.
+- Mutates popup DOM state, sets language-specific home/pricing/store-review links, requests coalesced page-word refreshes, and sends `reportReadingError` messages.
+- Starts the occasional store-review card (`popup-review`).
 - Applies Firefox shortcut label defaults in popup UI.
 
 Failure Modes:
@@ -31,6 +32,8 @@ import {
   userFacingError,
 } from './popup-settings.js';
 import { initMyWordsTab, initPageTab, loadMyWords, requestPageWordsRefresh } from './popup-vocab.js';
+import { initReviewPrompt } from './popup-review.js';
+import { storeReviewUrl } from './review-prompt.js';
 
 // ── Tab navigation ────────────────────────────────────────────────────────────
 
@@ -116,17 +119,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     initLocaleSelect();
     initThemeToggle();
 
+    const reviewStore = navigator.userAgent.toLowerCase().includes('edg/') ? 'edge' : 'firefox';
     const reviewLink = document.getElementById('header-review-link');
     if (reviewLink) {
-      if (navigator.userAgent.toLowerCase().includes('edg/')) {
-        reviewLink.href = 'https://microsoftedge.microsoft.com/addons/detail/tsukeru-for-ezfurigana/cdlcehkdgoaboeapgjdhnklgicmiknia';
-        reviewLink.title = t('header_title_review_edge', undefined, 'Review on Edge Add-ons Store');
-        reviewLink.setAttribute('aria-label', reviewLink.title);
-      } else {
-        reviewLink.href = 'https://addons.mozilla.org/en-US/firefox/addon/tsukeru-for-ezfurigana/';
-        reviewLink.title = t('header_title_review_firefox', undefined, 'Review on Firefox Add-ons');
-        reviewLink.setAttribute('aria-label', reviewLink.title);
-      }
+      reviewLink.href = storeReviewUrl(reviewStore, TsukeruI18n.language());
+      reviewLink.title = reviewStore === 'edge'
+        ? t('header_title_review_edge', undefined, 'Review on Edge Add-ons Store')
+        : t('header_title_review_firefox', undefined, 'Review on Firefox Add-ons');
+      reviewLink.setAttribute('aria-label', reviewLink.title);
     }
 
     const ezfuriganaLink = document.getElementById('header-ezfurigana-link');
@@ -152,6 +152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initPageTab();
     initTabNavigation();
     selectInitialTab();
+    void initReviewPrompt({ store: reviewStore, language: TsukeruI18n.language() });
   } finally {
     document.documentElement.removeAttribute('data-i18n-pending');
   }

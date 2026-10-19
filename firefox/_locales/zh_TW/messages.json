@@ -669,5 +669,20 @@
   },
   "dictionary_translation_unavailable": {
     "message": "目前無法提供翻譯，暫時顯示英文釋義。"
+  },
+  "review_prompt_title": {
+    "message": "Tsukeru 對你有幫助嗎？"
+  },
+  "review_prompt_text": {
+    "message": "留下簡短評論，能幫助其他日語學習者找到 Tsukeru。"
+  },
+  "review_prompt_rate": {
+    "message": "撰寫評論"
+  },
+  "review_prompt_later": {
+    "message": "稍後再說"
+  },
+  "review_prompt_never": {
+    "message": "不再詢問"
   }
 }

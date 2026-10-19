@@ -394,12 +394,16 @@
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt]:is([data-jlpt="1"], [data-jlpt="2"], [data-jlpt="3"], [data-jlpt="4"], [data-jlpt="5"]):not([data-pos="Particle" i])::before,
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos]::before,
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos]::before {
+  /* Centred on the word's box: a bottom anchor follows the font's descent, and
+     fonts with a deep descent (Meiryo, the Japanese fallback on many pages) left
+     the top of the characters untinted. */
   position: absolute;
+  top: 50%;
   left: -1px;
   right: -1px;
-  bottom: -1px;
   z-index: -2;
   height: 1.05em;
+  transform: translateY(-50%);
   border-radius: 2px;
   background: var(--tsukeru-highlight, transparent);
   content: "";

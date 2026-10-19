@@ -1482,7 +1482,14 @@ async function requestTooltipTranslation(state, cacheOnly) {
     state.reason = '';
     drawTranslationEntry(state);
   } else {
-    state.reason = result?.reason === 'not_cached' ? '' : result?.reason || 'service_unavailable';
+    const reason = result?.reason || 'service_unavailable';
+    // A disabled feature, missing route or failed passive check leaves the English tooltip unchanged.
+    if (reason === 'disabled' || (cacheOnly && !result)) {
+      state.tooltip.querySelector('.tsukeru-translation-controls')?.remove();
+      return;
+    }
+    // Notes explain a reader's own request; the passive cache check only offers the button.
+    state.reason = cacheOnly ? '' : reason;
     drawTranslationControls(state);
   }
 }
@@ -1511,6 +1518,6 @@ function startLocalizedTooltip(tooltip, wordInfo, english, recordPromise, token)
   const state = { tooltip, wordInfo, english, recordPromise, token, locale,
     translated: null, showingTranslation: false, busy: true, checking: true, reason: '' };
   tooltip._translationState = state;
-  drawTranslationControls(state);
+  // Controls appear only after the cache check shows translations are available.
   void requestTooltipTranslation(state, true);
 }

@@ -669,5 +669,20 @@
   },
   "dictionary_translation_unavailable": {
     "message": "지금은 번역을 불러올 수 없어 영어로 표시합니다."
+  },
+  "review_prompt_title": {
+    "message": "Tsukeru가 도움이 되셨나요?"
+  },
+  "review_prompt_text": {
+    "message": "짧은 리뷰를 남겨 주시면 다른 일본어 학습자들이 Tsukeru를 더 쉽게 찾을 수 있습니다."
+  },
+  "review_prompt_rate": {
+    "message": "리뷰 남기기"
+  },
+  "review_prompt_later": {
+    "message": "나중에"
+  },
+  "review_prompt_never": {
+    "message": "다시 묻지 않기"
   }
 }

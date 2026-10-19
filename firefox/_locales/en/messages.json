@@ -669,5 +669,20 @@
   },
   "dictionary_translation_unavailable": {
     "message": "Translation unavailable. Showing English."
+  },
+  "review_prompt_title": {
+    "message": "Enjoying Tsukeru?"
+  },
+  "review_prompt_text": {
+    "message": "A quick review helps other Japanese learners find Tsukeru."
+  },
+  "review_prompt_rate": {
+    "message": "Leave a review"
+  },
+  "review_prompt_later": {
+    "message": "Later"
+  },
+  "review_prompt_never": {
+    "message": "Don't ask again"
   }
 }
