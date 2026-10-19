@@ -648,5 +648,26 @@
   "settings_language_save_error": {
     "message": "표시 언어를 저장하지 못했습니다. 다시 시도해 주세요.",
     "description": "Error shown when saving the display-language preference fails."
+  },
+  "dictionary_translate": {
+    "message": "한국어로 보기"
+  },
+  "dictionary_english": {
+    "message": "영어로 보기"
+  },
+  "dictionary_ai_translation": {
+    "message": "AI 번역"
+  },
+  "dictionary_translation_loading": {
+    "message": "번역 중…"
+  },
+  "dictionary_translation_limit": {
+    "message": "번역 이용 한도에 도달해 영어로 표시합니다."
+  },
+  "dictionary_translation_pending": {
+    "message": "번역을 준비 중이어서 영어로 표시합니다."
+  },
+  "dictionary_translation_unavailable": {
+    "message": "지금은 번역을 불러올 수 없어 영어로 표시합니다."
   }
 }

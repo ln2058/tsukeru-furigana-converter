@@ -275,6 +275,23 @@ for (const browser of ['chrome', 'firefox']) {
     assert.equal(response.catalog.messages.ui_lang, 'zh-TW');
     assert.equal(typeof response.catalog.messages.tab_settings, 'string');
     assert.equal(response.catalog.messages.tab_settings.description, undefined);
+    const localizedCalls = [];
+    fixture.sandbox.lookupLocalizedDefinition = async (...args) => { localizedCalls.push(args); return { source: 'je_localized_cache' }; };
+    const payload = { action: 'lookupLocalizedDefinition', word: '本', reading: 'ほん', readingType: 'hiragana', uiLocale: 'ko', cacheOnly: true };
+    for (const [change, sender] of [[{}, 'external'], [{ word: {} }, 'internal-id'],
+      [{ word: 'a'.repeat(65) }, 'internal-id'], [{ reading: '\n' }, 'internal-id'],
+      [{ uiLocale: 'fr' }, 'internal-id'], [{ cacheOnly: 'false' }, 'internal-id'],
+      [{ readingType: 'other' }, 'internal-id']]) {
+      const invalid = await new Promise(resolve => handler({ ...payload, ...change }, { id: sender }, resolve));
+      assert.equal(invalid.success, false);
+    }
+    assert.equal(localizedCalls.length, 0);
+    const localized = await new Promise(resolve => handler(payload, { id: 'internal-id' }, resolve));
+    assert.equal(localized.success, true);
+    assert.equal(localizedCalls.length, 1);
+    assert.equal(localizedCalls[0][3], 'ko');
+    assert.equal(localizedCalls[0][4].cacheOnly, true);
+
   });
 
   test(`${browser} popup waits for its catalog and reopens Settings after a language reload`, async () => {

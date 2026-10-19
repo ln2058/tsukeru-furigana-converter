@@ -648,5 +648,26 @@
   "settings_language_save_error": {
     "message": "表示言語を保存できませんでした。もう一度お試しください。",
     "description": "Error shown when saving the display-language preference fails."
+  },
+  "dictionary_translate": {
+    "message": "やさしい日本語で見る"
+  },
+  "dictionary_english": {
+    "message": "英語に戻す"
+  },
+  "dictionary_ai_translation": {
+    "message": "AI翻訳"
+  },
+  "dictionary_translation_loading": {
+    "message": "翻訳中…"
+  },
+  "dictionary_translation_limit": {
+    "message": "翻訳の利用上限に達しました。英語で表示します。"
+  },
+  "dictionary_translation_pending": {
+    "message": "翻訳を準備中です。英語で表示します。"
+  },
+  "dictionary_translation_unavailable": {
+    "message": "今は翻訳を表示できません。英語で表示します。"
   }
 }

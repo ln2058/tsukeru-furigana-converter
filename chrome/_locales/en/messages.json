@@ -648,5 +648,26 @@
   "settings_language_save_error": {
     "message": "Could not save the display language. Please try again.",
     "description": "Error shown when saving the display-language preference fails."
+  },
+  "dictionary_translate": {
+    "message": "View translation"
+  },
+  "dictionary_english": {
+    "message": "Show English"
+  },
+  "dictionary_ai_translation": {
+    "message": "AI translation"
+  },
+  "dictionary_translation_loading": {
+    "message": "Translating…"
+  },
+  "dictionary_translation_limit": {
+    "message": "Translation limit reached. Showing English."
+  },
+  "dictionary_translation_pending": {
+    "message": "A translation is being prepared. Showing English."
+  },
+  "dictionary_translation_unavailable": {
+    "message": "Translation unavailable. Showing English."
   }
 }

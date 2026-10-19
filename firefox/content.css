@@ -867,3 +867,16 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
   --tsukeru-sans: "BIZ UDPGothic", "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
   font-family: var(--tsukeru-sans) !important;
 }
+
+/* Translation controls use the tooltip's existing paper, borders and blue accent. */
+.tsukeru-word-tooltip .tsukeru-translation-controls { display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 8px !important; margin-top: 10px !important; padding-top: 9px !important; border-top: 1px solid var(--tsukeru-border) !important; }
+.tsukeru-word-tooltip .tsukeru-translation-label { color: var(--tsukeru-secondary) !important; font-size: 11px !important; }
+.tsukeru-word-tooltip .tsukeru-translation-button { appearance: none !important; padding: 5px 9px !important; border: 1px solid var(--tsukeru-border-strong) !important; border-radius: 3px !important; background: var(--tsukeru-surface) !important; color: var(--tsukeru-blue-readable) !important; font: 600 12px/1.4 var(--tsukeru-sans) !important; cursor: pointer !important; }
+.tsukeru-word-tooltip .tsukeru-translation-button:hover { border-color: var(--tsukeru-blue-readable) !important; }
+.tsukeru-word-tooltip .tsukeru-translation-button:focus-visible { outline: 2px solid var(--tsukeru-blue-readable) !important; outline-offset: 2px !important; }
+.tsukeru-word-tooltip .tsukeru-translation-button:disabled { opacity: .65 !important; cursor: wait !important; }
+.tsukeru-word-tooltip .tsukeru-translation-note { flex-basis: 100% !important; color: var(--tsukeru-secondary) !important; font: 400 12px/1.5 var(--tsukeru-sans) !important; }
+.tsukeru-word-tooltip .tsukeru-sense-gloss ruby,
+.tsukeru-word-tooltip .tsukeru-sense-explanation ruby { ruby-position: over !important; }
+.tsukeru-word-tooltip .tsukeru-sense-gloss rt,
+.tsukeru-word-tooltip .tsukeru-sense-explanation rt { font-size: .55em !important; }

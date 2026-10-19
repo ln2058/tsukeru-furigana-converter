@@ -33,10 +33,15 @@ function loadApi(browserName, route, { cacheLimit = 200, storage = null, manifes
     async function sha256Hash() { return 'hash'; }
     async function cacheGet() { return null; }
     async function cacheSet() {}
+    const translations = new Map();
+    async function localizedCacheGet(key) { return translations.get(key); }
+    async function localizedCacheSet(key, data) { translations.set(key, data); }
     function kata2hira(value) { return value || ''; }
   ${source}
     globalThis.__api = {
       lookupDefinition,
+      lookupLocalizedDefinition,
+      getLocalizedDefinitionCacheKey,
       fetchExampleSentence,
       fetchKanjiBreakdown,
       normalizeDefinitionLookupArgs,
@@ -361,5 +366,49 @@ for (const browserName of ['chrome', 'firefox']) {
       (error) => error.status === 503 && error.errorCode === 'service_unavailable' && error.retryAfter == null,
     );
     assert.equal(Object.keys(await fixture.api.getRateLimitState()).length, 0);
+  });
+}
+
+for (const browserName of ['chrome', 'firefox']) {
+  test(`${browserName} localized requests map locales, preserve nonce and cache successful entries separately`, async () => {
+    const fixture = loadApi(browserName, url => url.pathname.endsWith('/nonce')
+      ? response(200, { nonce: 'localized-nonce', expires_in: 600 })
+      : response(200, { source: 'je_localized_cache', locale: url.searchParams.get('locale'), entry: { gloss: 'translation' } }));
+    assert.equal(await fixture.api.lookupLocalizedDefinition('本', '', '', 'en'), null);
+    assert.equal(fixture.calls.length, 0);
+    for (const [uiLocale, locale] of [['ja', 'ja'], ['ko', 'ko'], ['zh_TW', 'zh-Hant']]) {
+      await fixture.api.lookupLocalizedDefinition('本', 'ほん', 'hiragana', uiLocale, { cacheOnly: true });
+      const url = new URL(fixture.calls.at(-1).url);
+      assert.equal(url.pathname, '/api/extension/ai-dictionary');
+      assert.equal(url.searchParams.get('locale'), locale);
+      assert.equal(url.searchParams.get('ext_nonce'), 'localized-nonce');
+      assert.equal(url.searchParams.get('cache_only'), '1');
+      assert.equal(url.searchParams.get('reading'), 'ほん');
+      const count = fixture.calls.length;
+      await fixture.api.lookupLocalizedDefinition('本', 'ほん', 'hiragana', uiLocale, { cacheOnly: false });
+      assert.equal(fixture.calls.length, count, 'cached success avoids generation entirely');
+    }
+    assert.notEqual(fixture.api.getLocalizedDefinitionCacheKey('本', 'ほん', 'ja'), fixture.api.getLocalizedDefinitionCacheKey('本', 'ほん', 'ko'));
+    await assert.rejects(() => fixture.api.lookupLocalizedDefinition('本', '', '', 'fr'));
+  });
+
+  test(`${browserName} coalesces matching requests but separates cache-only from generation and never caches denials`, async () => {
+    const releases = [];
+    const fixture = loadApi(browserName, url => url.pathname.endsWith('/nonce')
+      ? response(200, { nonce: 'nonce', expires_in: 600 })
+      : new Promise(resolve => releases.push({ url, resolve })));
+    const first = fixture.api.lookupLocalizedDefinition('本', '', '', 'ko', { cacheOnly: true });
+    const duplicate = fixture.api.lookupLocalizedDefinition('本', '', '', 'ko', { cacheOnly: true });
+    const generation = fixture.api.lookupLocalizedDefinition('本', '', '', 'ko', { cacheOnly: false });
+    for (let count = 0; count < 30 && releases.length < 2; count += 1) await Promise.resolve();
+    assert.equal(releases.length, 2);
+    assert.deepEqual(releases.map(item => item.url.searchParams.get('cache_only')).sort(), ['0', '1']);
+    for (const item of releases) item.resolve(response(200, { source: 'je_english_fallback', reason: 'rate_limited', entry: { gloss: 'English' } }));
+    await Promise.all([first, duplicate, generation]);
+    const again = fixture.api.lookupLocalizedDefinition('本', '', '', 'ko', { cacheOnly: true });
+    for (let count = 0; count < 30 && releases.length < 3; count += 1) await Promise.resolve();
+    assert.equal(releases.length, 3);
+    releases[2].resolve(response(200, { source: 'je_english_fallback', reason: 'not_cached' }));
+    await again;
   });
 }

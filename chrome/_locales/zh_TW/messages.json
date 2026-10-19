@@ -648,5 +648,26 @@
   "settings_language_save_error": {
     "message": "無法儲存顯示語言，請再試一次。",
     "description": "Error shown when saving the display-language preference fails."
+  },
+  "dictionary_translate": {
+    "message": "顯示中文釋義"
+  },
+  "dictionary_english": {
+    "message": "顯示英文釋義"
+  },
+  "dictionary_ai_translation": {
+    "message": "AI 翻譯"
+  },
+  "dictionary_translation_loading": {
+    "message": "翻譯中…"
+  },
+  "dictionary_translation_limit": {
+    "message": "翻譯次數已達上限，暫時顯示英文釋義。"
+  },
+  "dictionary_translation_pending": {
+    "message": "翻譯正在準備中，暫時顯示英文釋義。"
+  },
+  "dictionary_translation_unavailable": {
+    "message": "目前無法提供翻譯，暫時顯示英文釋義。"
   }
 }

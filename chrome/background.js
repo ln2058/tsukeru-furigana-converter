@@ -29,7 +29,7 @@ Security Notes:
 // Background service worker — Chrome message router and command handler.
 // All API/cache logic lives in ./js/bg-api.js and ./js/bg-cache.js.
 import {
-  handleFuriganaRequest, lookupDefinition, fetchExampleSentence, fetchKanjiBreakdown,
+  handleFuriganaRequest, lookupDefinition, lookupLocalizedDefinition, fetchExampleSentence, fetchKanjiBreakdown,
   handlePlayAudio, handleFetchProxyAudio, handleReportReadingError,
   DEFAULT_SETTINGS, getRateLimitState,
 } from './js/bg-api.js';
@@ -219,6 +219,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: false, ...serializeApiError(error) });
       });
     return true; // Keep the message channel open for async response
+  }
+
+  if (message?.action === 'lookupLocalizedDefinition') {
+    const validText = value => typeof value === 'string' && Array.from(value).length <= 64
+      && !/[\u0000-\u001f\u007f]/.test(value) && !/https?:\/\//i.test(value);
+    if (sender.id !== chrome.runtime.id || !validText(message.word) || !message.word.trim()
+        || !validText(message.reading) || !['', 'hiragana', 'katakana', 'romaji'].includes(message.readingType)
+        || !['en', 'ja', 'ko', 'zh_TW', 'zh-TW'].includes(message.uiLocale)
+        || typeof message.cacheOnly !== 'boolean') {
+      sendResponse({ success: false, error: 'Invalid localized lookup' });
+      return false;
+    }
+    lookupLocalizedDefinition(message.word, message.reading, message.readingType,
+      message.uiLocale, { cacheOnly: message.cacheOnly })
+      .then(data => sendResponse({ success: true, data }))
+      .catch(() => sendResponse({ success: false, error: 'Localized lookup unavailable' }));
+    return true;
   }
 
   if (message.action === 'lookupDefinition') {

@@ -1,5 +1,18 @@
 # Changelog
 
+## 4.1.0 — 2026-10-19
+
+### Added
+
+- Korean and Taiwan Traditional Chinese interfaces, with a display-language setting for English, Japanese, Korean, Traditional Chinese, or the browser default.
+- Dictionary translations into easy Japanese, Korean, and Traditional Chinese. Available translations load from cache; a button requests a new AI translation when needed. English remains available with one click.
+- Clear notices when translation limits are reached or translations are unavailable. New translations share strict server-side quotas and a daily extension cap.
+
+### Changed
+
+- Dictionary translations use language-appropriate fonts and safe Japanese ruby rendering. Saved word definitions and CSV exports retain their existing English behavior.
+- Localized Supporter links follow the selected display language.
+
 ## 4.0.0 — 2026-10-08
 
 ### Added

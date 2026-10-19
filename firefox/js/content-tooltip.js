@@ -25,7 +25,7 @@ Failure Modes:
 - Completed dictionary results are TTL-bound and size-bounded; shared in-flight requests are retained only until settlement.
 
 Security Notes:
-- Escapes/sanitizes rendered content before DOM injection; report failures use localized messages from structured metadata.
+- Escapes/sanitizes rendered content; AI ruby uses DOM text nodes. Only trusted clicks can generate translations.
 - Report opening/submission requires trusted clicks; word, reading, and context are held in isolated-script state rather than read back from page fields.
 - Avoids direct third-party media fetches from page context.
 - Checked words carry only the word, reading, JLPT level, part of speech, and a short plain-text sentence; no page URL.
@@ -193,6 +193,7 @@ async function showDefinitionTooltip(ruby, wordInfo) {
     renderDefinitionTooltip(tooltip, wordInfo, definitionData);
     bindTooltipProgress(tooltip, recordPromise, myToken);
     rememberWordDefinition(recordPromise, definitionData);
+    startLocalizedTooltip(tooltip, wordInfo, definitionData, recordPromise, myToken);
   } catch (err) {
     if (tooltip._lookupVersion !== myToken || tooltip.dataset.word !== wordInfo.word) return;
     console.error('Tsukeru: dictionary lookup failed', err);
@@ -473,7 +474,7 @@ function getSafeDictionarySourceUrl(source, value) {
   }
 }
 
-function normalizeTkgjeExamples(examples, senses) {
+function normalizeTkgjeExamples(examples, senses, definitionLang = 'en') {
   if (!Array.isArray(examples)) return;
   const valid = examples.map((example) => {
     if (!example || typeof example !== 'object') return null;
@@ -484,12 +485,14 @@ function normalizeTkgjeExamples(examples, senses) {
         : typeof example.japanese === 'string' && example.japanese.trim()
           ? { text: example.japanese }
           : null;
-    const english = typeof example.english === 'string' ? example.english.trim() : '';
-    if (!japanese || !english) return null;
+    const translated = definitionLang !== 'en' && typeof example.translation === 'string' ? example.translation.trim() : '';
+    const english = translated || (typeof example.english === 'string' ? example.english.trim() : '');
+    const translationLang = translated ? definitionLang : 'en';
+    if (!japanese || (!english && definitionLang !== 'ja')) return null;
     const senseNumbers = Array.isArray(example.sense_numbers)
       ? example.sense_numbers.map(Number).filter(Number.isFinite)
       : [];
-    return { japanese, english, senseNumbers };
+    return { japanese, english, translationLang, senseNumbers };
   }).filter(Boolean);
   const unnumbered = valid.filter(example => example.senseNumbers.length === 0);
   let unnumberedIndex = 0;
@@ -503,7 +506,9 @@ function normalizeTkgjeExamples(examples, senses) {
 }
 
 function normalizeDefinitionData(data) {
-  const richEntry = data?.source === 'je_dict' && data.entry && typeof data.entry === 'object'
+  const localized = ['je_localized_cache', 'je_localized_generated'].includes(data?.source);
+  const definitionLang = localized ? ({ ja: 'ja', ko: 'ko', 'zh-Hant': 'zh-TW' }[data.locale] || 'en') : 'en';
+  const richEntry = (data?.source === 'je_dict' || localized) && data.entry && typeof data.entry === 'object'
     ? data.entry
     : null;
   if (richEntry) {
@@ -534,12 +539,14 @@ function normalizeDefinitionData(data) {
     }
     const trimmed = senses.slice(0, 6);
     if (trimmed.length > 0) {
-      normalizeTkgjeExamples(richEntry.examples, trimmed);
+      normalizeTkgjeExamples(richEntry.examples, trimmed, definitionLang);
       return {
         source: 'je_dict',
+        definitionLang,
+        localized,
         senses: trimmed,
         reading: String(richEntry.reading || '').trim(),
-        headerPos: String(richEntry.part_of_speech || (Array.isArray(richEntry.pos_tags) ? richEntry.pos_tags.join(', ') : '')).trim(),
+        headerPos: String((localized && Array.isArray(richEntry.pos) ? richEntry.pos.join(', ') : '') || richEntry.part_of_speech || (Array.isArray(richEntry.pos_tags) ? richEntry.pos_tags.join(', ') : '')).trim(),
         sourceUrl: getSafeDictionarySourceUrl('je_dict', richEntry.source_url),
         hasAttachedExamples: trimmed.some(sense => Boolean(sense.example))
       };
@@ -582,9 +589,11 @@ function appendAttachedExamples(tooltip, senses) {
     else japanese.textContent = example.japanese.text || '';
     const english = document.createElement('div');
     english.className = 'tsukeru-example-en';
-    english.lang = 'en';
-    english.textContent = `- ${example.english}`;
-    item.append(japanese, english);
+    english.lang = example.translationLang || 'en';
+    if (example.translationLang && example.translationLang !== 'en') appendDictionaryRubyText(english, `- ${example.english}`);
+    else english.textContent = `- ${example.english}`;
+    item.append(japanese);
+    if (example.english) item.append(english);
     container.replaceChildren(item);
   });
 }
@@ -649,7 +658,7 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
     const gloss = (sense.glosses || []).join('; ');
     if (!gloss) return;
 
-    html += `<div class="tooltip-sense tooltip-definition-sense tsukeru-sense-row">`;
+    html += `<div class="tooltip-sense tooltip-definition-sense tsukeru-sense-row" lang="${normalized.definitionLang || 'en'}">`;
     if (sense.pos && sense.pos.length) {
       html += `<div class="tooltip-pos tsukeru-sense-pos">${escapeHtml(sense.pos.slice(0, 2).join(', '))}</div>`;
     }
@@ -681,6 +690,11 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
   html += getAsyncSectionHtml('kanji', 'tsukeru-kanji-container', t('content_kanji_section', undefined, 'Kanji details'));
 
   tooltip.innerHTML = html;
+  if (normalized.localized) {
+    tooltip.querySelectorAll('.tsukeru-sense-gloss, .tsukeru-sense-explanation').forEach(element => {
+      appendDictionaryRubyText(element, element.textContent);
+    });
+  }
   appendAttachedExamples(tooltip, sensesToShow);
   tooltip.classList.add('show');
   addTooltipInteractionHandlers({ word: displayWord, reading: readingText });
@@ -1357,4 +1371,147 @@ function noteWordStateChanges(changes) {
     touched = true;
   });
   if (touched) scheduleWordStateRefresh();
+}
+
+
+/** Ruby tokens are text syntax, never trusted markup. Invalid braces stay literal. */
+function appendDictionaryRubyText(element, value) {
+  const text = String(value || '');
+  const fragment = document.createDocumentFragment();
+  const parts = [];
+  let start = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    if (text[index] !== '{') continue;
+    if (index > start) parts.push(text.slice(start, index));
+    const tokenStart = index;
+    let depth = 1;
+    while (++index < text.length && depth > 0) {
+      if (text[index] === '{') depth += 1;
+      if (text[index] === '}') depth -= 1;
+    }
+    // index points just after the closing brace (or the end of invalid text).
+    parts.push(text.slice(tokenStart, index));
+    start = index;
+    index -= 1;
+  }
+  if (start < text.length) parts.push(text.slice(start));
+  for (const part of parts) {
+    const match = /^\{([^{}|<>\r\n]+)\|([\u3041-\u3096\u30fc]+)\}$/u.exec(part);
+    if (!match) { fragment.append(document.createTextNode(part)); continue; }
+    const ruby = document.createElement('ruby');
+    ruby.lang = 'ja';
+    const rt = document.createElement('rt');
+    rt.textContent = match[2];
+    ruby.append(document.createTextNode(match[1]), rt);
+    fragment.append(ruby);
+  }
+  element.replaceChildren(fragment);
+}
+
+function isCurrentTranslation(state) {
+  return state.tooltip._translationState === state
+    && state.tooltip._lookupVersion === state.token
+    && state.tooltip.dataset.word === state.wordInfo.word
+    && state.tooltip.classList.contains('show')
+    && TsukeruI18n.language() === state.locale;
+}
+
+function drawTranslationControls(state) {
+  if (!isCurrentTranslation(state)) return;
+  const { tooltip } = state;
+  const previous = tooltip.querySelector('.tsukeru-translation-controls');
+  state.restoreFocus ||= previous?.contains?.(document.activeElement) || false;
+  previous?.remove();
+  const controls = document.createElement('div');
+  controls.className = 'tsukeru-translation-controls';
+  const label = document.createElement('span');
+  label.className = 'tsukeru-translation-label';
+  label.textContent = state.showingTranslation ? t('dictionary_ai_translation', undefined, 'AI translation') : '';
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'tsukeru-translation-button';
+  button.disabled = state.busy;
+  button.textContent = state.checking ? t('content_loading', undefined, 'Loading...')
+    : state.busy ? t('dictionary_translation_loading', undefined, 'Translating…')
+    : state.showingTranslation ? t('dictionary_english', undefined, 'Show English')
+      : t('dictionary_translate', undefined, 'View translation');
+  button.addEventListener('click', event => handleTranslationClick(event, state));
+  controls.append(label, button);
+  if (state.reason) {
+    const note = document.createElement('div');
+    note.className = 'tsukeru-translation-note';
+    note.setAttribute('role', 'status');
+    note.setAttribute('aria-live', 'polite');
+    note.textContent = TsukeruUiMessages.dictionaryTranslationMessage(state.reason, t);
+    controls.append(note);
+  }
+  tooltip.append(controls);
+  if (state.restoreFocus && !button.disabled) { button.focus?.({ preventScroll: true }); state.restoreFocus = false; }
+  requestAnimationFrame(() => positionTooltip(tooltip._activeRuby, tooltip));
+}
+
+function drawTranslationEntry(state) {
+  if (!isCurrentTranslation(state)) return;
+  state.tooltip._asyncCoordinator?.reset(state.wordInfo.word);
+  renderDefinitionTooltip(state.tooltip, state.wordInfo,
+    state.showingTranslation ? state.translated : state.english);
+  bindTooltipProgress(state.tooltip, state.recordPromise, state.token);
+  drawTranslationControls(state);
+}
+
+async function requestTooltipTranslation(state, cacheOnly) {
+  const result = await new Promise(resolve => {
+    try {
+      chrome.runtime.sendMessage({
+        action: 'lookupLocalizedDefinition', word: state.wordInfo.word,
+        reading: state.wordInfo.lookupReading || '', readingType: state.wordInfo.lookupReadingType || '',
+        uiLocale: state.locale, cacheOnly,
+      }, response => {
+        if (chrome.runtime.lastError || !response?.success) resolve(null);
+        else resolve(response.data);
+      });
+    } catch (_) { resolve(null); }
+  });
+  if (!isCurrentTranslation(state)) return;
+  state.busy = false;
+  state.checking = false;
+  if (result && ['je_localized_cache', 'je_localized_generated'].includes(result.source)
+      && result.locale === ({ ja: 'ja', ko: 'ko', 'zh-TW': 'zh-Hant' }[state.locale])
+      && result.entry && typeof result.entry === 'object') {
+    state.translated = result;
+    state.showingTranslation = true;
+    state.reason = '';
+    drawTranslationEntry(state);
+  } else {
+    state.reason = result?.reason === 'not_cached' ? '' : result?.reason || 'service_unavailable';
+    drawTranslationControls(state);
+  }
+}
+
+function handleTranslationClick(event, state) {
+  if (!event.isTrusted || state.busy || !isCurrentTranslation(state)) return;
+  event.stopPropagation();
+  state.restoreFocus = true;
+  if (state.showingTranslation) {
+    state.showingTranslation = false;
+    drawTranslationEntry(state);
+  } else if (state.translated) {
+    state.showingTranslation = true;
+    drawTranslationEntry(state);
+  } else {
+    state.busy = true;
+    state.reason = '';
+    drawTranslationControls(state);
+    void requestTooltipTranslation(state, false);
+  }
+}
+
+function startLocalizedTooltip(tooltip, wordInfo, english, recordPromise, token) {
+  const locale = TsukeruI18n.language();
+  if (!['ja', 'ko', 'zh-TW'].includes(locale) || english?.source !== 'je_dict' || !english.entry) return;
+  const state = { tooltip, wordInfo, english, recordPromise, token, locale,
+    translated: null, showingTranslation: false, busy: true, checking: true, reason: '' };
+  tooltip._translationState = state;
+  drawTranslationControls(state);
+  void requestTooltipTranslation(state, true);
 }
