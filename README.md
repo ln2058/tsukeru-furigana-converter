@@ -16,7 +16,7 @@
 
 Tsukeru is a browser extension for Chrome, Microsoft Edge, and Firefox. It adds readings above kanji while preserving the layout of the page, with dictionary lookup, word lists, and CSV export for Anki.
 
-Version **4.0.0** adds My Words, Study mode, and word sync with EZFurigana. See the [changelog](CHANGELOG.md) for details.
+Version **4.1.0** adds Korean and Traditional Chinese, a display language setting, and dictionary translations into easy Japanese, Korean, and Traditional Chinese. See the [changelog](CHANGELOG.md) for details.
 
 ![Furigana on a Japanese Wikipedia article](screenshots/wikipedia.png)
 

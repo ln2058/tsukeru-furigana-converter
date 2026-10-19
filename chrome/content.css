@@ -394,12 +394,16 @@
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="jlpt"] span[data-jlpt]:is([data-jlpt="1"], [data-jlpt="2"], [data-jlpt="3"], [data-jlpt="4"], [data-jlpt="5"]):not([data-pos="Particle" i])::before,
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] ruby[data-pos]::before,
 :root[data-tsukeru-custom-style="on"][data-tsukeru-highlight="pos"] span[data-pos]::before {
+  /* Centred on the word's box: a bottom anchor follows the font's descent, and
+     fonts with a deep descent (Meiryo, the Japanese fallback on many pages) left
+     the top of the characters untinted. */
   position: absolute;
+  top: 50%;
   left: -1px;
   right: -1px;
-  bottom: -1px;
   z-index: -2;
   height: 1.05em;
+  transform: translateY(-50%);
   border-radius: 2px;
   background: var(--tsukeru-highlight, transparent);
   content: "";
@@ -844,3 +848,39 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
   .tsukeru-toast,
   .tsukeru-toast * { transition: none !important; animation: none !important; }
 }
+
+/* Language is set only on extension-owned UI, never on the host document. */
+:is(.tsukeru-word-tooltip, .tsukeru-content-report-modal, .tsukeru-toast):lang(zh-TW) {
+  --tsukeru-sans: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
+  --tsukeru-mono: var(--tsukeru-sans);
+}
+:is(.tsukeru-word-tooltip, .tsukeru-content-report-modal, .tsukeru-toast):lang(ko) {
+  --tsukeru-sans: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --tsukeru-mono: var(--tsukeru-sans);
+}
+:is(.tsukeru-word-tooltip, .tsukeru-content-report-modal, .tsukeru-toast):is(:lang(zh-TW), :lang(ko)) * {
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+:is(.tsukeru-word-tooltip, .tsukeru-content-report-modal):is(:lang(zh-TW), :lang(ko)) :is(
+  .tooltip-badge, .tsukeru-sense-pos, .tsukeru-sense-more, .tsukeru-dictionary-source,
+  .tsukeru-async-unavailable, .tsukeru-crm-label, .tooltip-learning-toggle
+) { font-size: 11px !important; }
+.tsukeru-word-tooltip [lang="ja"],
+.tsukeru-content-report-modal [lang="ja"] {
+  --tsukeru-sans: "BIZ UDPGothic", "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
+  font-family: var(--tsukeru-sans) !important;
+}
+
+/* Translation controls use the tooltip's existing paper, borders and blue accent. */
+.tsukeru-word-tooltip .tsukeru-translation-controls { display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 8px !important; margin-top: 10px !important; padding-top: 9px !important; border-top: 1px solid var(--tsukeru-border) !important; }
+.tsukeru-word-tooltip .tsukeru-translation-label { color: var(--tsukeru-secondary) !important; font-size: 11px !important; }
+.tsukeru-word-tooltip .tsukeru-translation-button { appearance: none !important; padding: 5px 9px !important; border: 1px solid var(--tsukeru-border-strong) !important; border-radius: 3px !important; background: var(--tsukeru-surface) !important; color: var(--tsukeru-blue-readable) !important; font: 600 12px/1.4 var(--tsukeru-sans) !important; cursor: pointer !important; }
+.tsukeru-word-tooltip .tsukeru-translation-button:hover { border-color: var(--tsukeru-blue-readable) !important; }
+.tsukeru-word-tooltip .tsukeru-translation-button:focus-visible { outline: 2px solid var(--tsukeru-blue-readable) !important; outline-offset: 2px !important; }
+.tsukeru-word-tooltip .tsukeru-translation-button:disabled { opacity: .65 !important; cursor: wait !important; }
+.tsukeru-word-tooltip .tsukeru-translation-note { flex-basis: 100% !important; color: var(--tsukeru-secondary) !important; font: 400 12px/1.5 var(--tsukeru-sans) !important; }
+.tsukeru-word-tooltip .tsukeru-sense-gloss ruby,
+.tsukeru-word-tooltip .tsukeru-sense-explanation ruby { ruby-position: over !important; }
+.tsukeru-word-tooltip .tsukeru-sense-gloss rt,
+.tsukeru-word-tooltip .tsukeru-sense-explanation rt { font-size: .55em !important; }

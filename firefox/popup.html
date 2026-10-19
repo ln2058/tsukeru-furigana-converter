@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-i18n-pending>
 <head>
+  <script src="js/i18n.js"></script>
   <script src="js/popup-theme-init.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -25,6 +26,7 @@
 
   <main class="content">
     <section class="tab-content" id="settings-tab">
+      <section class="settings-section" aria-labelledby="languageSectionTitle"><h2 id="languageSectionTitle" class="section-title" data-i18n="settings_section_language">Language</h2><div class="setting-row locale-row"><label for="uiLocale" class="setting-label setting-label-with-icon"><svg class="setting-icon" viewBox="0 0 7 7" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path d="M2 0h3v1H2zM1 1h1v1H1zM3 1h1v1H3zM5 1h1v1H5zM0 2h1v1H0zM3 2h1v1H3zM6 2h1v1H6zM0 3h7v1H0zM0 4h1v1H0zM3 4h1v1H3zM6 4h1v1H6zM1 5h1v1H1zM3 5h1v1H3zM5 5h1v1H5zM2 6h3v1H2z"/></svg><span data-i18n="settings_label_display_language">Display language</span></label><div class="select-wrap"><select id="uiLocale" class="locale-select" aria-describedby="uiLocaleHint"><option value="" id="uiLocaleAuto">Auto</option><option value="en" lang="en">English</option><option value="ja" lang="ja">日本語</option><option value="ko" lang="ko">한국어</option><option value="zh_TW" lang="zh-TW">繁體中文</option></select><svg class="select-chevron" viewBox="0 0 5 3" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path d="M0 0h5v1H0zM1 1h3v1H1zM2 2h1v1H2z"/></svg></div></div><p id="uiLocaleHint" class="setting-hint locale-hint" data-i18n="settings_language_hint">The extension name and keyboard shortcut follow your browser language.</p></section>
       <section class="settings-section">
         <h2 class="section-title" data-i18n="settings_section_reading">Reading</h2>
         <div class="setting-row">
@@ -97,7 +99,7 @@
         </label>
         <div class="settings-preview" aria-hidden="true">
           <span class="preview-label" data-i18n="settings_preview_label">Preview</span>
-          <div class="preview-sample" id="rubyPreview"><ruby>漢字<rt id="rubyPreviewReading">かんじ</rt></ruby></div>
+          <div class="preview-sample" id="rubyPreview" lang="ja"><ruby>漢字<rt id="rubyPreviewReading">かんじ</rt></ruby></div>
         </div>
         <fieldset class="appearance-controls" id="appearanceControls">
           <legend class="visually-hidden" data-i18n="settings_section_appearance">Appearance</legend>
@@ -144,6 +146,16 @@
         </label>
         <p class="page-study-hint" data-i18n="study_mode_hint">Hides readings. Click a word to reveal it; click again for its meaning.</p>
       </div>
+      <section id="reviewPrompt" class="review-prompt" aria-labelledby="reviewPromptTitle" hidden>
+        <svg class="review-prompt-stars" viewBox="0 0 39 7" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path d="M3 0h1v2H3zM0 2h7v1H0zM1 3h5v1H1zM2 4h3v1H2zM1 5h2v1H1zM4 5h2v1H4zM1 6h1v1H1zM5 6h1v1H5zM11 0h1v2H11zM8 2h7v1H8zM9 3h5v1H9zM10 4h3v1H10zM9 5h2v1H9zM12 5h2v1H12zM9 6h1v1H9zM13 6h1v1H13zM19 0h1v2H19zM16 2h7v1H16zM17 3h5v1H17zM18 4h3v1H18zM17 5h2v1H17zM20 5h2v1H20zM17 6h1v1H17zM21 6h1v1H21zM27 0h1v2H27zM24 2h7v1H24zM25 3h5v1H25zM26 4h3v1H26zM25 5h2v1H25zM28 5h2v1H28zM25 6h1v1H25zM29 6h1v1H29zM35 0h1v2H35zM32 2h7v1H32zM33 3h5v1H33zM34 4h3v1H34zM33 5h2v1H33zM36 5h2v1H36zM33 6h1v1H33zM37 6h1v1H37z"/></svg>
+        <h2 id="reviewPromptTitle" class="review-prompt-title" data-i18n="review_prompt_title">Enjoying Tsukeru?</h2>
+        <p class="review-prompt-text" data-i18n="review_prompt_text">A quick review helps other Japanese learners find Tsukeru.</p>
+        <div class="review-prompt-actions">
+          <a id="reviewPromptRate" class="primary-link" href="https://addons.mozilla.org/en-US/firefox/addon/tsukeru-for-ezfurigana/" target="_blank" rel="noopener noreferrer" data-i18n="review_prompt_rate">Leave a review</a>
+          <button type="button" id="reviewPromptLater" class="text-action" data-i18n="review_prompt_later">Later</button>
+          <button type="button" id="reviewPromptNever" class="text-action review-prompt-never" data-i18n="review_prompt_never">Don't ask again</button>
+        </div>
+      </section>
       <div id="pageProfile" class="result-profile" hidden>
         <span id="pageProfileMeter" class="result-profile-meter" role="img"></span>
         <p id="pageProfileSummary" class="result-profile-summary" aria-live="polite"></p>
@@ -216,7 +228,7 @@
 
   <footer class="actions"><div class="popup-notice" id="status" data-status="error" role="alert" hidden><span class="popup-notice-label"></span><p class="popup-notice-message"></p><button type="button" class="popup-notice-close" id="statusClose" aria-label="Close" data-i18n-aria-label="content_close">&times;</button></div><div class="actions-row"><button id="applyBtn" data-i18n="actions_apply">Apply</button><button id="clearBtn" class="secondary" data-i18n="actions_clear">Clear</button></div><div id="shortcut-text" class="shortcut-text">Ctrl+Shift+F to toggle</div><div id="statusAnnounce" class="visually-hidden" role="status" aria-live="polite"></div></footer>
 
-  <div id="extReportModal" class="ext-report-modal hidden" role="dialog" aria-modal="true" aria-labelledby="extReportTitle"><div class="ext-report-modal-content"><div class="ext-report-header"><span class="ext-report-title" id="extReportTitle"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg><span data-i18n="report_modal_title">Report an incorrect reading</span></span><button id="extReportClose" class="ext-report-close" aria-label="Close" data-i18n-aria-label="content_close">&times;</button></div><div class="ext-report-body"><div id="extReportError" class="ext-report-msg error hidden" role="alert"></div><div id="extReportSuccess" class="ext-report-msg success hidden" role="status"></div><div class="ext-report-field"><label for="extReportWord" data-i18n="report_label_word">Word</label><input type="text" id="extReportWord" readonly></div><div class="ext-report-field"><label for="extReportReading" data-i18n="report_label_current_reading_wrong">Incorrect reading</label><input type="text" id="extReportReading" readonly></div><div class="ext-report-field"><label for="extReportContext" data-i18n="report_label_context">Context</label><textarea id="extReportContext" rows="2" readonly></textarea></div><div class="ext-report-field"><label for="extReportCorrect" data-i18n="report_label_correct_reading_optional">Correct reading (optional)</label><input type="text" id="extReportCorrect" placeholder="Enter the correct reading..." data-i18n-placeholder="report_correct_placeholder"></div><button id="extReportSubmit" class="ext-report-submit" data-i18n="report_submit_button">Submit Report</button></div></div></div>
+  <div id="extReportModal" class="ext-report-modal hidden" role="dialog" aria-modal="true" aria-labelledby="extReportTitle"><div class="ext-report-modal-content"><div class="ext-report-header"><span class="ext-report-title" id="extReportTitle"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg><span data-i18n="report_modal_title">Report an incorrect reading</span></span><button id="extReportClose" class="ext-report-close" aria-label="Close" data-i18n-aria-label="content_close">&times;</button></div><div class="ext-report-body"><div id="extReportError" class="ext-report-msg error hidden" role="alert"></div><div id="extReportSuccess" class="ext-report-msg success hidden" role="status"></div><div class="ext-report-field"><label for="extReportWord" data-i18n="report_label_word">Word</label><input type="text" id="extReportWord" lang="ja" readonly></div><div class="ext-report-field"><label for="extReportReading" data-i18n="report_label_current_reading_wrong">Incorrect reading</label><input type="text" id="extReportReading" lang="ja" readonly></div><div class="ext-report-field"><label for="extReportContext" data-i18n="report_label_context">Context</label><textarea id="extReportContext" lang="ja" rows="2" readonly></textarea></div><div class="ext-report-field"><label for="extReportCorrect" data-i18n="report_label_correct_reading_optional">Correct reading (optional)</label><input type="text" id="extReportCorrect" lang="ja" placeholder="Enter the correct reading..." data-i18n-placeholder="report_correct_placeholder"></div><button id="extReportSubmit" class="ext-report-submit" data-i18n="report_submit_button">Submit Report</button></div></div></div>
 
   <script src="js/ui-messages.js"></script>
   <script src="js/word-rules.js"></script>

@@ -1,5 +1,23 @@
 # Changelog
 
+## 4.1.0 — 2026-10-19
+
+### Added
+
+- **Korean and Traditional Chinese**: the popup, dictionary tooltip, notices, and settings are available in 한국어 and 繁體中文 (Taiwan), alongside English and Japanese.
+- **Display language setting**: choose English, 日本語, 한국어, 繁體中文, or follow the browser language in Settings. Pages already open switch to the new language without reloading.
+- **Dictionary translations**: with a Japanese, Korean, or Traditional Chinese display language, the dictionary tooltip shows definitions in easy Japanese (やさしい日本語, with readings), Korean, or Traditional Chinese. Translated words appear automatically; for others, a button requests an AI translation. The English entry stays one click away, and new translations are protected by strict server-side limits.
+- **Review reminder**: after a week of use on at least three days, the popup occasionally asks you to support Tsukeru with a store review. It opens the store for your browser in your display language, offers Later and Don't ask again, and appears at most three times.
+
+### Changed
+
+- Translated definitions use language-appropriate fonts and safe Japanese ruby rendering. Saved words and CSV exports keep their English definitions.
+- Supporter and store-review links follow the display language.
+
+### Fixed
+
+- JLPT and part-of-speech highlights cover the whole word with fonts that sit low in the line, such as the Japanese default font on Japanese Wikipedia in Firefox.
+
 ## 4.0.0 — 2026-10-08
 
 ### Added

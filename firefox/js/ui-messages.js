@@ -66,5 +66,15 @@ Security Notes:
     return t('content_toast_generic_error', undefined, 'Could not add furigana. Please try again.');
   }
 
-  globalThis.TsukeruUiMessages = { formatDuration, errorMessage };
+  function dictionaryTranslationMessage(reason, t) {
+    if (reason === 'rate_limited' || reason === 'budget_exhausted') {
+      return t('dictionary_translation_limit', undefined, 'Translation limit reached. Showing English.');
+    }
+    if (reason === 'pending') {
+      return t('dictionary_translation_pending', undefined, 'A translation is being prepared. Showing English.');
+    }
+    return t('dictionary_translation_unavailable', undefined, 'Translation unavailable. Showing English.');
+  }
+
+  globalThis.TsukeruUiMessages = { formatDuration, errorMessage, dictionaryTranslationMessage };
 })();

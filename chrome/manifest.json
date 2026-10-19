@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_manifest_name__",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "description": "__MSG_manifest_description__",
   "default_locale": "en",
   "permissions": [
@@ -36,6 +36,7 @@
         "<all_urls>"
       ],
       "js": [
+        "js/i18n.js",
         "js/ui-messages.js",
         "js/content-ui.js",
         "js/content-rate-limit.js",

@@ -1,3 +1,4 @@
+import { loadI18n } from './i18n-harness.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -27,6 +28,7 @@ function loadPopupSettings(browserName) {
     .replace(/import\s*\{[\s\S]*?\}\s*from\s*'[^']+';/g, '')
     .replaceAll('export ', '');
   const sandbox = { console, chrome: { i18n: { getMessage: () => '' } } };
+  loadI18n(sandbox, browserName);
   vm.runInNewContext(source, sandbox, { filename: fileUrl.pathname });
   return sandbox;
 }

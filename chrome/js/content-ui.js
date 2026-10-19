@@ -1,19 +1,20 @@
 /*
 Module: content-ui
-Purpose: Apply the saved UI theme to extension-owned surfaces and render non-blocking toast notifications for rate-limit and error feedback.
+Purpose: Apply the UI language and saved theme to extension-owned surfaces and render non-blocking toast notifications for rate-limit and error feedback.
 
 Inputs:
 - Toast message text and rate-limit metadata from content-script callers.
-- chrome.i18n message catalog entries and the shared ui-messages formatter.
+- Shared i18n catalog entries (including the resolved ui_lang) and the shared ui-messages formatter.
 - UI theme from sync storage and storage changes; extension-owned surface elements.
 
 Outputs:
 - Dismissible, locally styled toast elements and structured rate-limit toast IDs.
-- Light/dark theme attributes on extension-owned UI surfaces only.
+- Language and light/dark theme attributes on extension-owned UI surfaces only.
 
 Side Effects:
 - Mutates the document body to add and remove toast elements.
 - Starts and clears toast timers for auto-dismiss and countdown updates.
+- Lazily initializes shared UI catalog messaging.
 - Reads the saved theme and listens for changes; tracks only the current tooltip, report dialog, and toast, releasing disconnected elements.
 
 Failure Modes:
@@ -26,12 +27,15 @@ Security Notes:
 - Validates light/dark values and never adds theme attributes to the host document.
 */
 
+TsukeruI18n.initContent();
+
 // Only extension-owned surfaces are registered; theme changes never scan the page.
 let tsukeruUiTheme = null;
 let tsukeruUiThemeRevision = 0;
 const tsukeruUiThemeSurfaces = new Set();
 
 function applyTsukeruUiTheme(surface) {
+  surface.lang = TsukeruI18n.language();
   for (const existing of tsukeruUiThemeSurfaces) {
     if (!existing.isConnected) tsukeruUiThemeSurfaces.delete(existing);
   }
@@ -92,32 +96,8 @@ const RATE_LIMIT_FALLBACK_MESSAGES = {
   service_unavailable: 'The service is temporarily unavailable. Please try again later.',
 };
 
-function _hasChromeI18n() {
-  return typeof chrome !== 'undefined' && Boolean(chrome?.i18n?.getMessage);
-}
-
-function _formatFallbackMessage(template, substitutions) {
-  if (!template) {
-    return '';
-  }
-
-  const values = Array.isArray(substitutions)
-    ? substitutions
-    : substitutions == null
-      ? []
-      : [substitutions];
-
-  return values.reduce((text, value, index) => {
-    return text.replace(new RegExp(`\\$${index + 1}`, 'g'), String(value));
-  }, template);
-}
-
 function _getMessage(key, substitutions, fallback) {
-  const localized = _hasChromeI18n() ? chrome.i18n.getMessage(key, substitutions) : '';
-  if (localized) {
-    return localized;
-  }
-  return _formatFallbackMessage(fallback, substitutions);
+  return TsukeruI18n.t(key, substitutions, fallback);
 }
 
 function _normalizeRetryAfter(retryAfter) {

@@ -1,20 +1,21 @@
 /*
 Module: popup-settings
-Purpose: Manage popup settings and UI theme, the live furigana preview, content-script bootstrapping, and apply/clear actions.
+Purpose: Manage popup settings, display language and UI theme, the live furigana preview, content-script bootstrapping, and apply/clear actions.
 
 Inputs:
-- Settings controls (reading-type segments, level chips, switches, ruby style toolbar) and theme-toggle events, system theme changes, active-tab info, stored sync settings (including UI theme and My Words display settings), and the popup theme cache.
+- Settings controls (reading-type segments, level chips, switches, ruby style toolbar) and theme-toggle events, system theme changes, active-tab info, stored sync settings (including UI language/theme and My Words display settings), and the popup theme cache.
 
 Outputs:
 - Updated settings in storage, popup theme and accessible toggle labels, apply/clear command messages, and live Study mode / known-reading updates to content scripts.
 
 Side Effects:
-- Reads/writes `chrome.storage.sync` and the popup's localStorage theme cache; listens for theme changes.
+- Reads/writes `chrome.storage.sync` and the popup's localStorage language/theme cache; listens for preference changes and reloads after a language save.
 - Injects content scripts/CSS in dependency order, updates popup notices, Apply/Clear state, preview UI, and sends live level and appearance updates.
 
 Failure Modes:
 - Unsupported tabs reject apply/clear actions.
 - Injection/messaging failures return localized errors selected from structured metadata.
+- Language save failures retain the previous selection and show a localized notice.
 - Theme storage failures retain the current appearance; an unavailable cache falls back to system colours on opening.
 
 Security Notes:
@@ -47,8 +48,7 @@ export const DEFINITION_CACHE_TTL = 5 * 60 * 1000;
 // ── Shared DOM/tab utilities ──────────────────────────────────────────────────
 
 export function t(key, substitutions, fallback = '') {
-  const message = chrome.i18n?.getMessage ? chrome.i18n.getMessage(key, substitutions) : '';
-  return message || fallback;
+  return TsukeruI18n.t(key, substitutions, fallback);
 }
 
 export function userFacingError(error, operation) {
@@ -147,6 +147,57 @@ export function initThemeToggle() {
     // A click or a storage event during the read wins over its older snapshot.
     if (revision === loadRevision) applyPreference(stored.uiTheme);
   }).catch(() => console.warn('Tsukeru: could not load the UI theme'));
+}
+
+// Reload dynamic UI after a successful language save; keep the reader in Settings.
+export function initLocaleSelect() {
+  const select = document.getElementById('uiLocale');
+  if (!select) return;
+  let saved = TsukeruI18n.preference();
+  let saving = false;
+  const cache = value => {
+    try { localStorage.setItem('tsukeru.uiLocale', value); }
+    catch (_) { console.warn('Tsukeru: popup language cache is unavailable'); }
+  };
+  const reload = value => {
+    cache(value);
+    const url = new URL(location.href);
+    url.hash = 'settings';
+    history.replaceState(null, '', url.href);
+    location.reload();
+  };
+  const syncSelectLang = () => {
+    select.lang = select.selectedOptions[0]?.lang || document.documentElement.lang;
+  };
+  const autoName = TsukeruI18n.locales[TsukeruI18n.autoLocale()].name;
+  document.getElementById('uiLocaleAuto').textContent =
+    t('settings_option_language_auto', [autoName], 'Auto (' + autoName + ')');
+  select.value = saved;
+  cache(saved);
+  syncSelectLang();
+  select.addEventListener('change', async () => {
+    syncSelectLang();
+    const next = TsukeruI18n.normalize(select.value);
+    if (next === saved || saving) return;
+    saving = true;
+    select.disabled = true;
+    try {
+      await chrome.storage.sync.set({ uiLocale: next });
+      saved = next;
+      reload(next);
+    } catch (_) {
+      select.value = saved;
+      syncSelectLang();
+      showNotice(t('settings_language_save_error', undefined, 'Could not save the display language. Please try again.'));
+      saving = false;
+      select.disabled = false;
+    }
+  });
+  const unsubscribe = TsukeruI18n.subscribe(() => {
+    const next = TsukeruI18n.preference();
+    if (!saving && next !== saved) reload(next);
+  });
+  window.addEventListener('pagehide', unsubscribe, { once: true });
 }
 
 // Errors and limits appear just above Apply / Clear in EZFurigana's status-register style.
@@ -257,6 +308,7 @@ export async function ensureContentScript(tabId) {
   }
   // Inject the split content scripts in manifest dependency order.
   for (const file of [
+    'js/i18n.js',
     'js/ui-messages.js',
     'js/content-ui.js',
     'js/content-rate-limit.js',
@@ -586,7 +638,7 @@ export async function initSettingsForm() {
     if (grade < JUNIOR_HIGH_GRADE) chip.textContent = gradeLabel(grade);
   });
   // Japanese readers think in school grades first, as on EZFurigana.
-  if ((chrome.i18n?.getUILanguage?.() || '').toLowerCase().startsWith('ja')) {
+  if (TsukeruI18n.language().toLowerCase().startsWith('ja')) {
     levelRows.insertBefore(
       levelRows.querySelector('[data-level-row="grade"]'),
       levelRows.querySelector('[data-level-row="jlpt"]')

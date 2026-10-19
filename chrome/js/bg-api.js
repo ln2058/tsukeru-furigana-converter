@@ -13,7 +13,7 @@ Side Effects:
 - Performs network fetches, tracks shared cooldown deadlines, and coalesces nonce acquisition/recovery across API requests.
 - Persists only validated cooldown metadata through extension-local storage; backend quotas remain authoritative.
 - Shares logical dictionary lookups and bounds completed in-memory dictionary results.
-- Reads/writes cached furigana fragments through `bg-cache`.
+- Reads/writes furigana fragments and successful localized dictionary entries through `bg-cache`.
 
 Failure Modes:
 - Network/API failures, malformed responses, nonce retry exhaustion, and rate-limit rejections.
@@ -28,7 +28,7 @@ Security Notes:
 - Audio proxy fetches accept only HTTPS www.ezfurigana.com on the default port and refuse redirects.
 */
 // External network requests, furigana pipeline, and audio for the service worker.
-import { sha256Hash, cacheGet, cacheSet, definitionCache, DEFINITION_CACHE_TTL } from './bg-cache.js';
+import { sha256Hash, cacheGet, cacheSet, definitionCache, DEFINITION_CACHE_TTL, localizedCacheGet, localizedCacheSet } from './bg-cache.js';
 import { kata2hira } from './utils.js';
 
 export const API_BASE_URL = 'https://www.ezfurigana.com';
@@ -1012,4 +1012,52 @@ export async function handleReportReadingError(payload = {}, source) {
     if (response.status === 429) error.rateLimitType = 'report';
     throw error;
   }
+}
+
+// Locale is fixed here; callers cannot select an endpoint or upstream host.
+const LOCALIZED_DICTIONARY_LOCALES = Object.freeze({ ja: 'ja', ko: 'ko', zh_TW: 'zh-Hant', 'zh-TW': 'zh-Hant' });
+const localizedDefinitionInFlight = new Map();
+
+export function getLocalizedDefinitionCacheKey(word, reading, locale) {
+  return JSON.stringify(['localized-v1', locale, word, reading]);
+}
+
+function assertLocalizedDefinitionPayload(data, locale) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)
+      || JSON.stringify(data).length > 128 * 1024) throw new Error('Localized definition was malformed');
+  if (['je_localized_cache', 'je_localized_generated'].includes(data.source)) {
+    if (data.locale !== locale || !data.entry || typeof data.entry !== 'object' || Array.isArray(data.entry)
+        || ![data.entry.gloss, ...(Array.isArray(data.entry.definitions) ? data.entry.definitions.map(item => item?.gloss) : [])]
+          .some(value => typeof value === 'string' ? value.trim() : Array.isArray(value) && value.some(text => typeof text === 'string' && text.trim()))) {
+      throw new Error('Localized definition was malformed');
+    }
+  }
+  return data;
+}
+
+export async function lookupLocalizedDefinition(word, reading, readingType, uiLocale, { cacheOnly = true } = {}) {
+  if (uiLocale === 'en') return null;
+  if (!Object.hasOwn(LOCALIZED_DICTIONARY_LOCALES, uiLocale)) throw new Error('Unsupported display language');
+  if (typeof cacheOnly !== 'boolean') throw new Error('Invalid cache-only value');
+  const args = normalizeDefinitionLookupArgs(word, reading, readingType);
+  const locale = LOCALIZED_DICTIONARY_LOCALES[uiLocale];
+  const key = getLocalizedDefinitionCacheKey(args.word, args.reading, locale);
+  const cached = await localizedCacheGet(key);
+  if (cached && ['je_localized_cache', 'je_localized_generated'].includes(cached.source)) {
+    try { return assertLocalizedDefinitionPayload(cached, locale); } catch (_) { /* Refetch malformed cached data. */ }
+  }
+  // A cache-only lookup must never start or join a generation request.
+  const pendingKey = `${key}:${cacheOnly ? 'cache' : 'generate'}`;
+  if (localizedDefinitionInFlight.has(pendingKey)) return localizedDefinitionInFlight.get(pendingKey);
+  const request = (async () => {
+    const url = buildDefinitionUrl('/api/extension/ai-dictionary', args);
+    url.searchParams.set('locale', locale);
+    url.searchParams.set('cache_only', cacheOnly ? '1' : '0');
+    const data = assertLocalizedDefinitionPayload(await requestExtensionJson(url, { operation: 'dictionary' }), locale);
+    if (['je_localized_cache', 'je_localized_generated'].includes(data.source)) await localizedCacheSet(key, data);
+    return data;
+  })();
+  localizedDefinitionInFlight.set(pendingKey, request);
+  try { return await request; }
+  finally { if (localizedDefinitionInFlight.get(pendingKey) === request) localizedDefinitionInFlight.delete(pendingKey); }
 }

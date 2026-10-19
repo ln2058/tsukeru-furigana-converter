@@ -1,4 +1,8 @@
 {
+  "ui_lang": {
+    "message": "ja",
+    "description": "BCP 47 language tag for this catalog. Used for accessibility and UI fonts; keep this tag in English letters."
+  },
   "manifest_name": {
     "message": "ふりがな変換 Tsukeru",
     "description": "拡張機能の表示名"
@@ -624,5 +628,61 @@
   },
   "error_timeout": {
     "message": "通信がタイムアウトしました。もう一度お試しください。"
+  },
+  "settings_section_language": {
+    "message": "言語",
+    "description": "Settings section heading above the display-language selector."
+  },
+  "settings_label_display_language": {
+    "message": "表示言語",
+    "description": "Label beside the display-language selector."
+  },
+  "settings_option_language_auto": {
+    "message": "自動（$1）",
+    "description": "Automatic display-language option; $1 is the resolved language name in its own script."
+  },
+  "settings_language_hint": {
+    "message": "拡張機能名とキーボードショートカットの説明は、ブラウザの言語で表示されます。",
+    "description": "Hint: extension manifest name and keyboard-shortcut description use native browser localization."
+  },
+  "settings_language_save_error": {
+    "message": "表示言語を保存できませんでした。もう一度お試しください。",
+    "description": "Error shown when saving the display-language preference fails."
+  },
+  "dictionary_translate": {
+    "message": "やさしい日本語で見る"
+  },
+  "dictionary_english": {
+    "message": "英語に戻す"
+  },
+  "dictionary_ai_translation": {
+    "message": "AI翻訳"
+  },
+  "dictionary_translation_loading": {
+    "message": "翻訳中…"
+  },
+  "dictionary_translation_limit": {
+    "message": "翻訳の利用上限に達しました。英語で表示します。"
+  },
+  "dictionary_translation_pending": {
+    "message": "翻訳を準備中です。英語で表示します。"
+  },
+  "dictionary_translation_unavailable": {
+    "message": "今は翻訳を表示できません。英語で表示します。"
+  },
+  "review_prompt_title": {
+    "message": "Tsukeruは役に立っていますか？"
+  },
+  "review_prompt_text": {
+    "message": "レビューをいただけると、ほかの日本語学習者がTsukeruを見つけやすくなります。"
+  },
+  "review_prompt_rate": {
+    "message": "レビューを書く"
+  },
+  "review_prompt_later": {
+    "message": "あとで"
+  },
+  "review_prompt_never": {
+    "message": "今後表示しない"
   }
 }
