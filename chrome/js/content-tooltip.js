@@ -5,10 +5,10 @@ Purpose: Manage the instrument-styled dictionary tooltip, lazy enrichment, word 
 Inputs:
 - Pointer/selection events, wrapper metadata, reading-aware background lookup/audio responses, and the shared lazy-state coordinator.
 - Word states from the background store, word storage changes, and My Words display settings (Study mode, hidden readings on known words).
-- The shared content-ui theme helper for extension-owned surfaces.
+- The shared i18n catalog and content-ui language and theme helper for extension-owned surfaces.
 
 Outputs:
-- Tooltip rendering updates, checked-word and Learning/Known requests to the background store, and report payload messages.
+- Tooltip rendering updates with Japanese language tags for words/readings/examples, checked-word and Learning/Known requests to the background store, and report payload messages.
 - `tsukeru-learning`, `tsukeru-known`, and `tsukeru-revealed` classes and Study/known-reading attributes on the page.
 - A throttled `pageWordsChanged` runtime notice when furigana is applied or cleared, so an open popup re-lists the page's words.
 
@@ -46,8 +46,7 @@ function kata2hira(str) {
   return (str || '').replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
 }
 function t(key, substitutions, fallback = '') {
-  const message = chrome.i18n?.getMessage ? chrome.i18n.getMessage(key, substitutions) : '';
-  return message || fallback;
+  return TsukeruI18n.t(key, substitutions, fallback);
 }
 
 function createRuntimeResponseError(response, fallbackMessage) {
@@ -164,6 +163,9 @@ async function showDefinitionTooltip(ruby, wordInfo) {
 
   tooltip._lookupVersion = (tooltip._lookupVersion || 0) + 1;
   const myToken = tooltip._lookupVersion;
+  await TsukeruI18n.ready();
+  if (tooltip._lookupVersion !== myToken || ruby.isConnected === false) return;
+  applyTsukeruUiTheme(tooltip);
   if (!tooltip._asyncCoordinator && window.TsukeruTooltipAsyncState?.createTooltipAsyncCoordinator) {
     tooltip._asyncCoordinator = window.TsukeruTooltipAsyncState.createTooltipAsyncCoordinator();
   }
@@ -405,7 +407,7 @@ function renderTooltipHeaderHtml(wordInfo, controlsHtml = '') {
   const controls = controlsHtml ? `<div class="tsukeru-header-right">${controlsHtml}</div>` : '';
   return `
     <div class="tooltip-word tooltip-word-header tsukeru-header-row">
-      <span class="tooltip-word-label">${escapeHtml(String(info.word || ''))}</span>
+      <span class="tooltip-word-label" lang="ja">${escapeHtml(String(info.word || ''))}</span>
       ${badges}
       ${controls}
     </div>`;
@@ -441,7 +443,7 @@ function generateAltReadingsDropdown(alternativeReadings, uniqueId) {
       <div id="${altId}" class="tsukeru-alt-readings-content tsukeru-hidden">
         ${alternativeReadings.map(alt => `
           <div class="tsukeru-alt-reading-item">
-            <span>${escapeHtml(alt)}</span>
+            <span lang="ja">${escapeHtml(alt)}</span>
           </div>
         `).join('')}
       </div>
@@ -574,10 +576,12 @@ function appendAttachedExamples(tooltip, senses) {
     item.className = 'tsukeru-example-item';
     const japanese = document.createElement('div');
     japanese.className = 'tsukeru-example-jp';
+    japanese.lang = 'ja';
     if (example.japanese.html) japanese.appendChild(sanitizeHtmlFragment(example.japanese.html));
     else japanese.textContent = example.japanese.text || '';
     const english = document.createElement('div');
     english.className = 'tsukeru-example-en';
+    english.lang = 'en';
     english.textContent = `- ${example.english}`;
     item.append(japanese, english);
     container.replaceChildren(item);
@@ -613,7 +617,7 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
 
   html += `
       <div class="tooltip-reading-row tsukeru-reading-row">
-          <div class="tooltip-reading tsukeru-reading-text">${escapeHtml(readingText)}</div>
+          <div class="tooltip-reading tsukeru-reading-text" lang="ja">${escapeHtml(readingText)}</div>
           <div class="tooltip-reading-actions tsukeru-reading-actions">
               <button type="button" class="tooltip-audio-btn tsukeru-tooltip-speaker"
                   aria-label="${escapeHtml(t('content_play_pronunciation', undefined, 'Play pronunciation'))}"
@@ -857,10 +861,12 @@ function createExampleSentenceContent(data) {
 
   const japanese = document.createElement('div');
   japanese.className = 'tsukeru-example-jp';
+  japanese.lang = 'ja';
   japanese.appendChild(sanitizeHtmlFragment(data?.japanese_furigana_html || ''));
 
   const english = document.createElement('div');
   english.className = 'tsukeru-example-en';
+  english.lang = 'en';
   english.textContent = `- ${String(data?.english || '')}`;
 
   item.append(japanese, english);
@@ -954,7 +960,7 @@ async function loadKanjiBreakdown(word) {
             const onReadings = Array.isArray(charInfo.on_readings) ? charInfo.on_readings.slice(0, 3).join(', ') : '';
             const kunReadings = Array.isArray(charInfo.kun_readings) ? charInfo.kun_readings.slice(0, 3).join(', ') : '';
             const meanings = Array.isArray(charInfo.meanings) ? charInfo.meanings.slice(0, 3).join('; ') : '';
-            return `<div class="tsukeru-kanji-item"><div class="tsukeru-kanji-item-header"><span class="tsukeru-kanji-char-large">${escapeHtml(charInfo.character || '')}</span>${charJlptBadge}</div>${onReadings ? `<div class="tsukeru-kanji-reading"><span class="tsukeru-on-label">音:</span> ${escapeHtml(onReadings)}</div>` : ''}${kunReadings ? `<div class="tsukeru-kanji-reading"><span class="tsukeru-kun-label">訓:</span> ${escapeHtml(kunReadings)}</div>` : ''}${meanings ? `<div class="tsukeru-kanji-meaning">${escapeHtml(meanings)}</div>` : ''}</div>`;
+            return `<div class="tsukeru-kanji-item"><div class="tsukeru-kanji-item-header"><span class="tsukeru-kanji-char-large" lang="ja">${escapeHtml(charInfo.character || '')}</span>${charJlptBadge}</div>${onReadings ? `<div class="tsukeru-kanji-reading" lang="ja"><span class="tsukeru-on-label">音:</span> ${escapeHtml(onReadings)}</div>` : ''}${kunReadings ? `<div class="tsukeru-kanji-reading" lang="ja"><span class="tsukeru-kun-label">訓:</span> ${escapeHtml(kunReadings)}</div>` : ''}${meanings ? `<div class="tsukeru-kanji-meaning">${escapeHtml(meanings)}</div>` : ''}</div>`;
           }).join('')}
         </div>`
       );
@@ -997,13 +1003,13 @@ function ensureContentReportModal() {
         <div id="tsukeru-crm-error" class="tsukeru-crm-msg tsukeru-crm-error hidden"></div>
         <div id="tsukeru-crm-success" class="tsukeru-crm-msg tsukeru-crm-success hidden"></div>
         <label class="tsukeru-crm-label">${escapeHtml(t('content_report_label_word', undefined, 'Word:'))}</label>
-        <input type="text" id="tsukeru-crm-word" class="tsukeru-crm-input" readonly>
+        <input type="text" id="tsukeru-crm-word" lang="ja" class="tsukeru-crm-input" readonly>
         <label class="tsukeru-crm-label">${escapeHtml(t('content_report_label_wrong_reading', undefined, 'Incorrect reading:'))}</label>
-        <input type="text" id="tsukeru-crm-reading" class="tsukeru-crm-input" readonly>
+        <input type="text" id="tsukeru-crm-reading" lang="ja" class="tsukeru-crm-input" readonly>
         <label class="tsukeru-crm-label">${escapeHtml(t('content_report_label_context', undefined, 'Context:'))}</label>
-        <textarea id="tsukeru-crm-context" class="tsukeru-crm-textarea" rows="2" readonly></textarea>
+        <textarea id="tsukeru-crm-context" lang="ja" class="tsukeru-crm-textarea" rows="2" readonly></textarea>
         <label class="tsukeru-crm-label">${escapeHtml(t('content_report_label_correction_optional', undefined, 'Correct reading (optional):'))}</label>
-        <input type="text" id="tsukeru-crm-correct" class="tsukeru-crm-input">
+        <input type="text" id="tsukeru-crm-correct" lang="ja" class="tsukeru-crm-input">
         <button type="button" id="tsukeru-crm-submit" class="tsukeru-crm-submit">${escapeHtml(t('content_report_submit', undefined, 'Submit Report'))}</button>
       </div>
     </div>

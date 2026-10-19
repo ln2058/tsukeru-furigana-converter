@@ -1,10 +1,11 @@
 /*
 Module: validate-locales
-Purpose: Validate extension locale messages for syntax, parity, and source-key usage regressions.
+Purpose: Validate locale syntax, key/placeholder/browser parity, manifest limits, language options, and source-key usage.
 
 Inputs:
 - Locale message files under chrome/_locales and firefox/_locales.
 - Source files under chrome/ and firefox/ that reference locale keys.
+- Display-language options and the shared helper's fixed locale table in both browser packages.
 
 Outputs:
 - Process exit code (0 success, 1 failures) and validation report to stdout.
@@ -13,7 +14,7 @@ Side Effects:
 - None.
 
 Failure Modes:
-- Invalid JSON, malformed placeholders, locale key drift, or missing referenced keys cause non-zero exit.
+- Invalid JSON, malformed/missing placeholders, locale or browser drift, overlong manifest text, or missing referenced keys cause non-zero exit.
 
 Security Notes:
 - Reads local repository files only.
@@ -25,9 +26,17 @@ const CANONICAL_LOCALE_FILE = path.join('chrome', '_locales', 'en', 'messages.js
 const LOCALE_FILES = [
   CANONICAL_LOCALE_FILE,
   path.join('chrome', '_locales', 'ja', 'messages.json'),
+  path.join('chrome', '_locales', 'ko', 'messages.json'),
+  path.join('chrome', '_locales', 'zh_TW', 'messages.json'),
   path.join('firefox', '_locales', 'en', 'messages.json'),
-  path.join('firefox', '_locales', 'ja', 'messages.json')
+  path.join('firefox', '_locales', 'ja', 'messages.json'),
+  path.join('firefox', '_locales', 'ko', 'messages.json'),
+  path.join('firefox', '_locales', 'zh_TW', 'messages.json')
 ];
+// File-access instructions differ because browser runtime permissions differ.
+const BROWSER_SPECIFIC_KEYS = new Set(['status_enable_file_access', 'status_local_files_not_supported']);
+// Both packages also target stores with a 45-character name cap (Edge Add-ons / AMO).
+const MANIFEST_MESSAGE_LIMITS = { manifest_name: 45, manifest_description: 132 };
 const SOURCE_ROOTS = ['chrome', 'firefox'];
 const SOURCE_EXTENSIONS = new Set(['.js', '.html', '.json']);
 const SKIP_SOURCE_DIRS = new Set(['_locales', 'icons']);
@@ -72,6 +81,8 @@ function collectFiles(rootDir, options = {}) {
 
 function validateMessage(message) {
   const issues = [];
+  // Escaped dollar signs are literals, not positional or named placeholders.
+  message = message.replace(/\$\$/g, '');
 
   if (/\$\d+\$/.test(message)) {
     issues.push('invalid wrapped numeric placeholder (example: $1$)');
@@ -84,10 +95,43 @@ function validateMessage(message) {
   }
 
   const indices = [...message.matchAll(/\$(\d+)/g)].map((m) => Number(m[1]));
-  if (indices.some((n) => n === 0)) {
-    issues.push('placeholder index $0 is invalid; indices must start at $1');
+  if (indices.some((n) => n < 1 || n > 9)) {
+    issues.push('placeholder indices must be in the supported range $1–$9');
   }
 
+  return issues;
+}
+
+function positionalTokens(message) {
+  // Translations may reorder tokens, but must retain the same set of indices.
+  return [...new Set(String(message).replace(/\$\$/g, '').match(/\$\d+/g) || [])].sort();
+}
+
+function localeOptionIssues(browser) {
+  const issues = [];
+  const folders = fs.readdirSync(path.join(browser, '_locales'), { withFileTypes: true })
+    .filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
+  const checked = LOCALE_FILES.filter(file => file.startsWith(`${browser}${path.sep}`))
+    .map(file => path.basename(path.dirname(file))).sort();
+  const html = fs.readFileSync(path.join(browser, 'popup.html'), 'utf8');
+  const select = html.match(/<select\b[^>]*\bid="uiLocale"[^>]*>([\s\S]*?)<\/select>/)?.[1] || '';
+  const options = [...select.matchAll(/<option\b([^>]*)>/g)].map(([, attributes]) => ({
+    value: attributes.match(/\bvalue="([^"]*)"/)?.[1],
+    lang: attributes.match(/\blang="([^"]*)"/)?.[1],
+    translated: /\bdata-i18n/.test(attributes),
+  }));
+  const codes = options.filter(option => option.value).map(option => option.value).sort();
+  // Read the fixed locale table without executing extension source during validation.
+  const source = fs.readFileSync(path.join(browser, 'js', 'i18n.js'), 'utf8');
+  const table = source.match(/const locales = Object\.freeze\(\{([\s\S]*?)\n  \}\);/)?.[1] || '';
+  const supported = [...table.matchAll(/^    ([A-Za-z_]+):/gm)].map(match => match[1]).sort();
+  for (const [label, values] of [['dropdown options', codes], ['supported locales', supported], ['validated catalogs', checked]]) {
+    if (JSON.stringify(values) !== JSON.stringify(folders)) issues.push(`${label} must match _locales folders`);
+  }
+  if (options.filter(option => option.value === '').length !== 1) issues.push('language dropdown must have exactly one Auto option');
+  if (options.some(option => option.translated || (option.value && option.lang !== option.value.replace('_', '-')))) {
+    issues.push('language options must retain their native names and matching lang attributes');
+  }
   return issues;
 }
 
@@ -133,8 +177,8 @@ function collectReferencedKeys() {
 
   const regexes = [
     { kind: 'js:t()', regex: /\bt\s*\(\s*(['"`])([A-Za-z0-9_.-]+)\1/g, group: 2 },
-    { kind: 'js:getMessage()', regex: /\bgetMessage\s*\(\s*(['"`])([A-Za-z0-9_.-]+)\1/g, group: 2 },
-    { kind: 'html:data-i18n', regex: /data-i18n(?:-title|-placeholder)?\s*=\s*(['"])([^'"`]+)\1/g, group: 2 },
+    { kind: 'js:getMessage()', regex: /\bgetMessage\s*(?:\?\.\s*)?\(\s*(['"`])([A-Za-z0-9_.-]+)\1/g, group: 2 },
+    { kind: 'html:data-i18n', regex: /data-i18n(?:-title|-placeholder|-aria-label)?\s*=\s*(['"])([^'"`]+)\1/g, group: 2 },
     { kind: 'manifest:__MSG__', regex: /__MSG_([A-Za-z0-9_]+)__/g, group: 1 }
   ];
 
@@ -155,6 +199,17 @@ function collectReferencedKeys() {
 
 function main() {
   let hardIssues = 0;
+  for (const browser of SOURCE_ROOTS) {
+    try {
+      for (const issue of localeOptionIssues(browser)) {
+        hardIssues += 1;
+        console.error(`[ERROR] ${browser}: ${issue}`);
+      }
+    } catch (error) {
+      hardIssues += 1;
+      console.error(`[ERROR] ${browser}: cannot validate language options (${error.message})`);
+    }
+  }
   let warnings = 0;
   let totalCheckedMessages = 0;
 
@@ -195,6 +250,20 @@ function main() {
       }
       totalCheckedMessages += 1;
       const issues = validateMessage(value.message);
+      if (Object.hasOwn(value, 'placeholders')) {
+        issues.push('named placeholders fields are unsupported; use positional $1–$9 tokens');
+      }
+      const limit = MANIFEST_MESSAGE_LIMITS[key];
+      if (limit && value.message.length > limit) {
+        issues.push(`manifest text exceeds ${limit} characters (${value.message.length})`);
+      }
+      const browser = filePath.split(path.sep)[0];
+      const english = localeData.get(path.join(browser, '_locales', 'en', 'messages.json'));
+      const sourceMessage = english?.json[key]?.message;
+      if (typeof sourceMessage === 'string'
+          && JSON.stringify(positionalTokens(value.message)) !== JSON.stringify(positionalTokens(sourceMessage))) {
+        issues.push(`positional placeholders differ from ${browser}/en: expected ${positionalTokens(sourceMessage).join(', ') || 'none'}`);
+      }
       if (issues.length === 0) {
         continue;
       }
@@ -213,6 +282,23 @@ function main() {
 
   const canonicalData = localeData.get(CANONICAL_LOCALE_FILE);
   const canonicalKeys = canonicalData ? new Set(Object.keys(canonicalData.json)) : null;
+
+  for (const [filePath, { json }] of localeData) {
+    if (!filePath.startsWith(`chrome${path.sep}`)) continue;
+    // Enforce shared wording for new catalogs; leave the existing en/ja copy untouched.
+    if (!['ko', 'zh_TW'].includes(path.basename(path.dirname(filePath)))) continue;
+    const firefoxPath = filePath.replace(/^chrome/, 'firefox');
+    const firefox = localeData.get(firefoxPath);
+    if (!firefox) continue;
+    for (const [key, entry] of Object.entries(json)) {
+      if (BROWSER_SPECIFIC_KEYS.has(key) || !firefox.json[key]) continue;
+      if (entry?.message !== firefox.json[key]?.message) {
+        hardIssues += 1;
+        console.error(`\n[ERROR] ${getRelativePath(firefoxPath)}`);
+        console.error(`  Browser translation differs from Chrome for shared key: ${key}`);
+      }
+    }
+  }
 
   if (canonicalData && canonicalKeys) {
     for (const filePath of LOCALE_FILES) {

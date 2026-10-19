@@ -1,12 +1,12 @@
 /*
 Module: popup-main
-Purpose: Bootstrap popup navigation, theme-toggle settings, and report modal submission behavior.
+Purpose: Bootstrap popup navigation, language/theme settings, and report modal submission behavior.
 
 Inputs:
-- Popup DOM events, runtime report responses, browser UI language, and user-agent/platform hints.
+- Popup DOM events, runtime report responses, resolved display language and sync preferences, and user-agent/platform hints.
 
 Outputs:
-- Active tab-pane state changes (This page opens first on pages with furigana) and report success/error UI feedback.
+- Active tab-pane state changes (This page normally opens first; language changes reopen Settings) and report success/error UI feedback.
 
 Side Effects:
 - Mutates popup DOM state, sets language-specific home/pricing links, requests coalesced page-word refreshes, and sends `reportReadingError` messages.
@@ -25,6 +25,7 @@ import {
   closeReportModal,
   initSettingsForm,
   initThemeToggle,
+  initLocaleSelect,
   t,
   userFacingError,
 } from './popup-settings.js';
@@ -48,9 +49,10 @@ function initTabNavigation() {
   });
 }
 
-/** The popup always opens on This page, the leftmost tab. */
+/** Language changes reopen Settings once; normal openings start on This page. */
 function selectInitialTab() {
-  selectTab('page');
+  selectTab(location.hash === '#settings' ? 'settings' : 'page');
+  if (location.hash) history.replaceState(null, '', location.pathname);
 }
 
 // ── Report modal event wiring (DOM is ready: module scripts are deferred) ─────
@@ -98,52 +100,57 @@ document.getElementById('extReportSubmit').addEventListener('click', () => {
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 
 function getEzfuriganaHomeUrl() {
-  const lang = (chrome.i18n?.getUILanguage?.() || '').toLowerCase();
-  return lang.startsWith('ja') ? 'https://www.ezfurigana.com/jp' : 'https://www.ezfurigana.com/';
+  return TsukeruI18n.websiteUrl();
 }
 
 function getEzfuriganaPricingUrl() {
-  const lang = (chrome.i18n?.getUILanguage?.() || '').toLowerCase();
-  return lang.startsWith('ja') ? 'https://www.ezfurigana.com/jp/pricing' : 'https://www.ezfurigana.com/pricing';
+  return TsukeruI18n.websiteUrl('/pricing');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  applyI18nToPopupDom();
-  initThemeToggle();
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    await TsukeruI18n.ready();
+    document.documentElement.lang = TsukeruI18n.language();
+    applyI18nToPopupDom();
+    initLocaleSelect();
+    initThemeToggle();
 
-  const reviewLink = document.getElementById('header-review-link');
-  if (reviewLink) {
-    if (navigator.userAgent.toLowerCase().includes('edg/')) {
-      reviewLink.href = 'https://microsoftedge.microsoft.com/addons/detail/tsukeru-for-ezfurigana/cdlcehkdgoaboeapgjdhnklgicmiknia';
-      reviewLink.title = t('header_title_review_edge', undefined, 'Review on Edge Add-ons Store');
-      reviewLink.setAttribute('aria-label', reviewLink.title);
-    } else {
-      reviewLink.title = t('header_title_review_chrome', undefined, 'Review on Chrome Web Store');
-      reviewLink.setAttribute('aria-label', reviewLink.title);
+    const reviewLink = document.getElementById('header-review-link');
+    if (reviewLink) {
+      if (navigator.userAgent.toLowerCase().includes('edg/')) {
+        reviewLink.href = 'https://microsoftedge.microsoft.com/addons/detail/tsukeru-for-ezfurigana/cdlcehkdgoaboeapgjdhnklgicmiknia';
+        reviewLink.title = t('header_title_review_edge', undefined, 'Review on Edge Add-ons Store');
+        reviewLink.setAttribute('aria-label', reviewLink.title);
+      } else {
+        reviewLink.title = t('header_title_review_chrome', undefined, 'Review on Chrome Web Store');
+        reviewLink.setAttribute('aria-label', reviewLink.title);
+      }
     }
-  }
 
-  const ezfuriganaLink = document.getElementById('header-ezfurigana-link');
-  if (ezfuriganaLink) {
-    ezfuriganaLink.href = getEzfuriganaHomeUrl();
-  }
+    const ezfuriganaLink = document.getElementById('header-ezfurigana-link');
+    if (ezfuriganaLink) {
+      ezfuriganaLink.href = getEzfuriganaHomeUrl();
+    }
 
-  const supporterLink = document.getElementById('header-supporter-link');
-  if (supporterLink) {
-    supporterLink.href = getEzfuriganaPricingUrl();
-  }
+    const supporterLink = document.getElementById('header-supporter-link');
+    if (supporterLink) {
+      supporterLink.href = getEzfuriganaPricingUrl();
+    }
 
-  const shortcutText = document.getElementById('shortcut-text');
-  if (shortcutText) {
-    const isMac = /Mac|iPhone|iPod|iPad/.test(navigator.platform);
-    shortcutText.textContent = isMac
-      ? t('shortcut_toggle_mac_z', undefined, '⌘+Shift+Z to toggle')
-      : t('shortcut_toggle_win_z', undefined, 'Ctrl+Shift+Z to toggle');
-  }
+    const shortcutText = document.getElementById('shortcut-text');
+    if (shortcutText) {
+      const isMac = /Mac|iPhone|iPod|iPad/.test(navigator.platform);
+      shortcutText.textContent = isMac
+        ? t('shortcut_toggle_mac_z', undefined, '⌘+Shift+Z to toggle')
+        : t('shortcut_toggle_win_z', undefined, 'Ctrl+Shift+Z to toggle');
+    }
 
-  initSettingsForm();
-  initMyWordsTab();
-  initPageTab();
-  initTabNavigation();
-  selectInitialTab();
+    initSettingsForm();
+    initMyWordsTab();
+    initPageTab();
+    initTabNavigation();
+    selectInitialTab();
+  } finally {
+    document.documentElement.removeAttribute('data-i18n-pending');
+  }
 });

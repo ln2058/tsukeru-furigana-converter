@@ -1,3 +1,4 @@
+import { loadI18n } from './i18n-harness.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -70,6 +71,7 @@ function popupHarness(browser, { systemDark = false, cached = null, get } = {}) 
       },
     },
   });
+  loadI18n(sandbox, browser);
   vm.runInContext(read(browser, 'js/popup-theme-init.js'), sandbox);
   vm.runInContext(read(browser, 'js/popup-settings.js')
     .replace(/import\s*\{[\s\S]*?\}\s*from\s*'[^']+';/g, '')
@@ -174,6 +176,7 @@ for (const browser of ['chrome', 'firefox']) {
         onChanged: { addListener: listener => { changed = listener; } },
       } },
     });
+    loadI18n(sandbox, browser);
     vm.runInContext(read(browser, 'js/content-ui.js'), sandbox);
     const tooltip = fakeSurface();
     const report = fakeSurface();

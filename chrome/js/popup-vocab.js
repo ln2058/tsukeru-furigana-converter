@@ -3,6 +3,7 @@ Module: popup-vocab
 Purpose: Power the popup's My Words tab (review strip, Learning / Known lists, exports) and This page tab (Study mode switch, JLPT profile meter, and Words in this text with Learning / Known switches), styled after EZFurigana's My Words and result panel.
 
 Inputs:
+- The resolved UI language and website routes from the shared i18n helper.
 - Word records and summaries from the background store, page words from the active tab, the stored Study mode setting, popup UI events, background dictionary and audio responses, and `pageWordsChanged` notices from the active tab's content script.
 
 Outputs:
@@ -52,12 +53,12 @@ export function neutralizeCsvFormulaCell(value) {
 }
 
 function uiLanguage() {
-  return (chrome.i18n?.getUILanguage?.() || 'en').toLowerCase();
+  return TsukeruI18n.language();
 }
 
 /** EZFurigana in the reader's language; `#review` opens a review of the due words. */
 export function ezfuriganaUrl(hash = '') {
-  const base = uiLanguage().startsWith('ja') ? 'https://www.ezfurigana.com/jp' : 'https://www.ezfurigana.com/';
+  const base = TsukeruI18n.websiteUrl();
   return `${base}${hash}`;
 }
 

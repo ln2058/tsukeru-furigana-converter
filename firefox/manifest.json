@@ -38,6 +38,7 @@
         "<all_urls>"
       ],
       "js": [
+        "js/i18n.js",
         "js/ui-messages.js",
         "js/content-ui.js",
         "js/content-rate-limit.js",

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-i18n-pending>
 <head>
+  <script src="js/i18n.js"></script>
   <script src="js/popup-theme-init.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -45,6 +46,26 @@
 
   <main class="content">
     <section class="tab-content" id="settings-tab">
+      <section class="settings-section" aria-labelledby="languageSectionTitle">
+        <h2 id="languageSectionTitle" class="section-title" data-i18n="settings_section_language">Language</h2>
+        <div class="setting-row locale-row">
+          <label for="uiLocale" class="setting-label setting-label-with-icon">
+            <svg class="setting-icon" viewBox="0 0 7 7" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path d="M2 0h3v1H2zM1 1h1v1H1zM3 1h1v1H3zM5 1h1v1H5zM0 2h1v1H0zM3 2h1v1H3zM6 2h1v1H6zM0 3h7v1H0zM0 4h1v1H0zM3 4h1v1H3zM6 4h1v1H6zM1 5h1v1H1zM3 5h1v1H3zM5 5h1v1H5zM2 6h3v1H2z"/></svg>
+            <span data-i18n="settings_label_display_language">Display language</span>
+          </label>
+          <div class="select-wrap">
+            <select id="uiLocale" class="locale-select" aria-describedby="uiLocaleHint">
+              <option value="" id="uiLocaleAuto">Auto</option>
+              <option value="en" lang="en">English</option>
+              <option value="ja" lang="ja">日本語</option>
+              <option value="ko" lang="ko">한국어</option>
+              <option value="zh_TW" lang="zh-TW">繁體中文</option>
+            </select>
+            <svg class="select-chevron" viewBox="0 0 5 3" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path d="M0 0h5v1H0zM1 1h3v1H1zM2 2h1v1H2z"/></svg>
+          </div>
+        </div>
+        <p id="uiLocaleHint" class="setting-hint locale-hint" data-i18n="settings_language_hint">The extension name and keyboard shortcut follow your browser language.</p>
+      </section>
       <section class="settings-section">
         <h2 class="section-title" data-i18n="settings_section_reading">Reading</h2>
         <div class="setting-row">
@@ -117,7 +138,7 @@
         </label>
         <div class="settings-preview" aria-hidden="true">
           <span class="preview-label" data-i18n="settings_preview_label">Preview</span>
-          <div class="preview-sample" id="rubyPreview"><ruby>漢字<rt id="rubyPreviewReading">かんじ</rt></ruby></div>
+          <div class="preview-sample" id="rubyPreview" lang="ja"><ruby>漢字<rt id="rubyPreviewReading">かんじ</rt></ruby></div>
         </div>
         <fieldset class="appearance-controls" id="appearanceControls">
           <legend class="visually-hidden" data-i18n="settings_section_appearance">Appearance</legend>
@@ -244,7 +265,7 @@
   <div id="extReportModal" class="ext-report-modal hidden" role="dialog" aria-modal="true" aria-labelledby="extReportTitle">
     <div class="ext-report-modal-content">
       <div class="ext-report-header"><span class="ext-report-title" id="extReportTitle"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg><span data-i18n="report_modal_title">Report an incorrect reading</span></span><button id="extReportClose" class="ext-report-close" aria-label="Close" data-i18n-aria-label="content_close">&times;</button></div>
-      <div class="ext-report-body"><div id="extReportError" class="ext-report-msg error hidden" role="alert"></div><div id="extReportSuccess" class="ext-report-msg success hidden" role="status"></div><div class="ext-report-field"><label for="extReportWord" data-i18n="report_label_word">Word</label><input type="text" id="extReportWord" readonly></div><div class="ext-report-field"><label for="extReportReading" data-i18n="report_label_current_reading_wrong">Incorrect reading</label><input type="text" id="extReportReading" readonly></div><div class="ext-report-field"><label for="extReportContext" data-i18n="report_label_context">Context</label><textarea id="extReportContext" rows="2" readonly></textarea></div><div class="ext-report-field"><label for="extReportCorrect" data-i18n="report_label_correct_reading_optional">Correct reading (optional)</label><input type="text" id="extReportCorrect" placeholder="Enter the correct reading..." data-i18n-placeholder="report_correct_placeholder"></div><button id="extReportSubmit" class="ext-report-submit" data-i18n="report_submit_button">Submit Report</button></div>
+      <div class="ext-report-body"><div id="extReportError" class="ext-report-msg error hidden" role="alert"></div><div id="extReportSuccess" class="ext-report-msg success hidden" role="status"></div><div class="ext-report-field"><label for="extReportWord" data-i18n="report_label_word">Word</label><input type="text" id="extReportWord" lang="ja" readonly></div><div class="ext-report-field"><label for="extReportReading" data-i18n="report_label_current_reading_wrong">Incorrect reading</label><input type="text" id="extReportReading" lang="ja" readonly></div><div class="ext-report-field"><label for="extReportContext" data-i18n="report_label_context">Context</label><textarea id="extReportContext" lang="ja" rows="2" readonly></textarea></div><div class="ext-report-field"><label for="extReportCorrect" data-i18n="report_label_correct_reading_optional">Correct reading (optional)</label><input type="text" id="extReportCorrect" lang="ja" placeholder="Enter the correct reading..." data-i18n-placeholder="report_correct_placeholder"></div><button id="extReportSubmit" class="ext-report-submit" data-i18n="report_submit_button">Submit Report</button></div>
     </div>
   </div>
 

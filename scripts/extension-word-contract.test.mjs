@@ -1,3 +1,4 @@
+import { loadI18n } from './i18n-harness.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -237,6 +238,7 @@ function loadBrowser(browserName) {
   const baseUrl = new URL(`../${browserName}/js/content-dom.js`, import.meta.url);
   const tooltipUrl = new URL(`../${browserName}/js/content-tooltip.js`, import.meta.url);
   vm.runInNewContext(readFileSync(baseUrl, 'utf8'), sandbox, { filename: baseUrl.pathname });
+  loadI18n(sandbox, browserName);
   vm.runInNewContext(readFileSync(tooltipUrl, 'utf8'), sandbox, { filename: tooltipUrl.pathname });
   return { sandbox, root, document };
 }

@@ -1,3 +1,4 @@
+import { loadI18n } from './i18n-harness.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -44,6 +45,7 @@ function tooltipHarness(browser) {
   const dom = read(browser, 'js/content-dom.js');
   const start = dom.indexOf('function escapeHtml(text)');
   vm.runInContext(dom.slice(start, dom.indexOf('\nfunction escapeRegex', start)), sandbox);
+  loadI18n(sandbox, browser);
   vm.runInContext(read(browser, 'js/content-tooltip.js'), sandbox);
   sandbox.extractSentenceContext = () => '猫がいる。';
   sandbox.getPlainTextFromHtml = value => value;

@@ -1,3 +1,4 @@
+import { loadI18n } from './i18n-harness.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -13,6 +14,7 @@ function loadMessages(browser, locale) {
   const t = (key, substitutions, fallback) => getMessage(key, substitutions) || fallback;
   const sandbox = vm.createContext({ chrome: { i18n: { getMessage } } });
   vm.runInContext(read('js/ui-messages.js'), sandbox);
+  loadI18n(sandbox, browser);
   vm.runInContext(read('js/content-ui.js'), sandbox);
   return { sandbox, t, catalog, read };
 }
@@ -33,13 +35,16 @@ for (const browser of ['chrome', 'firefox']) {
     }
   });
 
-  for (const locale of ['en', 'ja']) {
+  for (const locale of ['en', 'ja', 'ko', 'zh_TW']) {
     test(`${browser}/${locale} countdowns round up and keep automatic and manual retry wording distinct`, () => {
       const { sandbox, t } = loadMessages(browser, locale);
       const duration = (ms) => sandbox.TsukeruUiMessages.formatDuration(ms, t);
-      const expected = locale === 'ja'
-        ? ['0秒', '1秒', '59秒', '1分0秒', '1分30秒', '1時間0分', '1時間5分']
-        : ['0s', '1s', '59s', '1m 0s', '1m 30s', '1h 0m', '1h 5m'];
+      const expected = {
+        en: ['0s', '1s', '59s', '1m 0s', '1m 30s', '1h 0m', '1h 5m'],
+        ja: ['0秒', '1秒', '59秒', '1分0秒', '1分30秒', '1時間0分', '1時間5分'],
+        ko: ['0초', '1초', '59초', '1분 0초', '1분 30초', '1시간 0분', '1시간 5분'],
+        zh_TW: ['0 秒', '1 秒', '59 秒', '1 分 0 秒', '1 分 30 秒', '1 小時 0 分', '1 小時 5 分'],
+      }[locale];
       [-1, 1, 59000, 59001, 90000, 3599999, 3900000].forEach((ms, index) => {
         assert.equal(duration(ms), expected[index]);
         assert.equal(sandbox._formatRemaining(ms), expected[index], 'page notifications use the same units');
@@ -47,8 +52,14 @@ for (const browser of ['chrome', 'firefox']) {
       assert.equal(duration(NaN), expected[0]);
       const automatic = sandbox._withCountdown('request_count', duration(90000));
       const manual = sandbox.TsukeruUiMessages.errorMessage({ status: 429, retryAfter: 90 }, 'apply', t);
-      assert.match(automatic, locale === 'ja' ? /1分30秒後に再試行します/ : /Retrying in 1m 30s/);
-      assert.match(manual, locale === 'ja' ? /1分30秒後にもう一度お試しください/ : /Try again in 1m 30s/);
+      assert.match(automatic, {
+        en: /Retrying in 1m 30s/, ja: /1分30秒後に再試行します/,
+        ko: /1분 30초 후에 자동으로 다시 시도합니다/, zh_TW: /將在 1 分 30 秒後自動重試/,
+      }[locale]);
+      assert.match(manual, {
+        en: /Try again in 1m 30s/, ja: /1分30秒後にもう一度お試しください/,
+        ko: /1분 30초 후에 다시 시도해 주세요/, zh_TW: /請在 1 分 30 秒後再試一次/,
+      }[locale]);
     });
 
     test(`${browser}/${locale} errors use structured reasons and never expose backend text`, () => {
@@ -72,7 +83,7 @@ for (const browser of ['chrome', 'firefox']) {
       assert.equal(message({ status: 429 }, 'report'), catalog.error_rate_limited.message);
       // The shared deadline wins over a stale retryAfter value.
       const deadline = message({ status: 429, retryAfter: 900, retryAt: Date.now() + 1000 });
-      assert.equal(deadline, t('error_rate_limited_wait', [locale === 'ja' ? '1秒' : '1s']));
+      assert.equal(deadline, t('error_rate_limited_wait', [sandbox.TsukeruUiMessages.formatDuration(1000, t)]));
     });
   }
 

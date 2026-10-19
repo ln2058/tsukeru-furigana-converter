@@ -1,3 +1,4 @@
+import { loadI18n } from './i18n-harness.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -30,6 +31,7 @@ function loadNotices(browserName) {
     chrome: { i18n: { getMessage: () => '' } },
     document: { getElementById: (id) => (id === 'status' ? notice : null) },
   };
+  loadI18n(sandbox, browserName);
   vm.runInNewContext(source, sandbox, { filename: fileUrl.pathname });
   return { sandbox, notice };
 }

@@ -1,3 +1,4 @@
+import { loadI18n } from './i18n-harness.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -53,6 +54,7 @@ function loadRenderer(tooltipUrl) {
     DICTIONARY_MAX_SENSES: 5,
   };
 
+  loadI18n(sandbox, tooltipUrl.pathname.includes('/firefox/') ? 'firefox' : 'chrome');
   vm.runInNewContext(readFileSync(tooltipUrl, 'utf8'), sandbox, {
     filename: tooltipUrl.pathname,
   });

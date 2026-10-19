@@ -135,6 +135,16 @@
   --shadow: 0 10px 26px rgba(0, 0, 0, .35);
 }
 
+/* Use local language fonts without adding downloads or bundled font files. */
+:root:lang(zh-TW) {
+  --sans: "IBM Plex Sans", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
+  --mono: var(--sans);
+}
+:root:lang(ko) {
+  --sans: "IBM Plex Sans", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --mono: var(--sans);
+}
+
 * { box-sizing: border-box; }
 
 html,
@@ -181,6 +191,8 @@ textarea:focus-visible {
   outline-offset: 0;
   box-shadow: 0 0 0 4px var(--blue);
 }
+
+:root[data-i18n-pending] body { visibility: hidden; }
 
 .header {
   flex: 0 0 auto;
@@ -249,6 +261,22 @@ textarea:focus-visible {
 .setting-block > .setting-label { display: block; margin-bottom: 7px; }
 .setting-hint { margin: 2px 0 0; color: var(--muted); font-size: 10px; font-weight: 400; line-height: 1.4; }
 .setting-block > .setting-hint { margin-top: 7px; }
+
+.setting-label-with-icon { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.setting-icon { width: 14px; height: 14px; flex: 0 0 14px; color: var(--muted); }
+.locale-row { margin-bottom: 0; }
+.select-wrap { position: relative; flex: 0 0 148px; }
+.locale-select { min-height: 30px; padding-right: 26px; appearance: none; cursor: pointer; font-size: 12px; font-weight: 600; }
+.locale-select:hover { border-color: var(--border-strong); background-color: var(--surface-hover); }
+.select-chevron { position: absolute; top: 50%; right: 9px; width: 10px; height: 6px; margin-top: -3px; color: var(--muted); pointer-events: none; }
+.select-wrap:hover .select-chevron { color: var(--text); }
+.locale-hint { margin-top: 7px; }
+/* The closed select uses the chosen name's script, independent of the popup. */
+.locale-select:lang(ko) { font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif; }
+.locale-select:lang(zh-TW) { font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, sans-serif; }
+.locale-select:lang(ja) { font-family: "BIZ UDPGothic", "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif; }
+.locale-select:lang(en) { font-family: "IBM Plex Sans", system-ui, sans-serif; }
+
 
 select,
 input[type="text"] { width: 100%; min-height: 30px; padding: 5px 8px; border: 1px solid var(--border-strong); border-radius: 2px; background: var(--surface); color: var(--text); }
@@ -529,4 +557,27 @@ input[type="text"]:focus { border-color: var(--blue); outline: none; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; }
+}
+
+/* CJK UI text needs readable sizing and natural spacing in the fixed-width popup. */
+:root:is(:lang(zh-TW), :lang(ko)) * {
+  letter-spacing: normal;
+  text-transform: none;
+}
+:root:is(:lang(zh-TW), :lang(ko)) :is(
+  .by-label, .section-title, .setting-hint, .level-row-label, .preview-label,
+  .legend-chip, .saved-entry-tag, .vocab-action-btn, .export-disclosure summary,
+  .vocab-empty-hint, .page-study-hint, .result-profile-summary, .result-profile-coverage,
+  .result-words-hint, .result-word-state, .result-words-note, .word-review-strip-meta,
+  .word-sync-note, .word-ledger-helper, .shortcut-text, .popup-notice-label,
+  .ext-report-field label, .ext-report-msg
+) {
+  font-size: 11px;
+}
+:root:is(:lang(zh-TW), :lang(ko)) .tab-btn { font-size: 12px; }
+
+/* Explicit Japanese islands keep Japanese glyph shapes inside a translated UI. */
+body [lang="ja"] {
+  --sans: "BIZ UDPGothic", "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
+  font-family: var(--sans);
 }

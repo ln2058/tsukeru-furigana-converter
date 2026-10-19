@@ -3,7 +3,7 @@ Module: background
 Purpose: Route extension events and messages between popup/content scripts and background API helpers.
 
 Inputs:
-- Runtime install, command, and context menu events.
+- Shared UI catalogs, uiLocale storage changes, runtime install, command, and context menu events.
 - Message actions and payloads from popup/content scripts, including My Words and EZFurigana sync actions.
 - Browser startup and tab activation, which refresh the review badge.
 
@@ -12,6 +12,7 @@ Outputs:
 - Toolbar badge with the number of words due for review (via `bg-words`).
 
 Side Effects:
+- Serves private UI catalogs to this extension and updates localized menu titles.
 - Seeds and reads `chrome.storage.sync` defaults.
 - Creates context menus, injects content scripts/CSS including tooltip dependencies in order, and handles Firefox direct-audio actions.
 - Routes optional lookup reading fields and API error metadata without persisting them.
@@ -34,13 +35,10 @@ import {
 } from './js/bg-api.js';
 import { handleWordsMessage, isWordsAction, refreshWordBadge } from './js/bg-words.js';
 import { hasSupportedLocalFileExtension } from './js/utils.js';
-
-const runtimeApi = typeof browser !== 'undefined' ? browser : chrome;
-const i18nApi = runtimeApi?.i18n;
+import './js/i18n.js';
 
 function t(key, fallback) {
-  const message = i18nApi?.getMessage?.(key);
-  return message || fallback;
+  return TsukeruI18n.t(key, undefined, fallback);
 }
 
 function serializeApiError(error) {
@@ -84,6 +82,22 @@ chrome.action.onClicked.addListener((tab) => {
   // Popup is set in manifest, so this won't trigger unless popup is removed
 });
 
+// Register listeners synchronously; catalog loading must not delay worker routing.
+function updateUiMenuTitles() {
+  if (!chrome.contextMenus) return;
+  for (const [id, key, fallback] of [
+    ['applyFurigana', 'contextMenuApplyFurigana', 'Apply Furigana to Page'],
+    ['clearFurigana', 'contextMenuClearFurigana', 'Clear Furigana'],
+  ]) {
+    chrome.contextMenus.update(id, { title: t(key, fallback) }, () => {
+      // Menus may not exist until the install event creates them.
+      void chrome.runtime.lastError;
+    });
+  }
+}
+TsukeruI18n.subscribe(updateUiMenuTitles);
+void TsukeruI18n.ready();
+
 // Optional: Add context menu for quick actions
 if (chrome.contextMenus) {
   chrome.runtime.onInstalled.addListener(() => {
@@ -98,6 +112,7 @@ if (chrome.contextMenus) {
       title: t('contextMenuClearFurigana', 'Clear Furigana'),
       contexts: ['page'],
     });
+    void TsukeruI18n.ready().then(updateUiMenuTitles);
   });
 
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -135,6 +150,14 @@ chrome.tabs.onActivated.addListener(() => {
 
 // Process furigana requests coming from the content script so we can bypass site CORS
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.action === 'getUiCatalog') {
+    if (sender.id !== chrome.runtime.id) return false;
+    TsukeruI18n.getCatalog()
+      .then(catalog => sendResponse({ success: true, catalog }))
+      .catch(() => sendResponse({ success: false }));
+    return true;
+  }
+
   if (isWordsAction(message?.action)) {
     handleWordsMessage(message, sender)
       .then(sendResponse)
@@ -303,6 +326,7 @@ async function ensureContentScript(tabId) {
   // The guard in content-main.js (window.__TSUKERU_LOADED__) prevents
   // double-initialization if the manifest already auto-injected them.
   for (const file of [
+    'js/i18n.js',
     'js/ui-messages.js',
     'js/content-ui.js',
     'js/content-rate-limit.js',

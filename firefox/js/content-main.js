@@ -12,6 +12,7 @@ Outputs:
 Side Effects:
 - Toggles page classes/attributes/styles and shared runtime globals.
 - Starts/stops observers, long-page block state, dictionary popup behavior, lazy tooltip lookup sessions, and live appearance updates.
+- Uses the shared i18n catalog for action-triggered feedback.
 - Applies My Words display settings (Study mode, hidden readings on known words) and follows word state changes from `chrome.storage.onChanged`.
 
 Failure Modes:
@@ -41,8 +42,7 @@ Security Notes:
 // ── Core furigana functions ───────────────────────────────────────────────────
 
 function t(key, substitutions, fallback = '') {
-  const message = chrome.i18n?.getMessage ? chrome.i18n.getMessage(key, substitutions) : '';
-  return message || fallback;
+  return TsukeruI18n.t(key, substitutions, fallback);
 }
 
 function getUserFacingApplyError(error) {
@@ -162,6 +162,8 @@ async function applyFurigana(settings) {
   applyWordDisplaySettings(settings);
 
   try {
+    await TsukeruI18n.ready();
+    if (!isValid()) return;
     const siteConfig = SITE_CONFIGS[currentSite] || SITE_CONFIGS.default;
     const processingRoot = getConfiguredContainer(siteConfig);
     if (siteConfig.useIntersectionObserver && !processingRoot) {

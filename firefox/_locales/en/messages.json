@@ -1,4 +1,8 @@
 {
+  "ui_lang": {
+    "message": "en",
+    "description": "BCP 47 language tag for this catalog. Used for accessibility and UI fonts; keep this tag in English letters."
+  },
   "manifest_name": {
     "message": "Furigana Tsukeru",
     "description": "Extension display name"
@@ -624,5 +628,25 @@
   },
   "error_timeout": {
     "message": "The request timed out. Please try again."
+  },
+  "settings_section_language": {
+    "message": "Language",
+    "description": "Settings section heading above the display-language selector."
+  },
+  "settings_label_display_language": {
+    "message": "Display language",
+    "description": "Label beside the display-language selector."
+  },
+  "settings_option_language_auto": {
+    "message": "Auto ($1)",
+    "description": "Automatic display-language option; $1 is the resolved language name in its own script."
+  },
+  "settings_language_hint": {
+    "message": "The extension name and keyboard shortcut follow your browser language.",
+    "description": "Hint: extension manifest name and keyboard-shortcut description use native browser localization."
+  },
+  "settings_language_save_error": {
+    "message": "Could not save the display language. Please try again.",
+    "description": "Error shown when saving the display-language preference fails."
   }
 }
