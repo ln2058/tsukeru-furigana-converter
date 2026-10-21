@@ -318,7 +318,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-chrome.commands.onCommand.addListener(async (command) => {
+// Firefox for Android has no commands API, so the keyboard toggle is desktop-only.
+chrome.commands?.onCommand.addListener(async (command) => {
   if (command !== 'toggle-furigana') return;
 
   try {

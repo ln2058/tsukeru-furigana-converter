@@ -565,6 +565,11 @@ input[type="text"]:focus { border-color: var(--blue); outline: none; }
   .settings-section { padding-top: 10px; padding-bottom: 9px; }
 }
 
+/* Firefox for Android opens the popup full screen; fill it instead of clipping at 370px.
+   popup-theme-init.js sets the attribute, because touch media queries are unreliable there. */
+html[data-platform="android"],
+html[data-platform="android"] body { width: 100%; height: 100%; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; }
 }

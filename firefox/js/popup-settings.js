@@ -11,6 +11,7 @@ Outputs:
 Side Effects:
 - Reads/writes `chrome.storage.sync` and the popup's localStorage language/theme cache; listens for preference changes and reloads after a language save.
 - Injects content scripts/CSS in dependency order, updates popup notices, Apply/Clear state, preview UI, and sends live level and appearance updates.
+- On Firefox for Android, closes the full-screen popup after sending Apply or completing Clear, so the page can process and report its own errors.
 
 Failure Modes:
 - Unsupported tabs reject apply/clear actions.
@@ -475,6 +476,11 @@ export async function initSettingsForm() {
     applyBtn.title = applied ? t('actions_apply_again', undefined, 'Apply again with the current settings') : '';
   }
 
+  // Firefox for Android shows the popup full screen over the page (see popup-theme-init.js).
+  function closesAfterPageAction() {
+    return document.documentElement.dataset.platform === 'android';
+  }
+
   function setApplyBusy(busy) {
     if (busy) {
       applyBtn.setAttribute('aria-busy', 'true');
@@ -769,6 +775,13 @@ export async function initSettingsForm() {
       } catch (_) {
         throw Object.assign(new Error('Page connection failed'), { errorCode: 'page_connection' });
       }
+      if (closesAfterPageAction()) {
+        // Android pauses the page behind the full-screen popup, so processing would wait
+        // until the reader returns. Return now; the page shows its own failure toasts.
+        chrome.tabs.sendMessage(tab.id, { action: 'applyFurigana', settings }).catch(() => {});
+        window.close();
+        return;
+      }
       let response;
       try {
         response = await chrome.tabs.sendMessage(tab.id, { action: 'applyFurigana', settings });
@@ -831,6 +844,7 @@ export async function initSettingsForm() {
       await chrome.tabs.sendMessage(tab.id, { action: 'clearFurigana' });
       showPageState(false);
       announce(t('status_furigana_cleared', undefined, 'Furigana cleared'));
+      if (closesAfterPageAction()) window.close();
     } catch (err) {
       console.error(err);
       showNotice(t('status_reload_and_retry', undefined, 'Could not connect to this page. Reload it and try again.'), 'error');

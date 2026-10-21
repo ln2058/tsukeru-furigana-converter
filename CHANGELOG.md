@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.1.1 — 2026-10-21 (Firefox)
+
+### Added
+
+- **Firefox for Android**: Tsukeru can be installed on Firefox for Android 120 and later.
+
+### Changed
+
+- On Android, the popup fills the screen, and Apply and Clear return to the page so furigana is added while the page is visible. The keyboard shortcut and right-click menu remain desktop-only.
+
 ## 4.1.0 — 2026-10-19
 
 ### Added

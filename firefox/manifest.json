@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_manifest_name__",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "description": "__MSG_manifest_description__",
   "default_locale": "en",
   "permissions": [
@@ -75,6 +75,9 @@
     "gecko": {
       "id": "tsukeru-furigana@example.com",
       "strict_min_version": "109.0"
+    },
+    "gecko_android": {
+      "strict_min_version": "120.0"
     }
   }
 }
