@@ -1,6 +1,8 @@
 # Changelog
 
-## 4.1.1 — 2026-10-21 (Firefox)
+## 4.1.1 — 2026-10-21
+
+Firefox only; the Chrome and Edge version number matches without changes.
 
 ### Added
 
