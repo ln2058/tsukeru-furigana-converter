@@ -255,6 +255,9 @@ for (const browserName of ['chrome', 'firefox']) {
       'data-dict-reading': 'たべる',
       'data-reading': 'たべました',
       'data-lookup-reading': 'たべる',
+      'data-inflection': 'polite,past',
+      'data-freq': 'common',
+      'data-accent': 'たべる:2',
     }, [ruby('食', 'た'), ruby('べ', 'べ'), new FakeText('ました')]);
     root.appendChild(current);
 
@@ -269,6 +272,9 @@ for (const browserName of ['chrome', 'firefox']) {
       jlpt: '3',
       pos: 'Verb',
       altReadings: [],
+      inflection: ['polite', 'past'],
+      freq: 'common',
+      accent: 'たべる:2',
     });
 
     const words = sandbox.extractAllPageWords();

@@ -3,7 +3,7 @@ Module: popup-settings
 Purpose: Manage popup settings, display language and UI theme, the live furigana preview, content-script bootstrapping, and apply/clear actions.
 
 Inputs:
-- Settings controls (reading-type segments, level chips, switches, ruby style toolbar) and theme-toggle events, system theme changes, active-tab info, stored sync settings (including UI language/theme and My Words display settings), and the popup theme cache.
+- Settings controls (reading-type and popup-size segments, level chips, switches, ruby style toolbar) and theme-toggle events, system theme changes, active-tab info, stored sync settings (including UI language/theme and My Words display settings), and the popup theme cache.
 
 Outputs:
 - Updated settings in storage, popup theme and accessible toggle labels, apply/clear command messages, and live Study mode / known-reading updates to content scripts.
@@ -40,6 +40,8 @@ export const DEFAULT_SETTINGS = {
   // Known words lose their readings, as on EZFurigana; Study mode hides all readings until clicked.
   hideKnownFurigana: true,
   studyMode: false,
+  // Dictionary popup size on pages: small, medium, or large.
+  popupSize: 'medium',
 };
 
 export const DICTIONARY_MAX_SENSES = 3;
@@ -466,6 +468,7 @@ export async function initSettingsForm() {
   const customStylingCheckbox = document.getElementById('customRubyStyling');
   const appearanceControls = document.getElementById('appearanceControls');
   const hideKnownCheckbox = document.getElementById('hideKnownFurigana');
+  const popupSizeGroup = document.getElementById('popupSize');
   const highlightGroup = document.getElementById('highlightMode');
   const highlightKeys = {
     jlpt: document.getElementById('highlightKeyJlpt'),
@@ -488,6 +491,7 @@ export async function initSettingsForm() {
   let rubySize = DEFAULT_SETTINGS.rubySize;
   let rubyColor = DEFAULT_SETTINGS.rubyColor;
   let rubyWeight = DEFAULT_SETTINGS.rubyWeight;
+  let popupSize = DEFAULT_SETTINGS.popupSize;
 
   // The buttons show whether this page has furigana: Applied / Clear once applied, Apply / Clear otherwise.
   function showPageState(applied) {
@@ -633,6 +637,7 @@ export async function initSettingsForm() {
       watchDynamic: watchDynamicCheckbox.checked,
       removeCustomStyling: !customStylingCheckbox.checked,
       hideKnownFurigana: hideKnownCheckbox.checked,
+      popupSize,
       rubySize,
       rubyColor,
       rubyWeight,
@@ -654,7 +659,9 @@ export async function initSettingsForm() {
   watchDynamicCheckbox.checked = stored.watchDynamic === true;
   customStylingCheckbox.checked = stored.removeCustomStyling !== true;
   hideKnownCheckbox.checked = stored.hideKnownFurigana !== false;
+  popupSize = ['small', 'medium', 'large'].includes(stored.popupSize) ? stored.popupSize : DEFAULT_SETTINGS.popupSize;
   setPressed(furiganaTypeGroup, furiganaType);
+  setPressed(popupSizeGroup, popupSize);
   levelRows.querySelectorAll('.level-chip[data-level-system="grade"]').forEach((chip) => {
     const grade = Number(chip.dataset.level);
     if (grade < JUNIOR_HIGH_GRADE) chip.textContent = gradeLabel(grade);
@@ -691,6 +698,11 @@ export async function initSettingsForm() {
   onSegment(furiganaTypeGroup, (value) => {
     furiganaType = value;
     renderAppearance();
+    saveSettings();
+  });
+  // Open tooltips pick the new size up through chrome.storage.onChanged.
+  onSegment(popupSizeGroup, (value) => {
+    popupSize = value;
     saveSettings();
   });
   levelRows.querySelectorAll('.level-chip').forEach((chip) => {

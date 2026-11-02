@@ -300,14 +300,8 @@
   "content_example_section": {
     "message": "Examples"
   },
-  "content_kanji_section": {
-    "message": "Kanji details"
-  },
   "content_section_unavailable": {
     "message": "Not available right now"
-  },
-  "content_kanji_count": {
-    "message": "Kanji ($1)"
   },
   "content_play_pronunciation": {
     "message": "Play pronunciation"
@@ -684,5 +678,110 @@
   },
   "review_prompt_never": {
     "message": "Don't ask again"
+  },
+  "settings_label_popup_size": {
+    "message": "Dictionary popup size"
+  },
+  "settings_popup_size_small": {
+    "message": "Small"
+  },
+  "settings_popup_size_medium": {
+    "message": "Medium"
+  },
+  "settings_popup_size_large": {
+    "message": "Large"
+  },
+  "content_form_label": {
+    "message": "Form"
+  },
+  "content_tab_meaning": {
+    "message": "Meaning"
+  },
+  "content_tab_kanji": {
+    "message": "Kanji"
+  },
+  "content_loading_kanji": {
+    "message": "Loading kanji..."
+  },
+  "content_kanji_unavailable": {
+    "message": "Kanji details are not available right now."
+  },
+  "content_kanji_grade": {
+    "message": "Grade $1"
+  },
+  "content_kanji_junior_high": {
+    "message": "Junior high"
+  },
+  "content_kanji_strokes": {
+    "message": "$1 strokes"
+  },
+  "content_inflection_polite": {
+    "message": "polite"
+  },
+  "content_inflection_negative": {
+    "message": "negative"
+  },
+  "content_inflection_past": {
+    "message": "past"
+  },
+  "content_inflection_te": {
+    "message": "te-form"
+  },
+  "content_inflection_want": {
+    "message": "want to"
+  },
+  "content_inflection_causative": {
+    "message": "causative"
+  },
+  "content_inflection_passive": {
+    "message": "passive"
+  },
+  "content_inflection_potential": {
+    "message": "potential"
+  },
+  "content_inflection_passive_potential": {
+    "message": "passive/potential"
+  },
+  "content_inflection_volitional": {
+    "message": "volitional"
+  },
+  "content_inflection_conditional": {
+    "message": "conditional"
+  },
+  "content_inflection_imperative": {
+    "message": "imperative"
+  },
+  "content_inflection_adverbial": {
+    "message": "adverb form"
+  },
+  "content_frequency_common": {
+    "message": "Common"
+  },
+  "content_frequency_uncommon": {
+    "message": "Uncommon"
+  },
+  "content_frequency_rare": {
+    "message": "Rare"
+  },
+  "content_frequency_title": {
+    "message": "How often this word appears in everyday Japanese"
+  },
+  "content_stroke_order_of": {
+    "message": "Stroke order of $1"
+  },
+  "content_play_strokes": {
+    "message": "Play stroke order"
+  },
+  "content_pause_strokes": {
+    "message": "Pause"
+  },
+  "content_next_stroke": {
+    "message": "Next stroke"
+  },
+  "content_stroke_order_data": {
+    "message": "Stroke order data:"
+  },
+  "content_pitch_accent_title": {
+    "message": "Pitch accent $1"
   }
 }

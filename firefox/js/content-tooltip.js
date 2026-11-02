@@ -6,14 +6,18 @@ Inputs:
 - Pointer/selection events, wrapper metadata, reading-aware background lookup/audio responses, and the shared lazy-state coordinator.
 - Word states from the background store, word storage changes, and My Words display settings (Study mode, hidden readings on known words).
 - The shared i18n catalog and content-ui language and theme helper for extension-owned surfaces.
+- The dictionary popup size preference (`popupSize` in sync storage) and the clicked point and line boxes of the word.
+- Additive wrapper metadata from current backends: `data-inflection` codes, `data-freq` tier, and `data-accent` (`reading:downstep`); kanji-breakdown `grade`, frequency-ordered `examples`, and KanjiVG `strokes`.
 
 Outputs:
 - Tooltip rendering updates with Japanese language tags for words/readings/examples, checked-word and Learning/Known requests to the background store, and report payload messages.
+- The card layout shared with the EZFurigana website: frequency badge, pitch-marked reading, form line with conjugation labels, Meaning / Kanji tabs, and a Kanji tab that loads on first open with stroke-order diagrams and KanjiVG attribution.
 - `tsukeru-learning`, `tsukeru-known`, and `tsukeru-revealed` classes and Study/known-reading attributes on the page.
 - A throttled `pageWordsChanged` runtime notice when furigana is applied or cleared, so an open popup re-lists the page's words.
 
 Side Effects:
-- Creates/removes tooltip DOM, fixed-position listeners, and disclosure state.
+- Creates/removes tooltip DOM on the root element, scroll/resize/Escape listeners that re-place or close it, and disclosure state.
+- Places the tooltip with the placement rules shared with EZFurigana (a bottom sheet at 600 px wide or less) and marks the clicked word with `tsukeru-active-word` while it is open.
 - Registers tooltip and report surfaces with content-ui to follow the saved UI theme.
 - Opening the dictionary on a kanji word, or revealing it in Study mode, adds it to Learning (a known word stays known).
 - Excludes tooltip-owned metadata from word capture and word-state marks.
@@ -26,6 +30,7 @@ Failure Modes:
 
 Security Notes:
 - Escapes/sanitizes rendered content; AI ruby uses DOM text nodes. Only trusted clicks can generate translations.
+- Stroke diagrams are built with DOM APIs from paths re-checked against SVG path syntax; tier, accent, and inflection values are matched against fixed allowlists before rendering.
 - Report opening/submission requires trusted clicks; word, reading, and context are held in isolated-script state rather than read back from page fields.
 - Avoids direct third-party media fetches from page context.
 - Checked words carry only the word, reading, JLPT level, part of speech, and a short plain-text sentence; no page URL.
@@ -81,24 +86,76 @@ function enableDictionaryPopups() {
   if (document.__tsukeruResizeHandler__) {
     window.removeEventListener('resize', document.__tsukeruResizeHandler__);
   }
+  if (document.__tsukeruKeyHandler__) {
+    document.removeEventListener('keydown', document.__tsukeruKeyHandler__, true);
+  }
 
   // Older versions saved words on double-click; checking a word now adds it to Learning.
   document.__tsukeruClickHandler__ = handleDictionaryClick;
   document.__tsukeruDblClickHandler__ = null;
 
   document.addEventListener('click', handleDictionaryClick, true);
+  // The tooltip follows its word through page scrolls and resizes and closes
+  // once the word leaves the screen; scrolling inside it never closes it.
   document.__tsukeruScrollHandler__ = (event) => {
     const target = event.target;
     if (dictionaryTooltip && target && typeof target.nodeType === 'number' && dictionaryTooltip.contains(target)) {
       return;
     }
+    scheduleTooltipReposition();
+  };
+  document.__tsukeruResizeHandler__ = scheduleTooltipReposition;
+  document.__tsukeruKeyHandler__ = (event) => {
+    if (event.key !== 'Escape' || !dictionaryTooltip?.classList.contains('show')) return;
+    const reportModal = document.getElementById('tsukeru-content-report-modal');
+    if (reportModal && !reportModal.classList.contains('hidden')) return;
     hideDefinitionTooltip();
   };
-  document.__tsukeruResizeHandler__ = hideDefinitionTooltip;
   window.addEventListener('scroll', document.__tsukeruScrollHandler__, { capture: true, passive: true });
   window.addEventListener('resize', document.__tsukeruResizeHandler__, { passive: true });
+  document.addEventListener('keydown', document.__tsukeruKeyHandler__, true);
+  loadTooltipSizePreference();
   // dictionaryEventsBound is a var global from content-main.js
   dictionaryEventsBound = true;
+}
+
+let tooltipRepositionFrame = 0;
+
+function scheduleTooltipReposition() {
+  if (tooltipRepositionFrame || !dictionaryTooltip?.classList.contains('show')) return;
+  tooltipRepositionFrame = requestAnimationFrame(() => {
+    tooltipRepositionFrame = 0;
+    if (dictionaryTooltip?.classList.contains('show')) {
+      positionTooltip(dictionaryTooltip._activeRuby, dictionaryTooltip);
+    }
+  });
+}
+
+// ── Tooltip size preference (Small / Medium / Large in the settings panel) ───
+
+const TOOLTIP_SIZES = new Set(['small', 'medium', 'large']);
+let tooltipSizePreference = 'medium';
+
+function applyTooltipSizePreference(tooltip) {
+  if (tooltip) tooltip.dataset.tsukeruSize = tooltipSizePreference;
+}
+
+function loadTooltipSizePreference() {
+  if (document.__tsukeruSizeListenerBound__) return;
+  document.__tsukeruSizeListenerBound__ = true;
+  chrome.storage?.sync?.get({ popupSize: 'medium' })
+    .then(({ popupSize }) => {
+      tooltipSizePreference = TOOLTIP_SIZES.has(popupSize) ? popupSize : 'medium';
+      applyTooltipSizePreference(dictionaryTooltip);
+    })
+    .catch(() => {});
+  chrome.storage?.onChanged?.addListener((changes, area) => {
+    if (area !== 'sync' || !changes.popupSize) return;
+    const next = changes.popupSize.newValue;
+    tooltipSizePreference = TOOLTIP_SIZES.has(next) ? next : 'medium';
+    applyTooltipSizePreference(dictionaryTooltip);
+    scheduleTooltipReposition();
+  });
 }
 
 function handleDictionaryClick(event) {
@@ -137,7 +194,7 @@ function handleDictionaryClick(event) {
     hideDefinitionTooltip();
     return;
   }
-  showDefinitionTooltip(targetEl, wordInfo);
+  showDefinitionTooltip(targetEl, wordInfo, { x: event.clientX, y: event.clientY });
 }
 
 // ── Word info extraction ──────────────────────────────────────────────────────
@@ -153,13 +210,16 @@ function extractWordInfo(target) {
     lookupReadingType: info.lookupReadingType || '',
     jlpt: info.jlpt || '',
     pos: info.pos || '',
-    altReadings: info.altReadings || []
+    altReadings: info.altReadings || [],
+    inflection: info.inflection || [],
+    freq: info.freq || '',
+    accent: info.accent || ''
   };
 }
 
 // ── Tooltip lifecycle ─────────────────────────────────────────────────────────
 
-async function showDefinitionTooltip(ruby, wordInfo) {
+async function showDefinitionTooltip(ruby, wordInfo, point = null) {
   const tooltip = ensureDictionaryTooltip();
 
   tooltip._lookupVersion = (tooltip._lookupVersion || 0) + 1;
@@ -167,17 +227,25 @@ async function showDefinitionTooltip(ruby, wordInfo) {
   await TsukeruI18n.ready();
   if (tooltip._lookupVersion !== myToken || ruby.isConnected === false) return;
   applyTsukeruUiTheme(tooltip);
-  if (!tooltip._asyncCoordinator && window.TsukeruTooltipAsyncState?.createTooltipAsyncCoordinator) {
-    tooltip._asyncCoordinator = window.TsukeruTooltipAsyncState.createTooltipAsyncCoordinator();
+  // tooltip-async-state.js registers on globalThis. Firefox content scripts run in a
+  // sandbox where globalThis is not window, so read it from globalThis.
+  if (!tooltip._asyncCoordinator && globalThis.TsukeruTooltipAsyncState?.createTooltipAsyncCoordinator) {
+    tooltip._asyncCoordinator = globalThis.TsukeruTooltipAsyncState.createTooltipAsyncCoordinator();
   }
   tooltip._asyncCoordinator?.reset(wordInfo.word);
 
   tooltip.dataset.word = wordInfo.word;
+  if (tooltip._activeRuby && tooltip._activeRuby !== ruby) {
+    tooltip._activeRuby.classList?.remove('tsukeru-active-word');
+  }
   tooltip._activeRuby = ruby;
   tooltip._activeWordInfo = wordInfo;
+  tooltip._placementSide = '';
+  tooltip._anchorIndex = 0;
+  ruby.classList?.add('tsukeru-active-word');
   tooltip.innerHTML = getTooltipLoadingHtml(wordInfo);
 
-  positionTooltip(ruby, tooltip);
+  positionTooltip(ruby, tooltip, point);
   tooltip.classList.add('show');
   addTooltipInteractionHandlers();
   // Checking a word adds it to Learning, as on the website.
@@ -225,7 +293,14 @@ function ensureDictionaryTooltip() {
   dictionaryTooltip.id = 'tsukeru-word-tooltip';
   dictionaryTooltip.className = 'tsukeru-word-tooltip';
   applyTsukeruUiTheme(dictionaryTooltip);
-  document.body.appendChild(dictionaryTooltip);
+  applyTooltipSizePreference(dictionaryTooltip);
+  // Mounted on <html> so a transform or filter on the page's <body> cannot
+  // offset or clip the fixed-position tooltip.
+  (document.documentElement || document.body).appendChild(dictionaryTooltip);
+  if (typeof ResizeObserver === 'function') {
+    // Content that loads or expands re-places the tooltip on its chosen side.
+    new ResizeObserver(() => scheduleTooltipReposition()).observe(dictionaryTooltip);
+  }
   return dictionaryTooltip;
 }
 
@@ -236,41 +311,145 @@ function hideDefinitionTooltip() {
     dictionaryTooltip.classList.remove('show');
     dictionaryTooltip.innerHTML = '';
     dictionaryTooltip.dataset.word = '';
+    dictionaryTooltip._activeRuby?.classList?.remove('tsukeru-active-word');
     dictionaryTooltip._activeRuby = null;
     dictionaryTooltip._activeWordInfo = null;
+    dictionaryTooltip._placementSide = '';
   }
 }
 
-function positionTooltip(ruby, tooltip) {
+// ── Tooltip placement ─────────────────────────────────────────────────────────
+// Keep identical to computeTooltipPlacement on the EZFurigana website; both run
+// scripts/fixtures/tooltip-placement-cases.json (website docs/dictionary-popup.md).
+
+const TOOLTIP_PLACEMENT_STICKY_HEIGHT = 160;
+
+function pickTooltipAnchorRect(rects, point) {
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) {
+    return 0;
+  }
+  let bestIndex = 0;
+  let bestDistance = Infinity;
+  rects.forEach((rect, index) => {
+    const dx = Math.max(rect.left - point.x, 0, point.x - rect.right);
+    const dy = Math.max(rect.top - point.y, 0, point.y - rect.bottom);
+    const distance = dx * dx + dy * dy;
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = index;
+    }
+  });
+  return bestIndex;
+}
+
+function clampNumber(value, min, max) {
+  return Math.min(Math.max(value, min), Math.max(min, max));
+}
+
+function chooseTooltipSide(room, sides, needed, previousSide) {
+  if (sides.includes(previousSide) && room[previousSide] >= Math.min(needed, TOOLTIP_PLACEMENT_STICKY_HEIGHT)) {
+    return previousSide;
+  }
+  const fitting = sides.find((side) => room[side] >= needed);
+  if (fitting) return fitting;
+  return room[sides[0]] >= room[sides[1]] ? sides[0] : sides[1];
+}
+
+function computeTooltipPlacement(input) {
+  const margin = Number.isFinite(input?.margin) ? input.margin : 12;
+  const gap = Number.isFinite(input?.gap) ? input.gap : 8;
+  const viewport = input?.viewport || { width: 0, height: 0 };
+  const size = input?.size || { width: 0, height: 0 };
+  const rects = (Array.isArray(input?.anchorRects) ? input.anchorRects : [])
+    .filter((rect) => rect && (rect.right - rect.left > 0 || rect.bottom - rect.top > 0));
+  if (rects.length === 0) return null;
+
+  const anchorIndex = pickTooltipAnchorRect(rects, input.point);
+  const rect = rects[anchorIndex];
+  const anchorVisible = rect.bottom > 0 && rect.top < viewport.height
+    && rect.right > 0 && rect.left < viewport.width;
+
+  if (input.vertical) {
+    const room = {
+      right: viewport.width - margin - (rect.right + gap),
+      left: rect.left - gap - margin,
+    };
+    const side = chooseTooltipSide(room, ['right', 'left'], size.width, input.previousSide);
+    const maxWidth = Math.max(0, Math.floor(room[side]));
+    const width = Math.min(size.width, maxWidth);
+    const maxHeight = Math.max(0, viewport.height - margin * 2);
+    const height = Math.min(size.height, maxHeight);
+    const left = side === 'right' ? rect.right + gap : rect.left - gap - width;
+    const top = clampNumber((rect.top + rect.bottom) / 2 - height / 2, margin, viewport.height - margin - height);
+    return {
+      left: Math.round(left), top: Math.round(top), side, maxHeight, maxWidth, anchorIndex, anchorVisible,
+    };
+  }
+
+  const room = {
+    below: viewport.height - margin - (rect.bottom + gap),
+    above: rect.top - gap - margin,
+  };
+  const side = chooseTooltipSide(room, ['below', 'above'], size.height, input.previousSide);
+  const maxHeight = Math.max(0, Math.floor(room[side]));
+  const height = Math.min(size.height, maxHeight);
+  const maxWidth = Math.max(0, viewport.width - margin * 2);
+  const width = Math.min(size.width, maxWidth);
+  const top = side === 'below' ? rect.bottom + gap : rect.top - gap - height;
+  const left = clampNumber((rect.left + rect.right) / 2 - width / 2, margin, viewport.width - margin - width);
+  return {
+    left: Math.round(left), top: Math.round(top), side, maxHeight, maxWidth, anchorIndex, anchorVisible,
+  };
+}
+
+function isTooltipSheetLayout() {
+  return Boolean(window.matchMedia?.('(max-width: 600px)').matches);
+}
+
+function positionTooltip(ruby, tooltip, point = null) {
   if (!ruby || !tooltip) return;
-  const rect = ruby.getBoundingClientRect();
-  const padding = 12;
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-  const maxWidth = Math.max(0, viewportWidth - padding * 2);
-  tooltip.style.maxWidth = `${maxWidth}px`;
-  tooltip.style.left = `${padding}px`;
-  tooltip.style.top = `${padding}px`;
-  tooltip.style.transform = 'none';
+  // Narrow screens show a bottom sheet that CSS places.
+  const sheet = isTooltipSheetLayout();
+  tooltip.classList.toggle('tsukeru-sheet', sheet);
+  if (sheet) {
+    tooltip.style.left = '';
+    tooltip.style.top = '';
+    tooltip.style.removeProperty('--tsukeru-tooltip-max-height');
+    tooltip.style.removeProperty('--tsukeru-tooltip-max-width');
+    return;
+  }
+  if (ruby.isConnected === false) {
+    hideDefinitionTooltip();
+    return;
+  }
 
+  const rects = Array.from(ruby.getClientRects()).map((rect) => ({
+    left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom,
+  }));
+  const anchorRects = point || rects.length <= 1 ? rects : [rects[tooltip._anchorIndex] || rects[0]];
+  tooltip.style.removeProperty('--tsukeru-tooltip-max-height');
+  tooltip.style.removeProperty('--tsukeru-tooltip-max-width');
   const measured = tooltip.getBoundingClientRect();
-  const tooltipWidth = Math.min(measured.width || 320, maxWidth);
-  const tooltipHeight = Math.min(measured.height || 200, Math.max(0, viewportHeight - padding * 2));
-  const anchorCenter = rect.left + rect.width / 2;
-  const left = Math.min(
-    Math.max(anchorCenter - tooltipWidth / 2, padding),
-    Math.max(padding, viewportWidth - tooltipWidth - padding)
-  );
-  const roomBelow = viewportHeight - rect.bottom - padding;
-  const roomAbove = rect.top - padding;
-  const placeAbove = roomBelow < tooltipHeight && roomAbove >= tooltipHeight;
-  const top = placeAbove
-    ? rect.top - padding
-    : Math.min(Math.max(rect.bottom + padding, padding), Math.max(padding, viewportHeight - tooltipHeight - padding));
-
-  tooltip.style.left = `${left}px`;
-  tooltip.style.top = `${top}px`;
-  tooltip.style.transform = placeAbove ? 'translateY(-100%)' : 'none';
+  const placement = computeTooltipPlacement({
+    anchorRects,
+    point,
+    size: { width: measured.width || 320, height: measured.height || 200 },
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    previousSide: tooltip._placementSide,
+    vertical: String(getComputedStyle(ruby).writingMode || '').startsWith('vertical'),
+  });
+  if (!placement) return;
+  if (!placement.anchorVisible) {
+    hideDefinitionTooltip();
+    return;
+  }
+  if (point) tooltip._anchorIndex = placement.anchorIndex;
+  tooltip._placementSide = placement.side;
+  tooltip.style.left = `${placement.left}px`;
+  tooltip.style.top = `${placement.top}px`;
+  tooltip.style.transform = 'none';
+  tooltip.style.setProperty('--tsukeru-tooltip-max-height', `${placement.maxHeight}px`);
+  tooltip.style.setProperty('--tsukeru-tooltip-max-width', `${placement.maxWidth}px`);
 }
 
 // ── Tooltip interaction handlers ──────────────────────────────────────────────
@@ -366,8 +545,6 @@ function bindTooltipDisclosureHandlers(tooltip) {
       if (!expanded && section.dataset.state === 'idle') {
         if (section.dataset.section === 'example') {
           loadExampleSentence(tooltip.dataset.word);
-        } else if (section.dataset.section === 'kanji') {
-          loadKanjiBreakdown(tooltip.dataset.word);
         }
       }
       requestAnimationFrame(() => positionTooltip(tooltip._activeRuby, tooltip));
@@ -402,10 +579,100 @@ function normalizeTooltipPosCategory(value) {
   return 'other';
 }
 
+// data-inflection codes from the website's app/services/inflection_codes.py.
+// Literal keys so locale validation sees them; read after TsukeruI18n is ready.
+function getInflectionLabels() {
+  return {
+    polite: t('content_inflection_polite', undefined, 'polite'),
+    negative: t('content_inflection_negative', undefined, 'negative'),
+    past: t('content_inflection_past', undefined, 'past'),
+    te: t('content_inflection_te', undefined, 'te-form'),
+    want: t('content_inflection_want', undefined, 'want to'),
+    causative: t('content_inflection_causative', undefined, 'causative'),
+    passive: t('content_inflection_passive', undefined, 'passive'),
+    potential: t('content_inflection_potential', undefined, 'potential'),
+    passive_potential: t('content_inflection_passive_potential', undefined, 'passive/potential'),
+    volitional: t('content_inflection_volitional', undefined, 'volitional'),
+    conditional: t('content_inflection_conditional', undefined, 'conditional'),
+    imperative: t('content_inflection_imperative', undefined, 'imperative'),
+    adverbial: t('content_inflection_adverbial', undefined, 'adverb form'),
+  };
+}
+
+function formatInflectionLabels(codes) {
+  const labels = getInflectionLabels();
+  return (Array.isArray(codes) ? codes : [])
+    .filter((code) => Object.prototype.hasOwnProperty.call(labels, code))
+    .map((code) => labels[code])
+    .join(' · ');
+}
+
+// data-accent from the website's app/services/pitch_accent.py: "reading:downstep[,downstep]".
+const PITCH_ACCENT_RE = /^([ぁ-ゖー]{1,40}):(\d{1,2}(?:,\d{1,2}){0,5})$/;
+const SMALL_KANA = 'ぁぃぅぇぉゃゅょゎァィゥェォャュョヮ';
+
+function splitMorae(reading) {
+  const morae = [];
+  for (const ch of Array.from(reading)) {
+    if (SMALL_KANA.includes(ch) && morae.length > 0) morae[morae.length - 1] += ch;
+    else morae.push(ch);
+  }
+  return morae;
+}
+
+function moraIsHigh(index, downstep) {
+  if (downstep === 0) return index > 0;
+  if (downstep === 1) return index === 0;
+  return index > 0 && index < downstep;
+}
+
+/** Same pitch drawing as the website: a line over high morae and a tick at the drop. */
+function renderTooltipReadingWithPitch(reading, accentValue) {
+  const match = PITCH_ACCENT_RE.exec(String(accentValue || ''));
+  if (!match || kata2hira(reading) !== match[1]) return escapeHtml(reading);
+  const positions = match[2].split(',').map(Number);
+  const downstep = positions[0];
+  const morae = splitMorae(reading);
+  if (downstep > morae.length) return escapeHtml(reading);
+  const spans = morae.map((mora, index) => {
+    const high = moraIsHigh(index, downstep);
+    const classes = ['tsukeru-mora', high ? 'tsukeru-mora-high' : 'tsukeru-mora-low'];
+    if (high && index > 0 && !moraIsHigh(index - 1, downstep)) classes.push('tsukeru-mora-rise');
+    if (downstep > 0 && index === downstep - 1) classes.push('tsukeru-mora-drop');
+    return `<span class="${classes.join(' ')}">${escapeHtml(mora)}</span>`;
+  }).join('');
+  const pattern = positions.map((position) => `[${position}]`).join(' ');
+  const title = t('content_pitch_accent_title', [pattern], `Pitch accent ${pattern}`);
+  return `<span class="tsukeru-pitch" title="${escapeHtml(title)}" aria-label="${escapeHtml(`${reading} ${title}`)}">${spans}</span>`;
+}
+
+/** The clicked text when it differs from the headword: [Form] 食べなかった · negative · past. */
+function renderTooltipFormLine(wordInfo, headword) {
+  const surface = String(wordInfo?.surface || '').trim();
+  if (!surface || surface === String(headword || '').trim()) return '';
+  const inflectionText = formatInflectionLabels(wordInfo?.inflection);
+  return `
+      <div class="tsukeru-form-line">
+          <span class="tooltip-badge tsukeru-badge-pos">${escapeHtml(t('content_form_label', undefined, 'Form'))}</span>
+          <span class="tsukeru-form-surface" lang="ja">${escapeHtml(surface)}</span>${inflectionText ? `
+          <span class="tsukeru-form-inflection">· ${escapeHtml(inflectionText)}</span>` : ''}
+      </div>`;
+}
+
+function renderFrequencyBadge(tier) {
+  const labels = {
+    common: t('content_frequency_common', undefined, 'Common'),
+    uncommon: t('content_frequency_uncommon', undefined, 'Uncommon'),
+    rare: t('content_frequency_rare', undefined, 'Rare'),
+  };
+  if (!Object.prototype.hasOwnProperty.call(labels, tier)) return '';
+  return `<span class="tooltip-badge tsukeru-badge-freq" data-freq="${tier}" title="${escapeHtml(t('content_frequency_title', undefined, 'How often this word appears in everyday Japanese'))}">${escapeHtml(labels[tier])}</span>`;
+}
+
 function renderTooltipHeaderHtml(wordInfo, controlsHtml = '') {
   const info = normalizeTooltipWordInfo(wordInfo);
   const { jlpt, pos, posCategory } = getTooltipMetadata(info);
-  const badges = `${jlpt ? `<span class="tooltip-badge tooltip-jlpt-badge tsukeru-badge-jlpt" data-jlpt="${jlpt}">N${jlpt}</span>` : ''}${pos ? `<span class="tooltip-badge tooltip-pos-badge tooltip-pos-${posCategory} tsukeru-badge-pos">${escapeHtml(pos)}</span>` : ''}`;
+  const badges = `${jlpt ? `<span class="tooltip-badge tooltip-jlpt-badge tsukeru-badge-jlpt" data-jlpt="${jlpt}">N${jlpt}</span>` : ''}${renderFrequencyBadge(String(info.freq || ''))}${pos ? `<span class="tooltip-badge tooltip-pos-badge tooltip-pos-${posCategory} tsukeru-badge-pos">${escapeHtml(pos)}</span>` : ''}`;
   const controls = controlsHtml ? `<div class="tsukeru-header-right">${controlsHtml}</div>` : '';
   return `
     <div class="tooltip-word tooltip-word-header tsukeru-header-row">
@@ -627,7 +894,7 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
 
   html += `
       <div class="tooltip-reading-row tsukeru-reading-row">
-          <div class="tooltip-reading tsukeru-reading-text" lang="ja">${escapeHtml(readingText)}</div>
+          <div class="tooltip-reading tsukeru-reading-text" lang="ja">${renderTooltipReadingWithPitch(readingText, wordInfo.accent)}</div>
           <div class="tooltip-reading-actions tsukeru-reading-actions">
               <button type="button" class="tooltip-audio-btn tsukeru-tooltip-speaker"
                   aria-label="${escapeHtml(t('content_play_pronunciation', undefined, 'Play pronunciation'))}"
@@ -652,13 +919,20 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
           </div>
       </div>`;
 
-  // DICTIONARY_MAX_SENSES is a const from content-dom.js
-  const sensesToShow = normalized.senses.slice(0, DICTIONARY_MAX_SENSES);
-  sensesToShow.forEach((sense, index) => {
+  html += renderTooltipFormLine(wordInfo, displayWord);
+
+  const kanjiCount = countTooltipKanji(displayWord);
+  if (kanjiCount > 0) html += renderTooltipTabsHtml(kanjiCount);
+  html += `<div class="tsukeru-tab-panel" role="tabpanel" data-tab-panel="meaning">`;
+
+  // DICTIONARY_MAX_SENSES is a const from content-dom.js; the rest sit behind "+N more".
+  const senses = normalized.senses;
+  senses.forEach((sense, index) => {
     const gloss = (sense.glosses || []).join('; ');
     if (!gloss) return;
 
-    html += `<div class="tooltip-sense tooltip-definition-sense tsukeru-sense-row" lang="${normalized.definitionLang || 'en'}">`;
+    const extraClass = index >= DICTIONARY_MAX_SENSES ? ' tsukeru-hidden tsukeru-extra-sense' : '';
+    html += `<div class="tooltip-sense tooltip-definition-sense tsukeru-sense-row${extraClass}" lang="${normalized.definitionLang || 'en'}">`;
     if (sense.pos && sense.pos.length) {
       html += `<div class="tooltip-pos tsukeru-sense-pos">${escapeHtml(sense.pos.slice(0, 2).join(', '))}</div>`;
     }
@@ -672,9 +946,14 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
     html += `</div>`;
   });
 
-  if (normalized.senses.length > sensesToShow.length) {
-    const moreCount = String(normalized.senses.length - sensesToShow.length);
-    html += `<div class="tooltip-pos tsukeru-sense-more">${escapeHtml(t('content_more_count', [moreCount], `+${moreCount} more`))}</div>`;
+  if (senses.length > DICTIONARY_MAX_SENSES) {
+    const moreCount = String(senses.length - DICTIONARY_MAX_SENSES);
+    html += `<button type="button" class="tsukeru-sense-more-toggle" aria-expanded="false">${escapeHtml(t('content_more_count', [moreCount], `+${moreCount} more`))}</button>`;
+  }
+
+  // Same order as the website card (docs/dictionary-popup.md in the website repo).
+  if (!normalized.hasAttachedExamples) {
+    html += getAsyncSectionHtml('example', 'tsukeru-example-container', t('content_example_section', undefined, 'Example sentence'));
   }
 
   html += generateAltReadingsDropdown(wordInfo.altReadings, Date.now());
@@ -683,11 +962,10 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
     const sourceName = normalized.source === 'je_dict' ? 'TKGJE' : 'JMdict';
     html += `<div class="tsukeru-dictionary-source"><span>${escapeHtml(t('utility_source', undefined, 'Source'))}: </span><a href="${escapeHtml(normalized.sourceUrl)}" target="_blank" rel="noopener noreferrer">${sourceName}</a></div>`;
   }
-
-  if (!normalized.hasAttachedExamples) {
-    html += getAsyncSectionHtml('example', 'tsukeru-example-container', t('content_example_section', undefined, 'Example sentence'));
+  html += `</div>`;
+  if (kanjiCount > 0) {
+    html += `<div id="tsukeru-kanji-container" class="tsukeru-tab-panel tsukeru-kanji-panel tsukeru-hidden" role="tabpanel" data-tab-panel="kanji" data-section="kanji" data-state="idle" aria-live="polite"></div>`;
   }
-  html += getAsyncSectionHtml('kanji', 'tsukeru-kanji-container', t('content_kanji_section', undefined, 'Kanji details'));
 
   tooltip.innerHTML = html;
   if (normalized.localized) {
@@ -695,15 +973,71 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
       appendDictionaryRubyText(element, element.textContent);
     });
   }
-  appendAttachedExamples(tooltip, sensesToShow);
+  appendAttachedExamples(tooltip, senses);
+  const moreToggle = tooltip.querySelector('.tsukeru-sense-more-toggle');
+  if (moreToggle) {
+    moreToggle.onclick = (event) => {
+      event.stopPropagation();
+      tooltip.querySelectorAll('.tsukeru-extra-sense').forEach((row) => row.classList.remove('tsukeru-hidden'));
+      moreToggle.remove();
+    };
+  }
+  bindTooltipTabs(tooltip);
   tooltip.classList.add('show');
   addTooltipInteractionHandlers({ word: displayWord, reading: readingText });
   requestAnimationFrame(() => positionTooltip(tooltip._activeRuby, tooltip));
 }
 
+const TOOLTIP_KANJI_RE = /[㐀-䶿一-鿿豈-﫿]/;
+
+function countTooltipKanji(text) {
+  return Array.from(String(text || '')).filter((ch) => TOOLTIP_KANJI_RE.test(ch)).length;
+}
+
+function renderTooltipTabsHtml(kanjiCount) {
+  return `
+      <div class="tsukeru-tabs" role="tablist">
+          <button type="button" class="tsukeru-tab" role="tab" data-tab="meaning" aria-selected="true">${escapeHtml(t('content_tab_meaning', undefined, 'Meaning'))}</button>
+          <button type="button" class="tsukeru-tab" role="tab" data-tab="kanji" aria-selected="false" tabindex="-1">${escapeHtml(t('content_tab_kanji', undefined, 'Kanji'))} <span class="tsukeru-tab-count">${kanjiCount}</span></button>
+      </div>`;
+}
+
+function selectTooltipTab(tooltip, name) {
+  tooltip.querySelectorAll('.tsukeru-tab').forEach((tab) => {
+    const selected = tab.dataset.tab === name;
+    tab.setAttribute('aria-selected', String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+  });
+  tooltip.querySelectorAll('.tsukeru-tab-panel').forEach((panel) => {
+    panel.classList.toggle('tsukeru-hidden', panel.dataset.tabPanel !== name);
+  });
+  const kanjiPanel = tooltip.querySelector('.tsukeru-kanji-panel');
+  if (name === 'kanji' && kanjiPanel?.dataset.state === 'idle') {
+    loadKanjiBreakdown(tooltip.dataset.word);
+  }
+  requestAnimationFrame(() => positionTooltip(tooltip._activeRuby, tooltip));
+}
+
+function bindTooltipTabs(tooltip) {
+  const tabs = Array.from(tooltip.querySelectorAll('.tsukeru-tab'));
+  tabs.forEach((tab, index) => {
+    tab.onclick = (event) => {
+      event.stopPropagation();
+      selectTooltipTab(tooltip, tab.dataset.tab);
+    };
+    tab.onkeydown = (event) => {
+      if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+      event.preventDefault();
+      const next = tabs[(index + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+      selectTooltipTab(tooltip, next.dataset.tab);
+      next.focus();
+    };
+  });
+}
+
 function getAsyncSectionHtml(sectionName, containerId, label) {
-  const toggleClass = sectionName === 'example' ? 'tsukeru-example-toggle' : 'tsukeru-kanji-toggle';
-  const contentClass = sectionName === 'example' ? 'tsukeru-example-content' : 'tsukeru-kanji-content';
+  const toggleClass = 'tsukeru-example-toggle';
+  const contentClass = 'tsukeru-example-content';
   return `
     <div id="${containerId}" class="tsukeru-async-section tooltip-learning-section" data-section="${sectionName}" data-state="idle" data-expanded="false">
       <button type="button" class="${toggleClass} tsukeru-dropdown-toggle tooltip-learning-toggle" aria-expanded="false" aria-controls="${containerId}-content">
@@ -836,10 +1170,8 @@ function fallbackTTS(word, buttonElement) {
 
 // ── Async tooltip sections ────────────────────────────────────────────────────
 
-function getAsyncSectionLabel(sectionName) {
-  return sectionName === 'example'
-    ? t('content_example_section', undefined, 'Example sentence')
-    : t('content_kanji_section', undefined, 'Kanji details');
+function getAsyncSectionLabel() {
+  return t('content_example_section', undefined, 'Example sentence');
 }
 
 function renderAsyncLoading(container) {
@@ -940,13 +1272,245 @@ async function loadExampleSentence(word) {
   });
 }
 
+function renderTooltipPanelLoading() {
+  return `<div class="tooltip-loading tooltip-loading-inline tsukeru-async-loading" role="status" aria-live="polite"><span class="tooltip-loading-spinner tsukeru-loader" aria-hidden="true"></span><span>${escapeHtml(t('content_loading_kanji', undefined, 'Loading kanji...'))}</span></div>`;
+}
+
+function formatTooltipKanjiGrade(grade) {
+  const value = Number.parseInt(grade, 10);
+  if (value >= 1 && value <= 6) return t('content_kanji_grade', [String(value)], `Grade ${value}`);
+  if (value === 7) return t('content_kanji_junior_high', undefined, 'Junior high');
+  return '';
+}
+
+/** Kanji tab content, matching the website's renderKanjiPanel. */
+function renderKanjiPanelHtml(data) {
+  const characters = (Array.isArray(data?.characters) ? data.characters : [])
+    .filter((item) => item && typeof item.character === 'string' && item.character);
+  const chips = characters.length > 1 ? `
+      <div class="tsukeru-kanji-chips">${characters.map((item, index) => `
+          <button type="button" class="tsukeru-kanji-chip" data-kanji-index="${index}" aria-pressed="${index === 0}" lang="ja">${escapeHtml(item.character)}</button>`).join('')}
+      </div>` : '';
+  const details = characters.map((item, index) => {
+    const level = Number(item.jlpt_level) || 0;
+    const strokes = Number.parseInt(item.stroke_count, 10);
+    const facts = [
+      level >= 1 && level <= 5 ? `N${level}` : '',
+      formatTooltipKanjiGrade(item.grade),
+      strokes > 0 ? t('content_kanji_strokes', [String(strokes)], `${strokes} strokes`) : '',
+    ].filter(Boolean);
+    const onReadings = Array.isArray(item.on_readings) ? item.on_readings.slice(0, 4).join('、') : '';
+    const kunReadings = Array.isArray(item.kun_readings) ? item.kun_readings.slice(0, 4).join('、') : '';
+    const meanings = Array.isArray(item.meanings) ? item.meanings.slice(0, 4).join('; ') : '';
+    const examples = (Array.isArray(item.examples) ? item.examples : [])
+      .filter((example) => example && example.word)
+      .slice(0, 3);
+    return `
+      <section class="tsukeru-kanji-detail${index === 0 ? '' : ' tsukeru-hidden'}" data-kanji-index="${index}">
+          <div class="tsukeru-kanji-main">
+              <div class="tsukeru-kanji-figure"><span class="tsukeru-kanji-glyph" lang="ja">${escapeHtml(item.character)}</span></div>
+              <div class="tsukeru-kanji-facts">
+                  ${facts.length ? `<div class="tsukeru-kanji-meta">${escapeHtml(facts.join(' · '))}</div>` : ''}
+                  ${onReadings ? `<div class="tsukeru-kanji-reading" lang="ja"><span class="tsukeru-on-label">音</span> ${escapeHtml(onReadings)}</div>` : ''}
+                  ${kunReadings ? `<div class="tsukeru-kanji-reading" lang="ja"><span class="tsukeru-kun-label">訓</span> ${escapeHtml(kunReadings)}</div>` : ''}
+                  ${meanings ? `<div class="tsukeru-kanji-meaning" lang="en">${escapeHtml(meanings)}</div>` : ''}
+              </div>
+          </div>
+          ${examples.length ? `
+          <ul class="tsukeru-kanji-examples">${examples.map((example) => `
+              <li><span class="tsukeru-kanji-example-word" lang="ja">${escapeHtml(example.word)}</span>${example.reading ? ` <span class="tsukeru-kanji-example-reading" lang="ja">${escapeHtml(example.reading)}</span>` : ''}${example.meaning ? ` <span class="tsukeru-kanji-example-meaning" lang="en">${escapeHtml(example.meaning)}</span>` : ''}</li>`).join('')}
+          </ul>` : ''}
+      </section>`;
+  }).join('');
+  const attribution = characters.some((item) => tooltipStrokePaths(item).length > 0)
+    ? `
+      <div class="tsukeru-stroke-attribution">${escapeHtml(t('content_stroke_order_data', undefined, 'Stroke order data:'))} <a href="${KANJIVG_URL}" target="_blank" rel="noopener noreferrer">KanjiVG</a> (CC BY-SA 3.0)</div>`
+    : '';
+  return chips + details + attribution;
+}
+
+// KanjiVG stroke paths from the website's kanji-breakdown: 109×109 canvas, stroke order.
+const STROKE_PATH_RE = /^[MmCcSsLlHhVvZzQqTt0-9.,\- ]{1,4000}$/;
+const STROKE_START_RE = /^M\s*(-?[\d.]+)[\s,]*(-?[\d.]+)/;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const KANJIVG_URL = 'https://kanjivg.tagaini.net';
+
+function tooltipStrokePaths(item) {
+  const strokes = Array.isArray(item?.strokes) ? item.strokes : [];
+  if (strokes.length === 0 || strokes.length > 64) return [];
+  return strokes.every((path) => typeof path === 'string' && STROKE_PATH_RE.test(path)) ? strokes : [];
+}
+
+function createSvgElement(name, attributes = {}) {
+  const element = document.createElementNS(SVG_NS, name);
+  Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, String(value)));
+  return element;
+}
+
+function tooltipPrefersReducedMotion() {
+  return Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
+}
+
+/** Same diagram and controls as the website's mountStrokeDiagrams, built with DOM APIs. */
+function buildStrokeDiagram(item) {
+  const paths = tooltipStrokePaths(item);
+  const svg = createSvgElement('svg', {
+    class: 'tsukeru-stroke-svg',
+    viewBox: '0 0 109 109',
+    role: 'img',
+    'aria-label': t('content_stroke_order_of', [item.character], `Stroke order of ${item.character}`),
+  });
+  svg.append(
+    createSvgElement('line', { class: 'tsukeru-stroke-grid', x1: 54.5, y1: 0, x2: 54.5, y2: 109 }),
+    createSvgElement('line', { class: 'tsukeru-stroke-grid', x1: 0, y1: 54.5, x2: 109, y2: 54.5 }),
+  );
+  const strokes = paths.map((d) => {
+    const path = createSvgElement('path', { class: 'tsukeru-stroke', d });
+    svg.append(path);
+    return path;
+  });
+  const number = createSvgElement('text', { class: 'tsukeru-stroke-number' });
+  svg.append(number);
+
+  const controls = document.createElement('div');
+  controls.className = 'tsukeru-stroke-controls';
+  const play = document.createElement('button');
+  play.type = 'button';
+  play.className = 'tsukeru-stroke-btn';
+  const step = document.createElement('button');
+  step.type = 'button';
+  step.className = 'tsukeru-stroke-btn';
+  const nextLabel = t('content_next_stroke', undefined, 'Next stroke');
+  step.setAttribute('aria-label', nextLabel);
+  step.title = nextLabel;
+  step.textContent = '→';
+  const counter = document.createElement('span');
+  counter.className = 'tsukeru-stroke-counter';
+  controls.append(play, step, counter);
+
+  let shown = strokes.length;
+  let timer = null;
+
+  const draw = (current) => {
+    strokes.forEach((path, index) => {
+      path.classList.toggle('tsukeru-stroke-drawn', index < shown);
+      path.classList.toggle('tsukeru-stroke-current', index === current);
+    });
+    const start = current >= 0 ? STROKE_START_RE.exec(paths[current]) : null;
+    number.textContent = start ? String(current + 1) : '';
+    if (start) {
+      number.setAttribute('x', String(Math.max(4, Number(start[1]) - 7)));
+      number.setAttribute('y', String(Math.max(9, Number(start[2]) - 3)));
+    }
+    counter.textContent = `${shown} / ${strokes.length}`;
+  };
+  const setPlaying = (playing) => {
+    play.textContent = playing ? '❚❚' : '▶';
+    const label = playing
+      ? t('content_pause_strokes', undefined, 'Pause')
+      : t('content_play_strokes', undefined, 'Play stroke order');
+    play.setAttribute('aria-label', label);
+    play.title = label;
+  };
+  const stop = () => {
+    if (timer !== null) clearTimeout(timer);
+    timer = null;
+    setPlaying(false);
+  };
+  const clearDashes = () => strokes.forEach((path) => {
+    path.style.strokeDasharray = '';
+    path.style.strokeDashoffset = '';
+  });
+  const animateStroke = (path) => {
+    if (tooltipPrefersReducedMotion() || typeof path.getTotalLength !== 'function') return;
+    const length = path.getTotalLength();
+    path.style.transition = 'none';
+    path.style.strokeDasharray = String(length);
+    path.style.strokeDashoffset = String(length);
+    path.getBoundingClientRect();
+    path.style.transition = '';
+    path.style.strokeDashoffset = '0';
+  };
+  const playNext = () => {
+    if (!svg.isConnected || shown >= strokes.length) {
+      stop();
+      draw(-1);
+      return;
+    }
+    shown += 1;
+    draw(shown - 1);
+    animateStroke(strokes[shown - 1]);
+    timer = setTimeout(playNext, tooltipPrefersReducedMotion() ? 350 : 650);
+  };
+
+  play.addEventListener('click', (event) => {
+    event.stopPropagation();
+    if (timer !== null) {
+      stop();
+      return;
+    }
+    clearDashes();
+    shown = 0;
+    setPlaying(true);
+    playNext();
+  });
+  step.addEventListener('click', (event) => {
+    event.stopPropagation();
+    stop();
+    clearDashes();
+    shown = shown >= strokes.length ? 1 : shown + 1;
+    draw(shown - 1);
+  });
+
+  setPlaying(false);
+  draw(-1);
+  return { svg, controls };
+}
+
+function mountStrokeDiagrams(panel, data) {
+  const characters = (Array.isArray(data?.characters) ? data.characters : [])
+    .filter((item) => item && typeof item.character === 'string' && item.character);
+  panel.querySelectorAll('.tsukeru-kanji-detail').forEach((detail) => {
+    const item = characters[Number(detail.dataset.kanjiIndex)];
+    const figure = detail.querySelector('.tsukeru-kanji-figure');
+    if (!item || !figure || tooltipStrokePaths(item).length === 0) return;
+    const { svg, controls } = buildStrokeDiagram(item);
+    figure.replaceChildren(svg, controls);
+  });
+}
+
+function bindKanjiChips(tooltip, panel) {
+  panel.querySelectorAll('.tsukeru-kanji-chip').forEach((chip) => {
+    chip.onclick = (event) => {
+      event.stopPropagation();
+      const index = chip.dataset.kanjiIndex;
+      panel.querySelectorAll('.tsukeru-kanji-chip').forEach((other) => {
+        other.setAttribute('aria-pressed', String(other === chip));
+      });
+      panel.querySelectorAll('.tsukeru-kanji-detail').forEach((detail) => {
+        detail.classList.toggle('tsukeru-hidden', detail.dataset.kanjiIndex !== index);
+      });
+      requestAnimationFrame(() => positionTooltip(tooltip._activeRuby, tooltip));
+    };
+  });
+}
+
+function setKanjiPanelContent(tooltip, panel, state, html) {
+  if (!panel || !panel.isConnected) return;
+  panel.dataset.state = state;
+  panel.innerHTML = html;
+  if (state === 'loaded') bindKanjiChips(tooltip, panel);
+  requestAnimationFrame(() => positionTooltip(tooltip._activeRuby, tooltip));
+}
+
 async function loadKanjiBreakdown(word) {
   const tooltip = ensureDictionaryTooltip();
-  const container = document.getElementById('tsukeru-kanji-container');
+  const panel = document.getElementById('tsukeru-kanji-container');
   const coordinator = tooltip._asyncCoordinator;
-  if (!container || !coordinator || !word) return;
-  renderAsyncLoading(container);
+  if (!panel || !coordinator || !word) return;
+  setKanjiPanelContent(tooltip, panel, 'loading', renderTooltipPanelLoading());
   const requestVersion = tooltip._lookupVersion;
+  const unavailableHtml = `<div class="tsukeru-async-unavailable">${escapeHtml(t('content_kanji_unavailable', undefined, 'Kanji details are not available right now.'))}</div>`;
   return coordinator.open('kanji', async () => {
     const response = await chrome.runtime.sendMessage({ action: 'fetchKanjiBreakdown', word });
     if (!response?.success) {
@@ -959,26 +1523,11 @@ async function loadKanjiBreakdown(word) {
     onSuccess: (data) => {
       if (!isCurrentTooltipLookup(tooltip, requestVersion, word)) return;
       if (!data) {
-        renderAsyncUnavailable(tooltip, container, false);
+        setKanjiPanelContent(tooltip, panel, 'empty', unavailableHtml);
         return;
       }
-      const characters = data.characters;
-      updateAsyncSectionContent(
-        tooltip,
-        container,
-        'loaded',
-        t('content_kanji_count', [String(characters.length)], `Kanji (${characters.length})`),
-        `<div class="tsukeru-kanji-grid">
-          ${characters.map((charInfo = {}) => {
-            const level = Number(charInfo.jlpt_level) || 0;
-            const charJlptBadge = level > 0 ? `<span class="tsukeru-badge-inline tsukeru-bg-jlpt-${level}">N${level}</span>` : '';
-            const onReadings = Array.isArray(charInfo.on_readings) ? charInfo.on_readings.slice(0, 3).join(', ') : '';
-            const kunReadings = Array.isArray(charInfo.kun_readings) ? charInfo.kun_readings.slice(0, 3).join(', ') : '';
-            const meanings = Array.isArray(charInfo.meanings) ? charInfo.meanings.slice(0, 3).join('; ') : '';
-            return `<div class="tsukeru-kanji-item"><div class="tsukeru-kanji-item-header"><span class="tsukeru-kanji-char-large" lang="ja">${escapeHtml(charInfo.character || '')}</span>${charJlptBadge}</div>${onReadings ? `<div class="tsukeru-kanji-reading" lang="ja"><span class="tsukeru-on-label">音:</span> ${escapeHtml(onReadings)}</div>` : ''}${kunReadings ? `<div class="tsukeru-kanji-reading" lang="ja"><span class="tsukeru-kun-label">訓:</span> ${escapeHtml(kunReadings)}</div>` : ''}${meanings ? `<div class="tsukeru-kanji-meaning">${escapeHtml(meanings)}</div>` : ''}</div>`;
-          }).join('')}
-        </div>`
-      );
+      setKanjiPanelContent(tooltip, panel, 'loaded', renderKanjiPanelHtml(data));
+      mountStrokeDiagrams(panel, data);
     },
     onError: (error) => {
       if (!isCurrentTooltipLookup(tooltip, requestVersion, word)) return;
@@ -986,7 +1535,7 @@ async function loadKanjiBreakdown(word) {
       if (error?.rateLimitType || error?.errorCode === 'service_unavailable') {
         showRateLimitToast(error.errorCode === 'service_unavailable' ? 'service_unavailable' : (error.rateLimitType || 'service_unavailable'), error.retryAfter, error.retryAt, 'dictionary');
       }
-      renderAsyncUnavailable(tooltip, container, true);
+      setKanjiPanelContent(tooltip, panel, 'error', unavailableHtml);
     }
   });
 }

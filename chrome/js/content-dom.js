@@ -255,6 +255,13 @@ function getAnalysisWordData(target) {
     pos: getDataAttribute(element, 'pos').trim(),
     altReadings: getDataAttribute(element, 'alt-readings')
       .split(',').map((value) => value.trim()).filter(Boolean),
+    // Frequency tier (common / uncommon / rare) from current backends.
+    freq: getDataAttribute(element, 'freq').trim(),
+    // Pitch accent "reading:downstep" (たべる:2) from current backends.
+    accent: getDataAttribute(element, 'accent').trim(),
+    // Conjugation codes such as "negative,past" from current backends.
+    inflection: getDataAttribute(element, 'inflection')
+      .split(',').map((value) => value.trim()).filter(Boolean),
     // Set on number + counter units (2024年 → 年 ねん) by current backends.
     counter: getDataAttribute(element, 'counter').trim(),
     counterReading: getDataAttribute(element, 'counter-reading').trim(),

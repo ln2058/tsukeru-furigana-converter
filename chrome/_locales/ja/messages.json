@@ -300,14 +300,8 @@
   "content_example_section": {
     "message": "例文"
   },
-  "content_kanji_section": {
-    "message": "漢字の詳細"
-  },
   "content_section_unavailable": {
     "message": "現在利用できません"
-  },
-  "content_kanji_count": {
-    "message": "漢字 ($1)"
   },
   "content_play_pronunciation": {
     "message": "発音を再生"
@@ -684,5 +678,110 @@
   },
   "review_prompt_never": {
     "message": "今後表示しない"
+  },
+  "settings_label_popup_size": {
+    "message": "辞書ポップアップの大きさ"
+  },
+  "settings_popup_size_small": {
+    "message": "小"
+  },
+  "settings_popup_size_medium": {
+    "message": "中"
+  },
+  "settings_popup_size_large": {
+    "message": "大"
+  },
+  "content_form_label": {
+    "message": "本文の形"
+  },
+  "content_tab_meaning": {
+    "message": "意味"
+  },
+  "content_tab_kanji": {
+    "message": "漢字"
+  },
+  "content_loading_kanji": {
+    "message": "漢字を読み込み中..."
+  },
+  "content_kanji_unavailable": {
+    "message": "現在、漢字の詳細を表示できません。"
+  },
+  "content_kanji_grade": {
+    "message": "小学$1年"
+  },
+  "content_kanji_junior_high": {
+    "message": "中学校"
+  },
+  "content_kanji_strokes": {
+    "message": "$1画"
+  },
+  "content_inflection_polite": {
+    "message": "丁寧"
+  },
+  "content_inflection_negative": {
+    "message": "否定"
+  },
+  "content_inflection_past": {
+    "message": "過去"
+  },
+  "content_inflection_te": {
+    "message": "て形"
+  },
+  "content_inflection_want": {
+    "message": "希望"
+  },
+  "content_inflection_causative": {
+    "message": "使役"
+  },
+  "content_inflection_passive": {
+    "message": "受身"
+  },
+  "content_inflection_potential": {
+    "message": "可能"
+  },
+  "content_inflection_passive_potential": {
+    "message": "受身・可能"
+  },
+  "content_inflection_volitional": {
+    "message": "意向"
+  },
+  "content_inflection_conditional": {
+    "message": "条件"
+  },
+  "content_inflection_imperative": {
+    "message": "命令"
+  },
+  "content_inflection_adverbial": {
+    "message": "連用形"
+  },
+  "content_frequency_common": {
+    "message": "よく使う"
+  },
+  "content_frequency_uncommon": {
+    "message": "ときどき"
+  },
+  "content_frequency_rare": {
+    "message": "まれ"
+  },
+  "content_frequency_title": {
+    "message": "日常の日本語でこの語が使われる頻度"
+  },
+  "content_stroke_order_of": {
+    "message": "$1の筆順"
+  },
+  "content_play_strokes": {
+    "message": "筆順を再生"
+  },
+  "content_pause_strokes": {
+    "message": "一時停止"
+  },
+  "content_next_stroke": {
+    "message": "次の画"
+  },
+  "content_stroke_order_data": {
+    "message": "筆順データ:"
+  },
+  "content_pitch_accent_title": {
+    "message": "アクセント $1"
   }
 }

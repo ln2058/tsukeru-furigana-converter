@@ -300,14 +300,8 @@
   "content_example_section": {
     "message": "예문"
   },
-  "content_kanji_section": {
-    "message": "한자 정보"
-  },
   "content_section_unavailable": {
     "message": "지금은 사용할 수 없습니다"
-  },
-  "content_kanji_count": {
-    "message": "한자 ($1)"
   },
   "content_play_pronunciation": {
     "message": "발음 재생"
@@ -684,5 +678,110 @@
   },
   "review_prompt_never": {
     "message": "다시 묻지 않기"
+  },
+  "settings_label_popup_size": {
+    "message": "사전 팝업 크기"
+  },
+  "settings_popup_size_small": {
+    "message": "작게"
+  },
+  "settings_popup_size_medium": {
+    "message": "보통"
+  },
+  "settings_popup_size_large": {
+    "message": "크게"
+  },
+  "content_form_label": {
+    "message": "본문 형태"
+  },
+  "content_tab_meaning": {
+    "message": "의미"
+  },
+  "content_tab_kanji": {
+    "message": "한자"
+  },
+  "content_loading_kanji": {
+    "message": "한자를 불러오는 중..."
+  },
+  "content_kanji_unavailable": {
+    "message": "지금은 한자 정보를 표시할 수 없습니다."
+  },
+  "content_kanji_grade": {
+    "message": "초등 $1학년"
+  },
+  "content_kanji_junior_high": {
+    "message": "중학교"
+  },
+  "content_kanji_strokes": {
+    "message": "$1획"
+  },
+  "content_inflection_polite": {
+    "message": "공손"
+  },
+  "content_inflection_negative": {
+    "message": "부정"
+  },
+  "content_inflection_past": {
+    "message": "과거"
+  },
+  "content_inflection_te": {
+    "message": "て형"
+  },
+  "content_inflection_want": {
+    "message": "희망"
+  },
+  "content_inflection_causative": {
+    "message": "사역"
+  },
+  "content_inflection_passive": {
+    "message": "수동"
+  },
+  "content_inflection_potential": {
+    "message": "가능"
+  },
+  "content_inflection_passive_potential": {
+    "message": "수동/가능"
+  },
+  "content_inflection_volitional": {
+    "message": "의지"
+  },
+  "content_inflection_conditional": {
+    "message": "조건"
+  },
+  "content_inflection_imperative": {
+    "message": "명령"
+  },
+  "content_inflection_adverbial": {
+    "message": "부사형"
+  },
+  "content_frequency_common": {
+    "message": "자주 쓰임"
+  },
+  "content_frequency_uncommon": {
+    "message": "가끔 쓰임"
+  },
+  "content_frequency_rare": {
+    "message": "드묾"
+  },
+  "content_frequency_title": {
+    "message": "일상 일본어에서 이 단어가 쓰이는 빈도"
+  },
+  "content_stroke_order_of": {
+    "message": "$1의 필순"
+  },
+  "content_play_strokes": {
+    "message": "필순 재생"
+  },
+  "content_pause_strokes": {
+    "message": "일시 정지"
+  },
+  "content_next_stroke": {
+    "message": "다음 획"
+  },
+  "content_stroke_order_data": {
+    "message": "필순 데이터:"
+  },
+  "content_pitch_accent_title": {
+    "message": "악센트 $1"
   }
 }

@@ -300,14 +300,8 @@
   "content_example_section": {
     "message": "例句"
   },
-  "content_kanji_section": {
-    "message": "漢字資訊"
-  },
   "content_section_unavailable": {
     "message": "目前無法使用"
-  },
-  "content_kanji_count": {
-    "message": "漢字（$1）"
   },
   "content_play_pronunciation": {
     "message": "播放發音"
@@ -684,5 +678,110 @@
   },
   "review_prompt_never": {
     "message": "不再詢問"
+  },
+  "settings_label_popup_size": {
+    "message": "字典彈出視窗大小"
+  },
+  "settings_popup_size_small": {
+    "message": "小"
+  },
+  "settings_popup_size_medium": {
+    "message": "中"
+  },
+  "settings_popup_size_large": {
+    "message": "大"
+  },
+  "content_form_label": {
+    "message": "原文形式"
+  },
+  "content_tab_meaning": {
+    "message": "意思"
+  },
+  "content_tab_kanji": {
+    "message": "漢字"
+  },
+  "content_loading_kanji": {
+    "message": "正在載入漢字..."
+  },
+  "content_kanji_unavailable": {
+    "message": "目前無法顯示漢字詳細資料。"
+  },
+  "content_kanji_grade": {
+    "message": "小學$1年級"
+  },
+  "content_kanji_junior_high": {
+    "message": "國中"
+  },
+  "content_kanji_strokes": {
+    "message": "$1畫"
+  },
+  "content_inflection_polite": {
+    "message": "禮貌"
+  },
+  "content_inflection_negative": {
+    "message": "否定"
+  },
+  "content_inflection_past": {
+    "message": "過去"
+  },
+  "content_inflection_te": {
+    "message": "て形"
+  },
+  "content_inflection_want": {
+    "message": "希望"
+  },
+  "content_inflection_causative": {
+    "message": "使役"
+  },
+  "content_inflection_passive": {
+    "message": "被動"
+  },
+  "content_inflection_potential": {
+    "message": "可能"
+  },
+  "content_inflection_passive_potential": {
+    "message": "被動／可能"
+  },
+  "content_inflection_volitional": {
+    "message": "意向"
+  },
+  "content_inflection_conditional": {
+    "message": "條件"
+  },
+  "content_inflection_imperative": {
+    "message": "命令"
+  },
+  "content_inflection_adverbial": {
+    "message": "副詞形"
+  },
+  "content_frequency_common": {
+    "message": "常用"
+  },
+  "content_frequency_uncommon": {
+    "message": "較少用"
+  },
+  "content_frequency_rare": {
+    "message": "罕用"
+  },
+  "content_frequency_title": {
+    "message": "此詞在日常日語中的使用頻率"
+  },
+  "content_stroke_order_of": {
+    "message": "$1的筆順"
+  },
+  "content_play_strokes": {
+    "message": "播放筆順"
+  },
+  "content_pause_strokes": {
+    "message": "暫停"
+  },
+  "content_next_stroke": {
+    "message": "下一筆"
+  },
+  "content_stroke_order_data": {
+    "message": "筆順資料："
+  },
+  "content_pitch_accent_title": {
+    "message": "重音 $1"
   }
 }

@@ -1,0 +1,62 @@
+[
+  {
+    "name": "opens below and centres on the word",
+    "input": {"anchorRects": [{"left": 400, "top": 100, "right": 440, "bottom": 120}], "size": {"width": 320, "height": 300}, "viewport": {"width": 1000, "height": 800}},
+    "expected": {"side": "below", "top": 128, "left": 260, "maxHeight": 660, "anchorVisible": true}
+  },
+  {
+    "name": "flips above when below has no room",
+    "input": {"anchorRects": [{"left": 400, "top": 600, "right": 440, "bottom": 620}], "size": {"width": 320, "height": 300}, "viewport": {"width": 1000, "height": 800}},
+    "expected": {"side": "above", "top": 292, "left": 260, "maxHeight": 580}
+  },
+  {
+    "name": "uses the roomier side and caps the height when neither fits",
+    "input": {"anchorRects": [{"left": 400, "top": 200, "right": 440, "bottom": 220}], "size": {"width": 320, "height": 400}, "viewport": {"width": 1000, "height": 500}},
+    "expected": {"side": "below", "top": 228, "maxHeight": 260}
+  },
+  {
+    "name": "keeps the opening side while the content grows",
+    "input": {"anchorRects": [{"left": 400, "top": 600, "right": 440, "bottom": 620}], "size": {"width": 320, "height": 400}, "viewport": {"width": 1000, "height": 800}, "previousSide": "below"},
+    "expected": {"side": "below", "top": 628, "maxHeight": 160}
+  },
+  {
+    "name": "leaves the previous side when it has no room",
+    "input": {"anchorRects": [{"left": 400, "top": 700, "right": 440, "bottom": 720}], "size": {"width": 320, "height": 300}, "viewport": {"width": 1000, "height": 800}, "previousSide": "below"},
+    "expected": {"side": "above", "top": 392}
+  },
+  {
+    "name": "anchors a wrapped word to the clicked line",
+    "input": {"anchorRects": [{"left": 900, "top": 100, "right": 990, "bottom": 120}, {"left": 0, "top": 124, "right": 60, "bottom": 144}], "point": {"x": 30, "y": 134}, "size": {"width": 320, "height": 200}, "viewport": {"width": 1000, "height": 800}},
+    "expected": {"side": "below", "top": 152, "left": 12, "anchorIndex": 1}
+  },
+  {
+    "name": "clamps to the right edge",
+    "input": {"anchorRects": [{"left": 960, "top": 100, "right": 990, "bottom": 120}], "size": {"width": 320, "height": 200}, "viewport": {"width": 1000, "height": 800}},
+    "expected": {"left": 668}
+  },
+  {
+    "name": "limits the width on a narrow viewport",
+    "input": {"anchorRects": [{"left": 100, "top": 100, "right": 140, "bottom": 120}], "size": {"width": 400, "height": 200}, "viewport": {"width": 360, "height": 640}},
+    "expected": {"left": 12, "top": 128, "maxWidth": 336}
+  },
+  {
+    "name": "opens to the right of a vertical column",
+    "input": {"anchorRects": [{"left": 500, "top": 100, "right": 530, "bottom": 400}], "size": {"width": 320, "height": 300}, "viewport": {"width": 1000, "height": 800}, "vertical": true},
+    "expected": {"side": "right", "left": 538, "top": 100, "maxWidth": 450}
+  },
+  {
+    "name": "falls back to the left of a vertical column",
+    "input": {"anchorRects": [{"left": 800, "top": 100, "right": 830, "bottom": 400}], "size": {"width": 320, "height": 300}, "viewport": {"width": 1000, "height": 800}, "vertical": true},
+    "expected": {"side": "left", "left": 472, "top": 100}
+  },
+  {
+    "name": "reports an anchor scrolled off screen",
+    "input": {"anchorRects": [{"left": 400, "top": -60, "right": 440, "bottom": -40}], "size": {"width": 320, "height": 300}, "viewport": {"width": 1000, "height": 800}},
+    "expected": {"anchorVisible": false}
+  },
+  {
+    "name": "returns nothing without an anchor box",
+    "input": {"anchorRects": [], "size": {"width": 320, "height": 300}, "viewport": {"width": 1000, "height": 800}},
+    "expected": null
+  }
+]

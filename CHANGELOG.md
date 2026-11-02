@@ -1,5 +1,22 @@
 # Changelog
 
+## 4.2.0 — 2026-11-02
+
+### Added
+
+- **Meaning and Kanji tabs**: the dictionary tooltip splits into tabs. Meaning shows the first three senses with a "+N more" toggle; Kanji loads when you open it and lists each character with its JLPT level, school grade, stroke count, readings, and common example words.
+- **Stroke order**: the Kanji tab draws each character's strokes in order, with play and step controls. Stroke data comes from KanjiVG.
+- **Word frequency**: a Common, Uncommon, or Rare badge next to the JLPT level shows how often a word appears in everyday Japanese.
+- **Pitch accent**: the reading shows where the pitch rises and falls, using data from Kanjium.
+- **Conjugation labels**: conjugated words show their form, such as 食べなかった · negative · past, with the dictionary form as the headword.
+- **Popup size setting**: choose Small, Medium, or Large for the dictionary tooltip in Settings.
+
+### Changed
+
+- The tooltip opens beside the word instead of covering it, follows the word while you scroll, and closes when the word leaves the screen. Escape closes it.
+- On narrow screens the tooltip opens as a sheet at the bottom of the screen with larger touch targets.
+- The tooltip, report form, and notices use a plain paper background.
+
 ## 4.1.1 — 2026-10-21
 
 Firefox only; the Chrome and Edge version number matches without changes.

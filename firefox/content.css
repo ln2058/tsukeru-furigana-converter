@@ -43,7 +43,6 @@
   --tsukeru-paper-edge: #c9c6bf;
   --tsukeru-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
   --tsukeru-sans: "BIZ UDPGothic", "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
-  --tsukeru-paper-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.06' numOctaves='2'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 .04'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
 }
 
 @media (prefers-color-scheme: dark) {
@@ -513,7 +512,6 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
   border: 1px solid var(--tsukeru-border-strong) !important;
   border-radius: 4px !important;
   background-color: var(--tsukeru-paper) !important;
-  background-image: var(--tsukeru-paper-texture) !important;
   color: var(--tsukeru-text) !important;
   font-family: var(--tsukeru-sans) !important;
   font-size: 13px !important;
@@ -770,15 +768,9 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 .tsukeru-word-tooltip .tsukeru-example-item { margin-top: 4px !important; padding: 7px 9px !important; border: 1px solid var(--tsukeru-border) !important; border-radius: 2px !important; background: var(--tsukeru-surface) !important; }
 .tsukeru-word-tooltip .tsukeru-example-jp { color: var(--tsukeru-text) !important; font-size: 13px !important; font-weight: 500 !important; overflow-wrap: anywhere !important; }
 .tsukeru-word-tooltip .tsukeru-example-en { margin: 5px 0 0 !important; color: var(--tsukeru-secondary) !important; font-size: 11px !important; overflow-wrap: anywhere !important; }
-.tsukeru-word-tooltip .tsukeru-kanji-grid { display: flex; flex-direction: column; gap: 0; }
-.tsukeru-word-tooltip .tsukeru-kanji-item { padding: 7px 0 !important; border-bottom: 1px solid var(--tsukeru-border-strong) !important; }
-.tsukeru-word-tooltip .tsukeru-kanji-item:last-child { border-bottom: 0 !important; }
-.tsukeru-word-tooltip .tsukeru-kanji-item-header { display: flex; align-items: center; gap: 5px; }
-.tsukeru-word-tooltip .tsukeru-kanji-char-large { color: var(--tsukeru-ink) !important; font-size: 18px !important; font-weight: 700 !important; }
-.tsukeru-word-tooltip .tsukeru-kanji-reading { color: var(--tsukeru-text) !important; font-size: 10px !important; }
 .tsukeru-word-tooltip .tsukeru-on-label { color: var(--tsukeru-blue) !important; font-weight: 700 !important; }
 .tsukeru-word-tooltip .tsukeru-kun-label { color: var(--tsukeru-attention) !important; font-weight: 700 !important; }
-.tsukeru-word-tooltip .tsukeru-kanji-meaning { color: var(--tsukeru-secondary) !important; font-size: 10px !important; }
+.tsukeru-word-tooltip .tsukeru-kanji-meaning { color: var(--tsukeru-secondary) !important; font-size: 11.5px !important; }
 .tsukeru-word-tooltip mark.example-highlight { background: rgba(210, 154, 39, .28) !important; color: inherit !important; }
 
 /* Generic page feedback uses the same restrained full-border treatment in every theme. */
@@ -787,7 +779,6 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
   border: 1px solid var(--tsukeru-toast-accent) !important;
   border-radius: 3px !important;
   background: var(--tsukeru-paper) !important;
-  background-image: var(--tsukeru-paper-texture) !important;
   color: var(--tsukeru-toast-accent) !important;
   box-shadow: var(--tsukeru-toast-shadow) !important;
   font-family: var(--tsukeru-sans) !important;
@@ -815,7 +806,7 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 /* Injected report dialog and feedback stay full-border, never side-rail cards. */
 .tsukeru-content-report-modal { position: fixed !important; inset: 0 !important; z-index: 2147483647 !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 16px !important; background: rgba(16, 17, 18, .62) !important; font-family: var(--tsukeru-sans) !important; box-sizing: border-box !important; }
 .tsukeru-content-report-modal.hidden { display: none !important; }
-.tsukeru-content-report-modal .tsukeru-crm-content { width: min(380px, 100%) !important; overflow: hidden !important; border: 1px solid var(--tsukeru-border-strong) !important; border-radius: 4px !important; background: var(--tsukeru-paper) !important; background-image: var(--tsukeru-paper-texture) !important; color: var(--tsukeru-text) !important; box-shadow: 0 16px 38px rgba(36, 52, 60, .24) !important; box-sizing: border-box !important; }
+.tsukeru-content-report-modal .tsukeru-crm-content { width: min(380px, 100%) !important; overflow: hidden !important; border: 1px solid var(--tsukeru-border-strong) !important; border-radius: 4px !important; background: var(--tsukeru-paper) !important; color: var(--tsukeru-text) !important; box-shadow: 0 16px 38px rgba(36, 52, 60, .24) !important; box-sizing: border-box !important; }
 .tsukeru-content-report-modal .tsukeru-crm-header { display: flex !important; align-items: center !important; justify-content: space-between !important; padding: 11px 13px !important; border-top: 3px solid var(--tsukeru-attention) !important; border-bottom: 1px solid var(--tsukeru-border) !important; background: linear-gradient(145deg, var(--tsukeru-metal-highlight), var(--tsukeru-metal)) !important; color: var(--tsukeru-ink) !important; font-size: 14px !important; font-weight: 700 !important; }
 .tsukeru-content-report-modal .tsukeru-crm-header button { width: auto !important; padding: 2px 5px !important; border: 1px solid transparent !important; border-radius: 2px !important; background: transparent !important; color: var(--tsukeru-secondary) !important; cursor: pointer !important; font-size: 20px !important; line-height: 1 !important; }
 .tsukeru-content-report-modal .tsukeru-crm-header button:hover { border-color: var(--tsukeru-attention) !important; color: var(--tsukeru-attention) !important; }
@@ -884,3 +875,144 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 .tsukeru-word-tooltip .tsukeru-sense-explanation ruby { ruby-position: over !important; }
 .tsukeru-word-tooltip .tsukeru-sense-gloss rt,
 .tsukeru-word-tooltip .tsukeru-sense-explanation rt { font-size: .55em !important; }
+
+/* Placement, size setting, and bottom sheet (EZFurigana docs/dictionary-popup.md). */
+.tsukeru-word-tooltip {
+  max-width: var(--tsukeru-tooltip-max-width, calc(100vw - 24px)) !important;
+  max-height: var(--tsukeru-tooltip-max-height, calc(100vh - 24px)) !important;
+}
+.tsukeru-active-word { border-radius: 2px !important; background-color: rgba(18, 110, 220, .14) !important; box-shadow: 0 0 0 2px rgba(18, 110, 220, .14) !important; }
+
+.tsukeru-word-tooltip[data-tsukeru-size="small"] { width: min(290px, calc(100vw - 24px)) !important; font-size: 12px !important; }
+.tsukeru-word-tooltip[data-tsukeru-size="small"] .tooltip-word-label { font-size: 17px !important; }
+.tsukeru-word-tooltip[data-tsukeru-size="small"] .tsukeru-reading-text { font-size: 14px !important; }
+.tsukeru-word-tooltip[data-tsukeru-size="small"] .tsukeru-sense-gloss { font-size: 13px !important; }
+.tsukeru-word-tooltip[data-tsukeru-size="small"] .tsukeru-example-jp { font-size: 12px !important; }
+
+.tsukeru-word-tooltip[data-tsukeru-size="large"] { width: min(400px, calc(100vw - 24px)) !important; font-size: 15px !important; }
+.tsukeru-word-tooltip[data-tsukeru-size="large"] .tooltip-word-label { font-size: 23px !important; }
+.tsukeru-word-tooltip[data-tsukeru-size="large"] .tsukeru-reading-text { font-size: 18px !important; }
+.tsukeru-word-tooltip[data-tsukeru-size="large"] .tsukeru-sense-gloss { font-size: 16.5px !important; }
+.tsukeru-word-tooltip[data-tsukeru-size="large"] .tsukeru-sense-explanation,
+.tsukeru-word-tooltip[data-tsukeru-size="large"] .tsukeru-example-en { font-size: 13px !important; }
+.tsukeru-word-tooltip[data-tsukeru-size="large"] .tsukeru-example-jp { font-size: 16px !important; }
+.tsukeru-word-tooltip[data-tsukeru-size="large"] .tsukeru-kanji-reading,
+.tsukeru-word-tooltip[data-tsukeru-size="large"] .tsukeru-kanji-meaning { font-size: 12.5px !important; }
+
+.tsukeru-word-tooltip .tsukeru-sense-more-toggle {
+  display: block !important;
+  width: 100% !important;
+  margin: 0 0 8px !important;
+  padding: 4px 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--tsukeru-blue-readable) !important;
+  cursor: pointer !important;
+  font-family: var(--tsukeru-mono) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: .03em !important;
+  text-align: left !important;
+}
+.tsukeru-word-tooltip .tsukeru-sense-more-toggle:hover { text-decoration: underline !important; text-underline-offset: 3px !important; }
+.tsukeru-word-tooltip .tsukeru-form-line { display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 6px !important; margin: -4px 0 8px !important; color: var(--tsukeru-secondary) !important; font-size: 12px !important; line-height: 1.4 !important; }
+.tsukeru-word-tooltip .tsukeru-form-surface { color: var(--tsukeru-text) !important; font-weight: 500 !important; }
+.tsukeru-word-tooltip .tsukeru-form-inflection { color: var(--tsukeru-secondary) !important; }
+.tsukeru-word-tooltip .tsukeru-pitch { display: inline-flex !important; padding-top: 3px !important; }
+.tsukeru-word-tooltip .tsukeru-mora { border-top: 1.5px solid transparent !important; line-height: 1.25 !important; }
+.tsukeru-word-tooltip .tsukeru-mora-high { border-top-color: currentColor !important; }
+.tsukeru-word-tooltip .tsukeru-mora-rise { border-left: 1.5px solid currentColor !important; }
+.tsukeru-word-tooltip .tsukeru-mora-drop { border-right: 1.5px solid currentColor !important; }
+.tsukeru-word-tooltip .tsukeru-badge-freq[data-freq="common"] { border-color: color-mix(in srgb, var(--tsukeru-success) 45%, transparent) !important; color: var(--tsukeru-success) !important; }
+.tsukeru-word-tooltip .tsukeru-badge-freq[data-freq="uncommon"] { color: var(--tsukeru-secondary) !important; }
+.tsukeru-word-tooltip .tsukeru-badge-freq[data-freq="rare"] { border-style: dashed !important; color: var(--tsukeru-attention) !important; }
+
+/* Meaning / Kanji tabs and the Kanji panel (same layout as the website popup). */
+.tsukeru-word-tooltip .tsukeru-tabs { display: flex !important; gap: 2px !important; margin: 0 0 9px !important; border-bottom: 1px solid var(--tsukeru-border) !important; }
+.tsukeru-word-tooltip .tsukeru-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  min-height: 30px !important;
+  margin: 0 0 -1px !important;
+  padding: 4px 10px !important;
+  border: 0 !important;
+  border-bottom: 2px solid transparent !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--tsukeru-secondary) !important;
+  cursor: pointer !important;
+  font-family: var(--tsukeru-sans) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+.tsukeru-word-tooltip .tsukeru-tab:hover { color: var(--tsukeru-ink) !important; }
+.tsukeru-word-tooltip .tsukeru-tab[aria-selected="true"] { border-bottom-color: var(--tsukeru-blue) !important; color: var(--tsukeru-blue-readable) !important; }
+.tsukeru-word-tooltip .tsukeru-tab-count { min-width: 16px !important; padding: 0 4px !important; border: 1px solid var(--tsukeru-border) !important; border-radius: 2px !important; font-family: var(--tsukeru-mono) !important; font-size: 10px !important; line-height: 1.5 !important; text-align: center !important; }
+.tsukeru-word-tooltip .tsukeru-kanji-chips { display: flex !important; flex-wrap: wrap !important; gap: 6px !important; margin: 0 0 9px !important; }
+.tsukeru-word-tooltip .tsukeru-kanji-chip { min-width: 34px !important; min-height: 34px !important; padding: 2px 6px !important; border: 1px solid var(--tsukeru-border) !important; border-radius: 3px !important; background: var(--tsukeru-surface) !important; color: var(--tsukeru-ink) !important; cursor: pointer !important; font-size: 17px !important; line-height: 1.2 !important; }
+.tsukeru-word-tooltip .tsukeru-kanji-chip[aria-pressed="true"] { border-color: var(--tsukeru-blue) !important; background: var(--tsukeru-blue-soft) !important; color: var(--tsukeru-blue-readable) !important; }
+.tsukeru-word-tooltip .tsukeru-kanji-main { display: flex !important; align-items: flex-start !important; gap: 12px !important; }
+.tsukeru-word-tooltip .tsukeru-kanji-figure { display: flex !important; flex: 0 0 auto !important; flex-direction: column !important; align-items: center !important; gap: 4px !important; }
+.tsukeru-word-tooltip .tsukeru-kanji-glyph { display: flex !important; width: 72px !important; height: 72px !important; align-items: center !important; justify-content: center !important; border: 1px solid var(--tsukeru-border) !important; border-radius: 3px !important; background: var(--tsukeru-surface) !important; color: var(--tsukeru-ink) !important; font-size: 44px !important; line-height: 1 !important; }
+.tsukeru-word-tooltip .tsukeru-stroke-svg { display: block !important; width: 84px !important; height: 84px !important; border: 1px solid var(--tsukeru-border) !important; border-radius: 3px !important; background: var(--tsukeru-surface) !important; }
+.tsukeru-word-tooltip .tsukeru-stroke-grid { stroke: var(--tsukeru-border) !important; stroke-dasharray: 3 3 !important; stroke-width: .6 !important; }
+.tsukeru-word-tooltip .tsukeru-stroke { fill: none !important; stroke: var(--tsukeru-border) !important; stroke-linecap: round !important; stroke-linejoin: round !important; stroke-width: 3.6 !important; transition: stroke-dashoffset .5s ease; }
+.tsukeru-word-tooltip .tsukeru-stroke.tsukeru-stroke-drawn { stroke: var(--tsukeru-ink) !important; }
+.tsukeru-word-tooltip .tsukeru-stroke.tsukeru-stroke-current { stroke: var(--tsukeru-blue) !important; }
+.tsukeru-word-tooltip .tsukeru-stroke-number { fill: var(--tsukeru-blue) !important; font-family: var(--tsukeru-mono) !important; font-size: 9px !important; font-weight: 700 !important; }
+.tsukeru-word-tooltip .tsukeru-stroke-controls { display: flex !important; align-items: center !important; gap: 4px !important; }
+.tsukeru-word-tooltip .tsukeru-stroke-btn { min-width: 28px !important; min-height: 24px !important; padding: 0 6px !important; border: 1px solid var(--tsukeru-border) !important; border-radius: 3px !important; background: transparent !important; color: var(--tsukeru-ink) !important; cursor: pointer !important; font-size: 11px !important; line-height: 1 !important; }
+.tsukeru-word-tooltip .tsukeru-stroke-btn:hover { border-color: var(--tsukeru-blue) !important; color: var(--tsukeru-blue-readable) !important; }
+.tsukeru-word-tooltip .tsukeru-stroke-btn:focus-visible { outline: 2px solid var(--tsukeru-blue) !important; outline-offset: 1px !important; }
+.tsukeru-word-tooltip .tsukeru-stroke-counter { color: var(--tsukeru-secondary) !important; font-family: var(--tsukeru-mono) !important; font-size: 10px !important; }
+.tsukeru-word-tooltip .tsukeru-stroke-attribution { margin-top: 8px !important; color: var(--tsukeru-secondary) !important; font-family: var(--tsukeru-mono) !important; font-size: 9.5px !important; text-align: right !important; }
+.tsukeru-word-tooltip .tsukeru-stroke-attribution a { color: var(--tsukeru-blue-readable) !important; text-decoration: underline !important; text-underline-offset: 2px !important; }
+@media (prefers-reduced-motion: reduce) { .tsukeru-word-tooltip .tsukeru-stroke { transition: none !important; } }
+.tsukeru-word-tooltip .tsukeru-kanji-facts { display: grid !important; min-width: 0 !important; gap: 4px !important; }
+.tsukeru-word-tooltip .tsukeru-kanji-meta { color: var(--tsukeru-secondary) !important; font-family: var(--tsukeru-mono) !important; font-size: 10px !important; font-weight: 600 !important; letter-spacing: .03em !important; }
+.tsukeru-word-tooltip .tsukeru-kanji-reading { color: var(--tsukeru-text) !important; font-size: 12px !important; }
+.tsukeru-word-tooltip .tsukeru-kanji-examples { display: grid !important; gap: 4px !important; margin: 9px 0 0 !important; padding: 8px 0 0 !important; border-top: 1px solid var(--tsukeru-border) !important; list-style: none !important; }
+.tsukeru-word-tooltip .tsukeru-kanji-examples li { margin: 0 !important; padding: 0 !important; color: var(--tsukeru-secondary) !important; font-size: 12px !important; line-height: 1.45 !important; }
+.tsukeru-word-tooltip .tsukeru-kanji-example-word { color: var(--tsukeru-ink) !important; font-weight: 600 !important; }
+.tsukeru-word-tooltip .tsukeru-kanji-example-reading { color: var(--tsukeru-blue-readable) !important; }
+.tsukeru-word-tooltip .tsukeru-tab:focus-visible,
+.tsukeru-word-tooltip .tsukeru-kanji-chip:focus-visible { outline: 2px solid var(--tsukeru-blue) !important; outline-offset: 1px !important; }
+
+@media (max-width: 600px) {
+  .tsukeru-word-tooltip.tsukeru-sheet {
+    top: auto !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    max-height: 70vh !important;
+    padding: 18px 18px calc(18px + env(safe-area-inset-bottom, 0px)) !important;
+    border-width: 1px 0 0 !important;
+    border-radius: 10px 10px 0 0 !important;
+    font-size: 15px !important;
+    transform: none !important;
+  }
+  .tsukeru-word-tooltip.tsukeru-sheet .tooltip-word-label { font-size: 23px !important; }
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-reading-text { font-size: 18px !important; }
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-sense-gloss { font-size: 16.5px !important; }
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-example-jp { font-size: 16px !important; }
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-sense-explanation,
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-example-en,
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-kanji-reading,
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-kanji-meaning { font-size: 13px !important; }
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-tooltip-close,
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-tooltip-speaker,
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-tooltip-report-btn { width: 44px !important; height: 44px !important; }
+  .tsukeru-word-tooltip.tsukeru-sheet .tooltip-progress-option,
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-dropdown-toggle,
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-alt-readings-toggle,
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-sense-more-toggle,
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-tab,
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-kanji-chip,
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-stroke-btn { min-height: 44px !important; }
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-dropdown-toggle,
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-sense-more-toggle { font-size: 12px !important; }
+}
