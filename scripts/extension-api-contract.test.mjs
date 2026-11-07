@@ -17,7 +17,7 @@ function response(status, body, headers = {}) {
   };
 }
 
-function loadApi(browserName, route, { cacheLimit = 200, storage = null, manifestVersion = null } = {}) {
+function loadApi(browserName, route, { cacheLimit = 200, storage = null, manifestVersion = null, randomUUID = null } = {}) {
   const apiUrl = new URL(`../${browserName}/js/bg-api.js`, import.meta.url);
   let source = readFileSync(apiUrl, 'utf8')
     .replace(/import\s+\{[\s\S]*?\}\s+from\s+'\.\/bg-cache\.js';\s*/m, '')
@@ -50,13 +50,16 @@ function loadApi(browserName, route, { cacheLimit = 200, storage = null, manifes
       fetchWithCooldown,
       getRateLimitState,
       handleReportReadingError,
+      fetchFromAPI,
+      getExtensionDayId: _getExtensionDayId,
     };
   `;
   const calls = [];
   const sandbox = {
     console: { info() {}, warn() {}, error() {} },
-    crypto: { randomUUID: () => `${browserName}-session` },
+    crypto: { randomUUID: randomUUID || (() => `${browserName}-session`) },
     URL,
+    FormData,
     fetch: (url, options) => {
       calls.push({ url: String(url), options });
       return Promise.resolve(route(new URL(String(url)), options));
@@ -77,6 +80,52 @@ function queuedRoute(nonNonceResponses, nonceResponses = [response(200, { nonce:
     if (url.pathname === '/api/extension/nonce') return nonceResponses.shift() || response(500, { error: 'missing nonce fixture' });
     return nonNonceResponses.shift() || response(500, { error: 'missing response fixture' });
   };
+}
+
+function memoryStorage() {
+  const values = {};
+  return {
+    values,
+    async get(key) { return key in values ? { [key]: values[key] } : {}; },
+    async set(entries) { Object.assign(values, entries); },
+  };
+}
+
+for (const browserName of ['chrome', 'firefox']) {
+  test(`${browserName} furigana requests carry a day ID that is replaced each UTC day`, async () => {
+    // The first value becomes the per-worker session ID when the module loads.
+    const ids = [`${browserName}-session`, '3f2b8c1e-9d4a-4b6f-8e2c-7a1d5b9c0e34', '9a6e2d10-5c3b-4f7a-a1e8-2b4c6d8e0f12'];
+    const storage = memoryStorage();
+    const furigana = () => response(200, { html: '<ruby>猫</ruby>' }, { 'content-type': 'application/json' });
+    const { api, calls } = loadApi(browserName, queuedRoute([furigana(), furigana()]), {
+      storage,
+      randomUUID: () => ids.shift() || 'not-a-uuid',
+    });
+
+    await api.fetchFromAPI('猫', {}, '');
+    await api.fetchFromAPI('猫', {}, '');
+    const furiganaCalls = calls.filter(({ url }) => url.endsWith('/api/extension/furigana'));
+    assert.equal(furiganaCalls.length, 2);
+    for (const call of furiganaCalls) {
+      assert.equal(call.options.headers['x-extension-day-id'], '3f2b8c1e-9d4a-4b6f-8e2c-7a1d5b9c0e34');
+    }
+    const nonceCall = calls.find(({ url }) => url.endsWith('/api/extension/nonce'));
+    assert.equal(nonceCall.options.headers['x-extension-day-id'], undefined, 'only furigana requests carry it');
+
+    const tomorrow = Date.now() + 86_400_000;
+    assert.equal(await api.getExtensionDayId(tomorrow), '9a6e2d10-5c3b-4f7a-a1e8-2b4c6d8e0f12');
+    assert.equal(storage.values.tsukeruDayId.id, '9a6e2d10-5c3b-4f7a-a1e8-2b4c6d8e0f12');
+  });
+
+  test(`${browserName} furigana requests omit the day ID when no valid one can be made`, async () => {
+    const furigana = response(200, { html: '<ruby>猫</ruby>' }, { 'content-type': 'application/json' });
+    const { api, calls } = loadApi(browserName, queuedRoute([furigana]), { storage: memoryStorage() });
+
+    const result = await api.fetchFromAPI('猫', {}, '');
+    assert.equal(result.processedHTML, '<ruby>猫</ruby>');
+    const call = calls.find(({ url }) => url.endsWith('/api/extension/furigana'));
+    assert.equal(call.options.headers['x-extension-day-id'], undefined);
+  });
 }
 
 for (const browserName of ['chrome', 'firefox']) {

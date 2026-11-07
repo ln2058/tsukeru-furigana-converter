@@ -11,7 +11,7 @@ Outputs:
 
 Side Effects:
 - Performs network fetches, tracks shared cooldown deadlines, and coalesces nonce acquisition/recovery across API requests.
-- Persists only validated cooldown metadata through extension-local storage; backend quotas remain authoritative.
+- Persists only validated cooldown metadata and the current UTC day's random ID through extension-local storage; backend quotas remain authoritative.
 - Shares logical dictionary lookups and bounds completed in-memory dictionary results.
 - Reads/writes furigana fragments and successful localized dictionary entries through `bg-cache`.
 
@@ -23,7 +23,7 @@ Failure Modes:
 Security Notes:
 - Treat all backend responses as untrusted until sanitized by content scripts.
 - Redacts non-web tab URLs before sending backend metadata.
-- Sends only the per-worker session ID and the manifest version as identifying headers; no stable install ID.
+- Sends only the per-worker session ID and the manifest version as identifying headers, plus a random day ID on furigana requests that is replaced each UTC day; no stable install ID.
 - Keep endpoint configuration centralized to avoid host sprawl.
 - Audio proxy fetches accept only HTTPS www.ezfurigana.com on the default port and refuse redirects.
 */
@@ -304,6 +304,47 @@ const _EXT_VERSION = (() => {
   }
 })();
 
+// Random ID for counting daily users. A new one replaces it at each UTC day,
+// so it cannot serve as an install ID; the backend also salts it by date.
+const _EXT_DAY_ID_KEY = 'tsukeruDayId';
+const _EXT_DAY_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+let _extDayId = null;
+let _extDayIdPromise = null;
+
+function _isCurrentDayId(record, day) {
+  return record?.day === day && typeof record.id === 'string' && _EXT_DAY_ID_RE.test(record.id);
+}
+
+async function _loadExtensionDayId(day) {
+  const storage = getStorageLocal();
+  try {
+    const stored = (await storage?.get?.(_EXT_DAY_ID_KEY))?.[_EXT_DAY_ID_KEY];
+    if (_isCurrentDayId(stored, day)) return stored;
+  } catch (_) {
+    // Fall through to a fresh ID; counting must never block furigana.
+  }
+  const id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : '';
+  if (!_EXT_DAY_ID_RE.test(id)) return null;
+  const record = { day, id };
+  try {
+    await storage?.set?.({ [_EXT_DAY_ID_KEY]: record });
+  } catch (_) {
+    // The in-memory ID still counts this worker's requests for today.
+  }
+  return record;
+}
+
+async function _getExtensionDayId(now = Date.now()) {
+  const day = new Date(now).toISOString().slice(0, 10);
+  if (_isCurrentDayId(_extDayId, day)) return _extDayId.id;
+  if (!_extDayIdPromise) {
+    _extDayIdPromise = _loadExtensionDayId(day).finally(() => { _extDayIdPromise = null; });
+  }
+  const record = await _extDayIdPromise;
+  if (_isCurrentDayId(record, day)) _extDayId = record;
+  return _isCurrentDayId(record, day) ? record.id : '';
+}
+
 function _extensionHeaders() {
   return _EXT_VERSION
     ? { 'x-extension-session-id': _EXT_SESSION_ID, 'x-extension-version': _EXT_VERSION }
@@ -400,6 +441,11 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
 
   let nonceResult = await _getExtNonceForFurigana();
   let nonce = nonceResult.nonce;
+  const dayId = await _getExtensionDayId();
+  const furiganaHeaders = () => ({
+    ..._extensionHeaders(),
+    ...(dayId && { 'x-extension-day-id': dayId }),
+  });
   let nonceRateLimit = nonceResult.rateLimit;
   let nonceRetryUsed = false;
 
@@ -429,7 +475,7 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
         response = await fetchWithCooldown(endpoint, {
         method: 'POST',
         body: buildFormData(),
-        headers: _extensionHeaders(),
+        headers: furiganaHeaders(),
         credentials: 'omit',
         mode: 'cors',
         }, 'furigana');
@@ -449,7 +495,7 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
           response = await fetchWithCooldown(endpoint, {
             method: 'POST',
             body: buildFormData(),
-            headers: _extensionHeaders(),
+            headers: furiganaHeaders(),
             credentials: 'omit',
             mode: 'cors',
           }, 'furigana');
