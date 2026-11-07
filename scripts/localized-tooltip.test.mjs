@@ -164,6 +164,24 @@ for (const browser of ['chrome', 'firefox']) {
     assert.equal(element.children.some(child => child.tagName === 'img'), false);
   });
 
+  test(`${browser} localized senses show their translated example rather than an earlier English one`, () => {
+    const { sandbox } = fixture(browser);
+    const entry = { gloss: 'umbrella', reading: 'かさ',
+      definitions: [{ sense_number: 1, gloss: '우산', explanation: '' }],
+      examples: [
+        { japanese: '傘を持って行きましょう。', english: "Let's take an umbrella.", sense_numbers: [1] },
+        { japanese: '雨だから傘が必要です。', english: 'I need an umbrella.', translation: '비가 와서 우산이 필요해요.', sense_numbers: [1] },
+      ] };
+    const normalized = sandbox.normalizeDefinitionData({ source: 'je_localized_cache', locale: 'ko', entry });
+    const sense = normalized.senses.find(item => item.senseNumber === 1);
+    assert.equal(sense.example.japanese.text, '雨だから傘が必要です。');
+    assert.equal(sense.example.english, '비가 와서 우산이 필요해요.');
+    assert.equal(sense.example.translationLang, 'ko');
+
+    const english = sandbox.normalizeDefinitionData({ source: 'je_dict', entry });
+    assert.equal(english.senses.find(item => item.senseNumber === 1).example.japanese.text, '傘を持って行きましょう。');
+  });
+
   test(`${browser} localized normalization retains translated examples and Japanese-only examples`, () => {
     const { sandbox } = fixture(browser);
     for (const [locale, expected] of [['ja', 'ja'], ['ko', 'ko'], ['zh-Hant', 'zh-TW']]) {

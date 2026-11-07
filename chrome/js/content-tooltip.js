@@ -764,9 +764,12 @@ function normalizeTkgjeExamples(examples, senses, definitionLang = 'en') {
   let unnumberedIndex = 0;
 
   senses.forEach((sense) => {
-    const numbered = Number.isFinite(sense.senseNumber)
-      ? valid.find(example => example.senseNumbers.includes(sense.senseNumber))
-      : null;
+    const forSense = Number.isFinite(sense.senseNumber)
+      ? valid.filter(example => example.senseNumbers.includes(sense.senseNumber))
+      : [];
+    // Localized entries translate one example per sense; show that one so the
+    // reader gets their own language instead of the English fallback.
+    const numbered = forSense.find(example => example.translationLang !== 'en') || forSense[0] || null;
     sense.example = numbered || unnumbered[unnumberedIndex++] || null;
   });
 }
