@@ -682,6 +682,9 @@
   "dictionary_translation_limit": {
     "message": "Translation limit reached. Showing English."
   },
+  "dictionary_translation_supporter": {
+    "message": "Localized meanings for every word with Supporter."
+  },
   "dictionary_translation_pending": {
     "message": "A translation is being prepared. Showing English."
   },

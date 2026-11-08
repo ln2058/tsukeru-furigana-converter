@@ -682,6 +682,9 @@
   "dictionary_translation_limit": {
     "message": "翻訳の利用上限に達しました。英語で表示します。"
   },
+  "dictionary_translation_supporter": {
+    "message": "サポーターなら、すべての単語の意味を日本語で表示できます。"
+  },
   "dictionary_translation_pending": {
     "message": "翻訳を準備中です。英語で表示します。"
   },

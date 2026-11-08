@@ -66,8 +66,18 @@ Security Notes:
     return t('content_toast_generic_error', undefined, 'Could not add furigana. Please try again.');
   }
 
+  // The day's new translations for this plan are used up; Supporter offers more.
+  const SUPPORTER_TRANSLATION_REASONS = new Set(['plan_limit', 'anonymous_budget']);
+
+  function dictionaryTranslationOffersSupporter(reason) {
+    return SUPPORTER_TRANSLATION_REASONS.has(reason);
+  }
+
   function dictionaryTranslationMessage(reason, t) {
-    if (reason === 'rate_limited' || reason === 'budget_exhausted') {
+    if (dictionaryTranslationOffersSupporter(reason)) {
+      return t('dictionary_translation_supporter', undefined, 'Localized meanings for every word with Supporter.');
+    }
+    if (reason === 'rate_limited' || reason === 'budget_exhausted' || reason === 'daily_limit') {
       return t('dictionary_translation_limit', undefined, 'Translation limit reached. Showing English.');
     }
     if (reason === 'pending') {
@@ -76,5 +86,7 @@ Security Notes:
     return t('dictionary_translation_unavailable', undefined, 'Translation unavailable. Showing English.');
   }
 
-  globalThis.TsukeruUiMessages = { formatDuration, errorMessage, dictionaryTranslationMessage };
+  globalThis.TsukeruUiMessages = {
+    formatDuration, errorMessage, dictionaryTranslationMessage, dictionaryTranslationOffersSupporter,
+  };
 })();

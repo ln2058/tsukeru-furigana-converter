@@ -38,7 +38,11 @@ function fixture(browser, language = 'ko') {
   tooltip.dataset.word = '本';
   const sandbox = {
     console, URL, requestAnimationFrame() {},
-    TsukeruI18n: { language: () => language, t: (_key, _subs, fallback) => fallback },
+    TsukeruI18n: {
+      language: () => language,
+      t: (_key, _subs, fallback) => fallback,
+      websiteUrl: page => `https://www.ezfurigana.com/ko${page}`,
+    },
     chrome: { runtime: { sendMessage(message, callback) { requests.push({ message, callback }); } } },
     document: {
       createElement: tag => new Element(tag),
@@ -121,6 +125,28 @@ for (const browser of ['chrome', 'firefox']) {
     assert.match(f.tooltip.textContent, /Translation limit reached/);
     assert.equal(f.renders.length, 0);
     assert.equal(f.requests.length, 2);
+  });
+
+  test(`${browser} a spent plan allowance offers Supporter; a Supporter's spent day does not`, async () => {
+    for (const [reason, offers] of [['plan_limit', true], ['anonymous_budget', true], ['daily_limit', false]]) {
+      const f = fixture(browser);
+      f.start();
+      f.requests[0].callback({ success: true, data: { reason: 'not_cached' } });
+      await tick();
+      f.button().events.click(click(true));
+      f.requests[1].callback({ success: true, data: { reason } });
+      await tick();
+      const link = f.tooltip.querySelector('.tsukeru-translation-upsell');
+      assert.equal(Boolean(link), offers, reason);
+      if (offers) {
+        assert.match(f.tooltip.textContent, /Localized meanings for every word with Supporter\./);
+        assert.equal(link.href, 'https://www.ezfurigana.com/ko/pricing');
+        assert.equal(link.rel, 'noopener noreferrer');
+      } else {
+        assert.match(f.tooltip.textContent, /Translation limit reached/);
+      }
+      assert.equal(f.renders.length, 0, 'English stays');
+    }
   });
 
   test(`${browser} a disabled feature or missing route leaves the English tooltip unchanged`, async () => {

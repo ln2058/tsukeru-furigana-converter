@@ -873,6 +873,7 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 .tsukeru-word-tooltip .tsukeru-translation-button:focus-visible { outline: 2px solid var(--tsukeru-blue-readable) !important; outline-offset: 2px !important; }
 .tsukeru-word-tooltip .tsukeru-translation-button:disabled { opacity: .65 !important; cursor: wait !important; }
 .tsukeru-word-tooltip .tsukeru-translation-note { flex-basis: 100% !important; color: var(--tsukeru-secondary) !important; font: 400 12px/1.5 var(--tsukeru-sans) !important; }
+.tsukeru-word-tooltip .tsukeru-translation-upsell { color: var(--tsukeru-blue-readable) !important; font-weight: 600 !important; text-decoration: underline !important; text-underline-offset: 2px !important; }
 .tsukeru-word-tooltip .tsukeru-sense-gloss ruby,
 .tsukeru-word-tooltip .tsukeru-sense-explanation ruby { ruby-position: over !important; }
 .tsukeru-word-tooltip .tsukeru-sense-gloss rt,

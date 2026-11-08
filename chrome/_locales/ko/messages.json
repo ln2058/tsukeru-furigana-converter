@@ -682,6 +682,9 @@
   "dictionary_translation_limit": {
     "message": "번역 이용 한도에 도달해 영어로 표시합니다."
   },
+  "dictionary_translation_supporter": {
+    "message": "서포터는 모든 단어의 뜻을 한국어로 볼 수 있습니다."
+  },
   "dictionary_translation_pending": {
     "message": "번역을 준비 중이어서 영어로 표시합니다."
   },

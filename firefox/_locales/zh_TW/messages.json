@@ -682,6 +682,9 @@
   "dictionary_translation_limit": {
     "message": "翻譯次數已達上限，暫時顯示英文釋義。"
   },
+  "dictionary_translation_supporter": {
+    "message": "成為支持者，即可查看所有單字的中文釋義。"
+  },
   "dictionary_translation_pending": {
     "message": "翻譯正在準備中，暫時顯示英文釋義。"
   },

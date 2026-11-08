@@ -2130,6 +2130,15 @@ function drawTranslationControls(state) {
     note.setAttribute('role', 'status');
     note.setAttribute('aria-live', 'polite');
     note.textContent = TsukeruUiMessages.dictionaryTranslationMessage(state.reason, t);
+    if (TsukeruUiMessages.dictionaryTranslationOffersSupporter(state.reason)) {
+      const link = document.createElement('a');
+      link.className = 'tsukeru-translation-upsell';
+      link.href = TsukeruI18n.websiteUrl('/pricing');
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = t('header_title_become_supporter', undefined, 'Become a Supporter');
+      note.append(document.createTextNode(' '), link);
+    }
     controls.append(note);
   }
   tooltip.append(controls);
