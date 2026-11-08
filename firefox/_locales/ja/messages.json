@@ -801,5 +801,44 @@
   },
   "content_pitch_accent_title": {
     "message": "アクセント $1"
+  },
+  "supporter_card_title": {
+    "message": "EZFuriganaアカウント"
+  },
+  "supporter_state_none": {
+    "message": "サポーターのアカウントと連携すると、文の読み上げが使えるようになります。"
+  },
+  "supporter_connect": {
+    "message": "アカウントを連携"
+  },
+  "supporter_connect_hint": {
+    "message": "ezfurigana.comを開きます。ログインすると自動で連携されます。"
+  },
+  "supporter_state_supporter": {
+    "message": "サポーターとして連携済み"
+  },
+  "supporter_checked": {
+    "message": "$1に確認済み"
+  },
+  "supporter_manage": {
+    "message": "アカウントを管理"
+  },
+  "supporter_state_free": {
+    "message": "無料アカウントで連携中です。文の読み上げはサポーター限定の機能です。"
+  },
+  "supporter_become": {
+    "message": "サポーターになる"
+  },
+  "supporter_state_expired": {
+    "message": "サポーターの連携が切れました。EZFuriganaを一度開くと再連携されます。"
+  },
+  "supporter_reconnect": {
+    "message": "再連携"
+  },
+  "supporter_connected_toast": {
+    "message": "Tsukeruがサポーターのアカウントと連携しました。文の読み上げが使えます。"
+  },
+  "supporter_connected_free_toast": {
+    "message": "Tsukeruと連携しました。このアカウントは無料プランのため、文の読み上げは使えません。"
   }
 }

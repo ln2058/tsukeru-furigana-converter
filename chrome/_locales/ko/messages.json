@@ -801,5 +801,44 @@
   },
   "content_pitch_accent_title": {
     "message": "악센트 $1"
+  },
+  "supporter_card_title": {
+    "message": "EZFurigana 계정"
+  },
+  "supporter_state_none": {
+    "message": "서포터 계정을 연결하면 문장 읽기를 사용할 수 있습니다."
+  },
+  "supporter_connect": {
+    "message": "계정 연결"
+  },
+  "supporter_connect_hint": {
+    "message": "ezfurigana.com이 열립니다. 로그인하면 자동으로 연결됩니다."
+  },
+  "supporter_state_supporter": {
+    "message": "서포터로 연결됨"
+  },
+  "supporter_checked": {
+    "message": "$1 확인됨"
+  },
+  "supporter_manage": {
+    "message": "계정 관리"
+  },
+  "supporter_state_free": {
+    "message": "무료 계정으로 연결되어 있습니다. 문장 읽기는 서포터 전용 기능입니다."
+  },
+  "supporter_become": {
+    "message": "서포터 되기"
+  },
+  "supporter_state_expired": {
+    "message": "서포터 연결이 만료되었습니다. EZFurigana를 한 번 열면 다시 연결됩니다."
+  },
+  "supporter_reconnect": {
+    "message": "다시 연결"
+  },
+  "supporter_connected_toast": {
+    "message": "Tsukeru가 서포터 계정에 연결되었습니다. 문장 읽기를 사용할 수 있습니다."
+  },
+  "supporter_connected_free_toast": {
+    "message": "Tsukeru가 연결되었습니다. 이 계정은 무료 플랜이라 문장 읽기를 사용할 수 없습니다."
   }
 }

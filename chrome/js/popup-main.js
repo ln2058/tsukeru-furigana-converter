@@ -30,7 +30,7 @@ import {
   t,
   userFacingError,
 } from './popup-settings.js';
-import { initMyWordsTab, initPageTab, loadMyWords, requestPageWordsRefresh } from './popup-vocab.js';
+import { initMyWordsTab, initPageTab, loadMyWords, relativeTime, requestPageWordsRefresh } from './popup-vocab.js';
 import { initReviewPrompt } from './popup-review.js';
 import { storeReviewUrl } from './review-prompt.js';
 
@@ -134,17 +134,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const supporterLink = document.getElementById('header-supporter-link');
-    if (supporterLink) {
-      supporterLink.href = getEzfuriganaPricingUrl();
-      // Never let the plan check stop the popup from starting.
-      Promise.resolve().then(() => chrome.runtime.sendMessage({ action: 'getSupporterPlan' })).then((answer) => {
-        if (answer?.plan !== 'supporter') return;
-        supporterLink.classList.add('is-supporter');
-        supporterLink.href = new URL('/account', TsukeruI18n.websiteUrl()).href;
-        supporterLink.title = t('header_title_supporter_active', undefined, "You're a Supporter");
-        supporterLink.setAttribute('aria-label', supporterLink.title);
-      }).catch(() => { /* Keep the Become a Supporter link. */ });
-    }
+    if (supporterLink) supporterLink.href = getEzfuriganaPricingUrl();
+    // Never let the plan check stop the popup from starting.
+    initSupporterCard();
 
     const shortcutText = document.getElementById('shortcut-text');
     if (shortcutText) {
@@ -164,3 +156,56 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.documentElement.removeAttribute('data-i18n-pending');
   }
 });
+
+// ── EZFurigana account card ───────────────────────────────────────────────────
+
+const SUPPORTER_CARD = {
+  none: { text: () => t('supporter_state_none', undefined, 'Connect your Supporter account to turn on sentence audio.'), meta: () => t('supporter_connect_hint', undefined, 'Opens ezfurigana.com. Sign in there and Tsukeru connects by itself.'), action: () => t('supporter_connect', undefined, 'Connect account'), path: '/account?tsukeru=connect' },
+  free: { text: () => t('supporter_state_free', undefined, 'Connected with a Free account. Sentence audio is a Supporter feature.'), action: () => t('supporter_become', undefined, 'Become a Supporter'), pricing: true },
+  supporter: { text: () => t('supporter_state_supporter', undefined, 'Connected as a Supporter'), action: () => t('supporter_manage', undefined, 'Manage account'), path: '/account' },
+  expired: { text: () => t('supporter_state_expired', undefined, 'Your Supporter connection expired. Open EZFurigana once to reconnect.'), action: () => t('supporter_reconnect', undefined, 'Reconnect'), path: '/account?tsukeru=connect' },
+};
+
+/** Show how this browser is connected; the header star follows the same answer. */
+function renderSupporterCard(status) {
+  const card = document.getElementById('supporterCard');
+  const state = SUPPORTER_CARD[status?.state] ? status.state : 'none';
+  const copy = SUPPORTER_CARD[state];
+  const supporterLink = document.getElementById('header-supporter-link');
+  if (supporterLink) {
+    const supporter = state === 'supporter';
+    supporterLink.classList.toggle('is-supporter', supporter);
+    supporterLink.href = supporter ? new URL('/account', TsukeruI18n.websiteUrl()).href : getEzfuriganaPricingUrl();
+    supporterLink.title = supporter
+      ? t('header_title_supporter_active', undefined, "You're a Supporter")
+      : t('header_title_become_supporter', undefined, 'Become a Supporter');
+    supporterLink.setAttribute('aria-label', supporterLink.title);
+  }
+  if (!card) return;
+  // Re-rendering the same state must not replay the check animation.
+  if (card.dataset.state !== state) card.dataset.state = state;
+  document.getElementById('supporterCardText').textContent = copy.text();
+  const meta = document.getElementById('supporterCardMeta');
+  if (state === 'supporter' && Number.isFinite(status.checkedAt)) {
+    meta.textContent = t('supporter_checked', [relativeTime(status.checkedAt)], `Checked ${relativeTime(status.checkedAt)}`);
+  } else {
+    meta.textContent = copy.meta ? copy.meta() : '';
+  }
+  meta.hidden = !meta.textContent;
+  const action = document.getElementById('supporterCardAction');
+  action.textContent = copy.action();
+  action.href = copy.pricing ? getEzfuriganaPricingUrl() : new URL(copy.path, TsukeruI18n.websiteUrl()).href;
+  action.hidden = false;
+}
+
+function initSupporterCard() {
+  const refresh = () => Promise.resolve()
+    .then(() => chrome.runtime.sendMessage({ action: 'getSupporterStatus' }))
+    .then((status) => { if (status?.success) renderSupporterCard(status); })
+    .catch(() => { /* Keep the card as it is. */ });
+  refresh();
+  // Connecting finishes on the website; update while the popup stays open.
+  chrome.storage?.onChanged?.addListener((changes, area) => {
+    if (area === 'local' && changes.tsukeruSupporter) refresh();
+  });
+}

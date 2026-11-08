@@ -62,7 +62,7 @@ export function ezfuriganaUrl(hash = '') {
   return `${base}${hash}`;
 }
 
-function relativeTime(time) {
+export function relativeTime(time) {
   const ms = time - Date.now();
   try {
     const format = new Intl.RelativeTimeFormat(uiLanguage(), { numeric: 'auto' });

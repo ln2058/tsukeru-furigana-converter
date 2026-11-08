@@ -383,6 +383,7 @@ export async function supporterRefreshDue(now = Date.now()) {
   const record = await _readSupporter();
   if (!Number.isFinite(record?.checkedAt)) return true;
   if (record.plan === 'supporter' && !_hasLiveToken(record, now)) return true;
+  if (record.plan === 'expired') return true;
   const wait = record.plan === 'supporter' ? _SUPPORTER_RECHECK_MS : _FREE_RECHECK_MS;
   return now - record.checkedAt >= wait;
 }
@@ -391,13 +392,15 @@ export async function supporterRefreshDue(now = Date.now()) {
 export async function storeSupporterHandoff(answer, now = Date.now()) {
   const storage = getStorageLocal();
   _supporterPlanCache = null;
+  // `changed` tells the website page to confirm a new connection once.
+  const before = (await getSupporterStatus(now)).state;
   if (answer?.plan === 'supporter' && _hasLiveToken(answer, now)) {
     await storage.set({ [_SUPPORTER_KEY]: { plan: 'supporter', token: answer.token, expiresAt: answer.expiresAt, checkedAt: now } });
-    return { plan: 'supporter' };
+    return { plan: 'supporter', changed: before !== 'supporter' };
   }
   if (answer?.plan === 'free') {
     await storage.set({ [_SUPPORTER_KEY]: { plan: 'free', checkedAt: now } });
-    return { plan: 'free' };
+    return { plan: 'free', changed: before !== 'free' };
   }
   throw new Error('Invalid Supporter handoff');
 }
@@ -407,10 +410,35 @@ export async function hasSupporterToken(now = Date.now()) {
   return _hasLiveToken(await _readSupporter(), now);
 }
 
+/** Drop a token the backend refused, remembering this browser was a Supporter. */
+async function _markExpired(now) {
+  _supporterPlanCache = null;
+  try {
+    await getStorageLocal().set({ [_SUPPORTER_KEY]: { plan: 'expired', checkedAt: now } });
+  } catch (_) { /* retried next time */ }
+}
+
 /** Header for Supporter-gated endpoints; empty without a live token. */
 export async function supporterHeaders(now = Date.now()) {
   const record = await _readSupporter();
   return _hasLiveToken(record, now) ? { 'x-tsukeru-supporter': record.token } : {};
+}
+
+/**
+ * How this browser is connected to EZFurigana, for the popup: 'none' (never
+ * connected), 'free', 'supporter', or 'expired' (was a Supporter, token gone).
+ */
+export async function getSupporterStatus(now = Date.now()) {
+  const record = await _readSupporter();
+  if (!record) return { state: 'none' };
+  if (record.plan === 'supporter') {
+    return _hasLiveToken(record, now)
+      ? { state: 'supporter', checkedAt: record.checkedAt, expiresAt: record.expiresAt }
+      : { state: 'expired' };
+  }
+  if (record.plan === 'free') return { state: 'free', checkedAt: record.checkedAt };
+  if (record.plan === 'expired') return { state: 'expired' };
+  return { state: 'none' };
 }
 
 /** The current plan ('supporter' or 'free'), confirmed with the backend at most hourly. */
@@ -432,12 +460,16 @@ export async function getSupporterPlan(now = Date.now()) {
   }
   if (response.status === 401) {
     // Expired or no longer valid; the next website visit fetches a new one.
-    try { await getStorageLocal().remove(_SUPPORTER_KEY); } catch (_) { /* retried next time */ }
+    await _markExpired(now);
     return 'free';
   }
   if (!response.ok) return 'supporter';
   const body = await response.json().catch(() => null);
   const plan = body?.plan === 'supporter' ? 'supporter' : 'free';
+  if (plan === 'free') {
+    // The subscription ended: the token no longer grants anything.
+    try { await getStorageLocal().set({ [_SUPPORTER_KEY]: { plan: 'free', checkedAt: now } }); } catch (_) { /* retried next time */ }
+  }
   _supporterPlanCache = { plan, until: now + _SUPPORTER_PLAN_TTL_MS };
   return plan;
 }
@@ -1122,7 +1154,7 @@ export async function fetchSentenceAudio(text) {
     error.code = typeof body?.error === 'string' ? body.error : 'tts_unavailable';
     if (response.status === 401) {
       // The website hands over a new token on the next visit.
-      try { await getStorageLocal().remove(_SUPPORTER_KEY); } catch (_) { /* retried next time */ }
+      await _markExpired(Date.now());
       error.code = 'supporter_required';
     }
     if (error.code === 'supporter_required') _supporterPlanCache = null;

@@ -801,5 +801,44 @@
   },
   "content_pitch_accent_title": {
     "message": "重音 $1"
+  },
+  "supporter_card_title": {
+    "message": "EZFurigana 帳戶"
+  },
+  "supporter_state_none": {
+    "message": "連結支持者帳戶即可使用句子朗讀。"
+  },
+  "supporter_connect": {
+    "message": "連結帳戶"
+  },
+  "supporter_connect_hint": {
+    "message": "將開啟 ezfurigana.com。登入後會自動連結。"
+  },
+  "supporter_state_supporter": {
+    "message": "已以支持者身分連結"
+  },
+  "supporter_checked": {
+    "message": "$1已確認"
+  },
+  "supporter_manage": {
+    "message": "管理帳戶"
+  },
+  "supporter_state_free": {
+    "message": "目前以免費帳戶連結。句子朗讀是支持者專屬功能。"
+  },
+  "supporter_become": {
+    "message": "成為支持者"
+  },
+  "supporter_state_expired": {
+    "message": "支持者連結已過期。開啟一次 EZFurigana 即可重新連結。"
+  },
+  "supporter_reconnect": {
+    "message": "重新連結"
+  },
+  "supporter_connected_toast": {
+    "message": "Tsukeru 已連結你的支持者帳戶，現在可以使用句子朗讀。"
+  },
+  "supporter_connected_free_toast": {
+    "message": "Tsukeru 已連結。此帳戶為免費方案，因此無法使用句子朗讀。"
   }
 }

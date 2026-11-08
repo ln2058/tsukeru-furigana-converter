@@ -570,7 +570,30 @@ input[type="text"]:focus { border-color: var(--blue); outline: none; }
 html[data-platform="android"],
 html[data-platform="android"] body { width: 100%; height: 100%; }
 
+/* EZFurigana account card: connection state, a check that draws in once connected. */
+.supporter-card { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 10px; }
+.supporter-card[data-state="loading"] { visibility: hidden; }
+.supporter-card-mark { display: grid; width: 22px; height: 22px; place-items: center; color: var(--muted); }
+.supporter-card-check { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.supporter-card-check path { opacity: 0; }
+.supporter-card[data-state="supporter"] .supporter-card-mark { color: var(--success); }
+.supporter-card[data-state="supporter"] .supporter-card-check circle { stroke-dasharray: 52; stroke-dashoffset: 52; animation: supporter-check-draw .45s ease-out forwards; }
+.supporter-card[data-state="supporter"] .supporter-card-check path { opacity: 1; stroke-width: 2; stroke-dasharray: 13; stroke-dashoffset: 13; animation: supporter-check-draw .3s ease-out .35s forwards; }
+.supporter-card[data-state="free"] .supporter-card-mark { color: var(--blue-readable); }
+.supporter-card[data-state="expired"] .supporter-card-mark { color: var(--attention); }
+@keyframes supporter-check-draw { to { stroke-dashoffset: 0; } }
+.supporter-card-copy { min-width: 0; }
+.supporter-card-text { margin: 0; color: var(--text); font-size: 12.5px; font-weight: 600; line-height: 1.4; }
+.supporter-card[data-state="none"] .supporter-card-text,
+.supporter-card[data-state="free"] .supporter-card-text,
+.supporter-card[data-state="expired"] .supporter-card-text { font-weight: 400; }
+.supporter-card-meta { margin: 2px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.supporter-card-action { grid-column: 2; justify-self: start; margin-top: 6px; padding: 5px 10px; border: 1px solid var(--blue-border); border-radius: var(--radius); background: var(--blue-soft); color: var(--blue-readable); font-size: 12px; font-weight: 600; text-decoration: none; }
+.supporter-card-action:hover { border-color: var(--blue); }
+.supporter-card[data-state="supporter"] .supporter-card-action { padding: 0; border: 0; background: none; color: var(--muted); font-weight: 400; text-decoration: underline; text-underline-offset: 3px; }
+
 @media (prefers-reduced-motion: reduce) {
+  .supporter-card-check circle, .supporter-card-check path { animation: none !important; stroke-dashoffset: 0 !important; }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; }
 }
 

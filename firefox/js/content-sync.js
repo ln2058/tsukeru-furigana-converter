@@ -134,12 +134,23 @@ Security Notes:
     });
     if (!response.ok) return;
     const body = await response.json();
-    await chrome.runtime.sendMessage({
+    const stored = await chrome.runtime.sendMessage({
       action: 'supporterHandoff',
       plan: body?.plan,
       token: body?.token,
       expiresAt: body?.expires_at,
     });
+    confirmConnection(stored);
+  }
+
+  // A new connection (or the popup's Connect button) gets a short confirmation.
+  function confirmConnection(stored) {
+    const asked = new URLSearchParams(window.location.search).get('tsukeru') === 'connect';
+    if (!stored?.success || (!stored.changed && !asked) || typeof showToast !== 'function') return;
+    const message = stored.plan === 'supporter'
+      ? TsukeruI18n.t('supporter_connected_toast', undefined, 'Tsukeru is connected to your Supporter account. Sentence audio is on.')
+      : TsukeruI18n.t('supporter_connected_free_toast', undefined, 'Tsukeru is connected. This account is on the Free plan, so sentence audio stays off.');
+    showToast(message, { type: 'info', duration: 7000 });
   }
 
   post({ type: 'hello' });

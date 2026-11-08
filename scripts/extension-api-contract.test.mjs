@@ -57,6 +57,7 @@ function loadApi(browserName, route, { cacheLimit = 200, storage = null, manifes
       hasSupporterToken,
       supporterRefreshDue,
       getSupporterPlan,
+      getSupporterStatus,
       fetchSentenceAudio,
     };
   `;
@@ -115,8 +116,13 @@ for (const browserName of ['chrome', 'firefox']) {
     await assert.rejects(api.storeSupporterHandoff({ plan: 'supporter', token: 'forged', expiresAt }, now));
     assert.deepEqual({ ...(await api.supporterHeaders(now)) }, {});
     assert.equal(await api.hasSupporterToken(now), false);
+    assert.deepEqual({ ...(await api.getSupporterStatus(now)) }, { state: 'none' });
 
-    await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
+    const first = await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
+    assert.deepEqual({ ...first }, { plan: 'supporter', changed: true }, 'a new connection is confirmed once');
+    const again = await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
+    assert.equal(again.changed, false, 'later visits stay quiet');
+    assert.deepEqual({ ...(await api.getSupporterStatus(now)) }, { state: 'supporter', checkedAt: now, expiresAt });
     assert.equal(await api.hasSupporterToken(now), true, 'tags the sentence line without a request');
     assert.equal(await api.supporterRefreshDue(now), false, 'checked at most daily');
     assert.equal(await api.supporterRefreshDue(now + 86_400_000), true);
@@ -129,11 +135,14 @@ for (const browserName of ['chrome', 'firefox']) {
     const furiganaCall = calls.find(({ url }) => url.endsWith('/api/extension/furigana'));
     assert.equal(furiganaCall.options.headers['x-tsukeru-supporter'], undefined, 'furigana stays anonymous');
 
-    // A token the backend no longer accepts is dropped until the next website visit.
+    // A token the backend no longer accepts is dropped; the popup shows it as expired until the next website visit.
     assert.equal(await api.getSupporterPlan(now + 2 * 3_600_000), 'free');
-    assert.equal(storage.values.tsukeruSupporter, undefined);
+    assert.deepEqual({ ...storage.values.tsukeruSupporter }, { plan: 'expired', checkedAt: now + 2 * 3_600_000 });
     assert.equal(await api.hasSupporterToken(now), false);
     assert.equal(await api.supporterRefreshDue(now), true);
+    assert.deepEqual({ ...(await api.getSupporterStatus(now)) }, { state: 'expired' });
+    const reconnected = await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
+    assert.equal(reconnected.changed, true, 'reconnecting is confirmed');
   });
 
   test(`${browserName} sentence audio needs a Supporter token and reports refusals by code`, async () => {
@@ -160,7 +169,8 @@ for (const browserName of ['chrome', 'firefox']) {
 
     // A rejected token is dropped so the website can hand over a new one.
     await assert.rejects(api.fetchSentenceAudio('今日はいい天気ですね。'), { code: 'supporter_required' });
-    assert.equal(storage.values.tsukeruSupporter, undefined);
+    assert.equal(storage.values.tsukeruSupporter.plan, 'expired');
+    assert.equal(storage.values.tsukeruSupporter.token, undefined);
   });
 
   test(`${browserName} records a Free answer without a token and drops expired tokens`, async () => {
@@ -170,6 +180,7 @@ for (const browserName of ['chrome', 'firefox']) {
 
     await api.storeSupporterHandoff({ plan: 'free', token: 'ignored' }, now);
     assert.deepEqual({ ...storage.values.tsukeruSupporter }, { plan: 'free', checkedAt: now });
+    assert.deepEqual({ ...(await api.getSupporterStatus(now)) }, { state: 'free', checkedAt: now });
     // Asked again on the next visit, so an upgrade or account switch shows up at once.
     assert.equal(await api.supporterRefreshDue(now + 30_000), false);
     assert.equal(await api.supporterRefreshDue(now + 60_000), true);
@@ -181,6 +192,7 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.deepEqual({ ...(await api.supporterHeaders(now + 61_000)) }, {});
     assert.equal(await api.getSupporterPlan(now + 61_000), 'free');
     assert.equal(await api.supporterRefreshDue(now + 61_000), true);
+    assert.deepEqual({ ...(await api.getSupporterStatus(now + 61_000)) }, { state: 'expired' });
     assert.equal(calls.length, 0, 'no request without a live token');
   });
 

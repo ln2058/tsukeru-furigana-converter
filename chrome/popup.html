@@ -46,6 +46,19 @@
 
   <main class="content">
     <section class="tab-content" id="settings-tab">
+      <section class="settings-section account-section" aria-labelledby="accountSectionTitle">
+        <h2 id="accountSectionTitle" class="section-title" data-i18n="supporter_card_title">EZFurigana account</h2>
+        <div id="supporterCard" class="supporter-card" data-state="loading" aria-live="polite">
+          <span class="supporter-card-mark" aria-hidden="true">
+            <svg class="supporter-card-check" viewBox="0 0 20 20" focusable="false"><circle cx="10" cy="10" r="8.25"/><path d="M6 10.4l2.7 2.7L14.2 7.6"/></svg>
+          </span>
+          <div class="supporter-card-copy">
+            <p id="supporterCardText" class="supporter-card-text"></p>
+            <p id="supporterCardMeta" class="supporter-card-meta" hidden></p>
+          </div>
+          <a id="supporterCardAction" class="supporter-card-action" target="_blank" rel="noopener noreferrer" hidden></a>
+        </div>
+      </section>
       <section class="settings-section" aria-labelledby="languageSectionTitle">
         <h2 id="languageSectionTitle" class="section-title" data-i18n="settings_section_language">Language</h2>
         <div class="setting-row locale-row">

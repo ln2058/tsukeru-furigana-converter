@@ -801,5 +801,44 @@
   },
   "content_pitch_accent_title": {
     "message": "Pitch accent $1"
+  },
+  "supporter_card_title": {
+    "message": "EZFurigana account"
+  },
+  "supporter_state_none": {
+    "message": "Connect your Supporter account to turn on sentence audio."
+  },
+  "supporter_connect": {
+    "message": "Connect account"
+  },
+  "supporter_connect_hint": {
+    "message": "Opens ezfurigana.com. Sign in there and Tsukeru connects by itself."
+  },
+  "supporter_state_supporter": {
+    "message": "Connected as a Supporter"
+  },
+  "supporter_checked": {
+    "message": "Checked $1"
+  },
+  "supporter_manage": {
+    "message": "Manage account"
+  },
+  "supporter_state_free": {
+    "message": "Connected with a Free account. Sentence audio is a Supporter feature."
+  },
+  "supporter_become": {
+    "message": "Become a Supporter"
+  },
+  "supporter_state_expired": {
+    "message": "Your Supporter connection expired. Open EZFurigana once to reconnect."
+  },
+  "supporter_reconnect": {
+    "message": "Reconnect"
+  },
+  "supporter_connected_toast": {
+    "message": "Tsukeru is connected to your Supporter account. Sentence audio is on."
+  },
+  "supporter_connected_free_toast": {
+    "message": "Tsukeru is connected. This account is on the Free plan, so sentence audio stays off."
   }
 }

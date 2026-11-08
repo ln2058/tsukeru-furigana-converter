@@ -33,7 +33,7 @@ Security Notes:
 import {
   handleFuriganaRequest, lookupDefinition, lookupLocalizedDefinition, fetchExampleSentence, fetchKanjiBreakdown,
   handlePlayAudio, handlePlayAudioDirect, handleFetchProxyAudio, handleReportReadingError,
-  DEFAULT_SETTINGS, getRateLimitState, getSupporterPlan, hasSupporterToken, storeSupporterHandoff, supporterRefreshDue,
+  DEFAULT_SETTINGS, getRateLimitState, getSupporterPlan, getSupporterStatus, hasSupporterToken, storeSupporterHandoff, supporterRefreshDue,
   fetchSentenceAudio,
 } from './js/bg-api.js';
 import { handleWordsMessage, isEzfuriganaSender, isWordsAction, refreshWordBadge } from './js/bg-words.js';
@@ -206,7 +206,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const work = message.action === 'supporterRefreshDue'
       ? supporterRefreshDue().then((due) => ({ success: true, due }))
       : storeSupporterHandoff({ plan: message.plan, token: message.token, expiresAt: message.expiresAt })
-        .then(({ plan }) => ({ success: true, plan }));
+        .then(({ plan, changed }) => ({ success: true, plan, changed }));
     work.then(sendResponse).catch(() => sendResponse({ success: false, error: 'Supporter handoff failed' }));
     return true;
   }
@@ -228,6 +228,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (sender.id !== chrome.runtime.id || !sender.tab) return false;
     hasSupporterToken()
       .then((supporter) => sendResponse({ success: true, supporter }))
+      .catch(() => sendResponse({ success: false }));
+    return true;
+  }
+
+  // The popup's account card: check the plan first so a refused token shows as expired.
+  if (message?.action === 'getSupporterStatus') {
+    if (sender.id !== chrome.runtime.id || sender.tab) return false;
+    getSupporterPlan()
+      .catch(() => null)
+      .then(() => getSupporterStatus())
+      .then((status) => sendResponse({ success: true, ...status }))
       .catch(() => sendResponse({ success: false }));
     return true;
   }
