@@ -8,7 +8,7 @@
 - **EZFurigana connection**: Settings shows whether this browser is connected to EZFurigana and on which plan. Signing in to ezfurigana.com connects it, and the site confirms the first time. If the connection expires, Reconnect fixes it.
 - **Export to Anki**: the My Words export menu opens EZFurigana's Anki export, which builds a deck with readings, meanings, and audio. CSV export stays under "Other formats".
 - **My Words entries**: click a saved word to see its first meanings, in your display language when a translation is already available. Supporters can play each saved sentence aloud.
-- When a day's new dictionary translations are used up, the tooltip links to Supporter.
+- When a day's free dictionary translations are used up, the tooltip says Supporters get more each day and links to Supporter. A Supporter who uses up the day sees English until tomorrow.
 
 ### Changed
 

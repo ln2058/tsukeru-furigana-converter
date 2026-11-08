@@ -680,10 +680,10 @@
     "message": "翻譯中…"
   },
   "dictionary_translation_limit": {
-    "message": "翻譯次數已達上限，暫時顯示英文釋義。"
+    "message": "今天的字典翻譯已用完，明天之前先顯示英文釋義。"
   },
   "dictionary_translation_supporter": {
-    "message": "成為支持者，即可查看所有單字的中文釋義。"
+    "message": "今天的免費字典翻譯已用完。支持者每天可以翻譯更多單字。"
   },
   "dictionary_translation_pending": {
     "message": "翻譯正在準備中，暫時顯示英文釋義。"
@@ -815,7 +815,7 @@
     "message": "EZFurigana 帳戶"
   },
   "supporter_state_none": {
-    "message": "連結支持者帳戶即可使用句子朗讀。"
+    "message": "連結支持者帳戶即可使用句子朗讀，每天也能使用更多字典翻譯。"
   },
   "supporter_connect": {
     "message": "連結帳戶"

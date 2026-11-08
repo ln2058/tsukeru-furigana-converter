@@ -118,11 +118,12 @@ for (const browser of ['chrome', 'firefox']) {
     f.start();
     f.requests[0].callback({ success: true, data: { reason: 'rate_limited' } });
     await tick();
-    assert.doesNotMatch(f.tooltip.textContent, /Translation limit reached/, 'the passive check stays silent');
+    assert.doesNotMatch(f.tooltip.textContent, /Translation unavailable/, 'the passive check stays silent');
     f.button().events.click(click(true));
     f.requests[1].callback({ success: true, data: { reason: 'budget_exhausted' } });
     await tick();
-    assert.match(f.tooltip.textContent, /Translation limit reached/);
+    assert.match(f.tooltip.textContent, /Translation unavailable/, 'a busy or service-wide limit is not the reader’s own day');
+    assert.doesNotMatch(f.tooltip.textContent, /today's/);
     assert.equal(f.renders.length, 0);
     assert.equal(f.requests.length, 2);
   });
@@ -139,11 +140,11 @@ for (const browser of ['chrome', 'firefox']) {
       const link = f.tooltip.querySelector('.tsukeru-translation-upsell');
       assert.equal(Boolean(link), offers, reason);
       if (offers) {
-        assert.match(f.tooltip.textContent, /Localized meanings for every word with Supporter\./);
+        assert.match(f.tooltip.textContent, /You've used today's free dictionary translations\. Supporters get more each day\./);
         assert.equal(link.href, 'https://www.ezfurigana.com/ko/pricing');
         assert.equal(link.rel, 'noopener noreferrer');
       } else {
-        assert.match(f.tooltip.textContent, /Translation limit reached/);
+        assert.match(f.tooltip.textContent, /You've used today's dictionary translations\. Showing English until tomorrow\./);
       }
       assert.equal(f.renders.length, 0, 'English stays');
     }

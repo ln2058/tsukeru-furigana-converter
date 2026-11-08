@@ -75,10 +75,11 @@ Security Notes:
 
   function dictionaryTranslationMessage(reason, t) {
     if (dictionaryTranslationOffersSupporter(reason)) {
-      return t('dictionary_translation_supporter', undefined, 'Localized meanings for every word with Supporter.');
+      return t('dictionary_translation_supporter', undefined, "You've used today's free dictionary translations. Supporters get more each day.");
     }
-    if (reason === 'rate_limited' || reason === 'budget_exhausted' || reason === 'daily_limit') {
-      return t('dictionary_translation_limit', undefined, 'Translation limit reached. Showing English.');
+    // Only a Supporter's own spent day says so; busy or service-wide limits are just unavailable.
+    if (reason === 'daily_limit') {
+      return t('dictionary_translation_limit', undefined, "You've used today's dictionary translations. Showing English until tomorrow.");
     }
     if (reason === 'pending') {
       return t('dictionary_translation_pending', undefined, 'A translation is being prepared. Showing English.');

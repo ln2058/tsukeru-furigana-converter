@@ -160,7 +160,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ── EZFurigana account card ───────────────────────────────────────────────────
 
 const SUPPORTER_CARD = {
-  none: { text: () => t('supporter_state_none', undefined, 'Connect your Supporter account to turn on sentence audio.'), meta: () => t('supporter_connect_hint', undefined, 'Opens ezfurigana.com. Sign in there and Tsukeru connects by itself.'), action: () => t('supporter_connect', undefined, 'Connect account'), path: '/account?tsukeru=connect' },
+  none: { text: () => t('supporter_state_none', undefined, "Connect your Supporter account to turn on sentence audio and get more dictionary translations each day."), meta: () => t('supporter_connect_hint', undefined, 'Opens ezfurigana.com. Sign in there and Tsukeru connects by itself.'), action: () => t('supporter_connect', undefined, 'Connect account'), path: '/account?tsukeru=connect' },
   free: { text: () => t('supporter_state_free', undefined, 'Connected with a Free account. Sentence audio is a Supporter feature.'), action: () => t('supporter_become', undefined, 'Become a Supporter'), pricing: true },
   supporter: { text: () => t('supporter_state_supporter', undefined, 'Connected as a Supporter'), action: () => t('supporter_manage', undefined, 'Manage account'), path: '/account' },
   expired: { text: () => t('supporter_state_expired', undefined, 'Your Supporter connection expired. Open EZFurigana once to reconnect.'), action: () => t('supporter_reconnect', undefined, 'Reconnect'), path: '/account?tsukeru=connect' },

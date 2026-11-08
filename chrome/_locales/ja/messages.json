@@ -680,10 +680,10 @@
     "message": "翻訳中…"
   },
   "dictionary_translation_limit": {
-    "message": "翻訳の利用上限に達しました。英語で表示します。"
+    "message": "今日の辞書の翻訳を使い切りました。明日までは英語で表示します。"
   },
   "dictionary_translation_supporter": {
-    "message": "サポーターなら、すべての単語の意味を日本語で表示できます。"
+    "message": "今日の辞書の無料翻訳を使い切りました。サポーターなら、毎日もっと多くの単語を翻訳できます。"
   },
   "dictionary_translation_pending": {
     "message": "翻訳を準備中です。英語で表示します。"
@@ -815,7 +815,7 @@
     "message": "EZFuriganaアカウント"
   },
   "supporter_state_none": {
-    "message": "サポーターのアカウントと連携すると、文の読み上げが使えるようになります。"
+    "message": "サポーターのアカウントと連携すると、文の読み上げが使えるようになり、毎日翻訳できる辞書の単語も増えます。"
   },
   "supporter_connect": {
     "message": "アカウントを連携"

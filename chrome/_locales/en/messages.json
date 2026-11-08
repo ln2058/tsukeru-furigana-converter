@@ -680,10 +680,10 @@
     "message": "Translating…"
   },
   "dictionary_translation_limit": {
-    "message": "Translation limit reached. Showing English."
+    "message": "You've used today's dictionary translations. Showing English until tomorrow."
   },
   "dictionary_translation_supporter": {
-    "message": "Localized meanings for every word with Supporter."
+    "message": "You've used today's free dictionary translations. Supporters get more each day."
   },
   "dictionary_translation_pending": {
     "message": "A translation is being prepared. Showing English."
@@ -815,7 +815,7 @@
     "message": "EZFurigana account"
   },
   "supporter_state_none": {
-    "message": "Connect your Supporter account to turn on sentence audio."
+    "message": "Connect your Supporter account to turn on sentence audio and get more dictionary translations each day."
   },
   "supporter_connect": {
     "message": "Connect account"
