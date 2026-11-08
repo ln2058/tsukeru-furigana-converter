@@ -321,6 +321,9 @@
   "content_play_sentence": {
     "message": "朗讀句子"
   },
+  "content_show_meaning": {
+    "message": "顯示意思"
+  },
   "content_sentence_audio_supporter": {
     "message": "句子朗讀是支持者專屬功能。以支持者身分登入 ezfurigana.com 即可使用。"
   },
@@ -466,9 +469,6 @@
   "content_toast_generic_error": {
     "message": "無法加入振假名，請再試一次。",
     "description": "Toast shown when applying furigana fails without a clearer user-facing reason"
-  },
-  "vm_jump_to_word": {
-    "message": "跳至網頁中的這個單字"
   },
   "csv_header_word": {
     "message": "單字"

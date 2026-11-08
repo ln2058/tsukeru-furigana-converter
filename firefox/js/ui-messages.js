@@ -86,7 +86,19 @@ Security Notes:
     return t('dictionary_translation_unavailable', undefined, 'Translation unavailable. Showing English.');
   }
 
+  // Why Supporter sentence audio did not play (the dictionary popup and My Words).
+  function sentenceAudioMessage(code, t) {
+    if (code === 'supporter_required') {
+      return t('content_sentence_audio_supporter', undefined, 'Sentence audio is a Supporter feature. Sign in on ezfurigana.com as a Supporter to turn it on.');
+    }
+    if (code === 'monthly_limit') {
+      return t('content_sentence_audio_limit', undefined, "You've used this month's sentence audio. It resets at the start of next month.");
+    }
+    return t('content_sentence_audio_failed', undefined, "Sentence audio isn't available right now. Please try again later.");
+  }
+
   globalThis.TsukeruUiMessages = {
     formatDuration, errorMessage, dictionaryTranslationMessage, dictionaryTranslationOffersSupporter,
+    sentenceAudioMessage,
   };
 })();

@@ -321,6 +321,9 @@
   "content_play_sentence": {
     "message": "Play sentence"
   },
+  "content_show_meaning": {
+    "message": "Show meaning"
+  },
   "content_sentence_audio_supporter": {
     "message": "Sentence audio is a Supporter feature. Sign in on ezfurigana.com as a Supporter to turn it on."
   },
@@ -466,9 +469,6 @@
   "content_toast_generic_error": {
     "message": "Could not add furigana. Please try again.",
     "description": "Toast shown when applying furigana fails without a clearer user-facing reason"
-  },
-  "vm_jump_to_word": {
-    "message": "Jump to word on page"
   },
   "csv_header_word": {
     "message": "Word"

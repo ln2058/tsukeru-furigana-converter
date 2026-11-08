@@ -452,6 +452,10 @@ if (!window.__TSUKERU_LOADED__) {
       sendResponse(result);
     }
 
+    if (request.action === 'openWordTooltip') {
+      sendResponse(openTooltipForWord(request.word, request.reading));
+    }
+
     if (request.action === 'getWordContext') {
       const result = getWordContextSentence(request.word, request.reading);
       sendResponse(result);

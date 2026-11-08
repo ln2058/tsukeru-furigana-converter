@@ -2538,16 +2538,16 @@ function analysisWordMatches(wordInfo, word, reading) {
   return !reading || readings.has(reading);
 }
 
-function scrollToAndHighlightWord(word, reading) {
-  const wordElements = getAnalysisWordElements(document);
-  let foundElement = null;
-
-  for (const element of wordElements) {
-    if (analysisWordMatches(getAnalysisWordData(element), word, reading)) {
-      foundElement = element;
-      break;
-    }
+/** The first word on the page matching the word and reading, or null. */
+function findAnalysisWord(word, reading) {
+  for (const element of getAnalysisWordElements(document)) {
+    if (analysisWordMatches(getAnalysisWordData(element), word, reading)) return element;
   }
+  return null;
+}
+
+function scrollToAndHighlightWord(word, reading) {
+  const foundElement = findAnalysisWord(word, reading);
 
   if (!foundElement) {
     return { found: false };

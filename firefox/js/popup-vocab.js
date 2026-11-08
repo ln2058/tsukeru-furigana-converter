@@ -8,11 +8,15 @@ Inputs:
 
 Outputs:
 - Rendered My Words and page word lists (each saved word with a pronunciation button; numbers that share a counter form one 〜年 row with their most frequent uses), Learning/Known/removal requests, Study mode updates, and CSV export downloads.
+- A saved word opens in place to its first meanings (the display language's cached translation when there is one, else English); its sentence has a Supporter "Play sentence" button.
+- A word under Words in this text opens the dictionary popup on the page (or scrolls to it when the page cannot open one) and closes the extension popup.
 
 Side Effects:
 - Sends word requests to the background store and page messages to the active tab.
 - Coalesces page refreshes, pauses them during word saves, and skips unchanged page-list renders.
 - Sends one `playAudio` request per speaker click (none before a click) and plays the clip, or the browser's Japanese voice when it fails.
+- Sends one `playSentence` request per sentence click (Supporter audio) and shows a notice when it is refused; asks the background once per list load whether to show the Supporter tag.
+- Opening a saved word sends a dictionary lookup and, for ja/ko/zh-TW, a cache-only localized lookup (never one that creates a translation).
 - Writes the Study mode setting to `chrome.storage.sync` and triggers browser downloads.
 - Export fills a bounded number of missing definitions through background lookups and stores them with the words.
 
@@ -31,6 +35,7 @@ import {
   getActiveTab,
   isSupportedPageTab,
   sendWordDisplaySettings,
+  showNotice,
   t,
 } from './popup-settings.js';
 
@@ -128,8 +133,10 @@ export function getVocabularyPage(entries, renderedCount = 0, pageSize = VOCABUL
 
 // ── Dictionary helpers (definitions for exports) ──────────────────────────────
 
+const RICH_SOURCES = new Set(['je_dict', 'je_localized_cache', 'je_localized_generated']);
+
 export function normalizeDefinitionData(data) {
-  const richEntry = data?.source === 'je_dict' && data.entry && typeof data.entry === 'object'
+  const richEntry = RICH_SOURCES.has(data?.source) && data.entry && typeof data.entry === 'object'
     ? data.entry
     : null;
   if (richEntry) {
@@ -220,7 +227,12 @@ const ICONS = {
   again: ['M4 12a8 8 0 1 0 2.4-5.7', 'M4 4v4.5h4.5'],
   remove: ['M6 6l12 12', 'M18 6L6 18'],
   listen: ['M11 5L6 9H3v6h3l5 4V5z', 'M15.5 8.5a5 5 0 0 1 0 7'],
+  play: ['M8 5v14l11-7z'],
 };
+// Meanings a saved word shows when opened.
+const ENTRY_SENSES = 3;
+// The extension's display languages with dictionary translations.
+const LOCALIZED_LANGUAGES = new Set(['ja', 'ko', 'zh-TW']);
 
 let wordRecords = [];
 let wordSummary = null;
@@ -333,6 +345,141 @@ function listenButton(record) {
   return button;
 }
 
+/** Text with {漢字|かんじ} readings (translated Japanese meanings) as ruby. */
+function appendRubyText(target, text) {
+  for (const part of String(text || '').split(/(\{[^{}|<>\r\n]+\|[\u3041-\u3096\u30fc]+\})/u)) {
+    const match = /^\{([^{}|<>\r\n]+)\|([\u3041-\u3096\u30fc]+)\}$/u.exec(part);
+    if (!match) {
+      if (part) target.append(document.createTextNode(part));
+      continue;
+    }
+    const ruby = document.createElement('ruby');
+    const rt = document.createElement('rt');
+    rt.textContent = match[2];
+    ruby.append(document.createTextNode(match[1]), rt);
+    target.append(ruby);
+  }
+}
+
+function localizedLookup(record, locale) {
+  return new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage({
+        action: 'lookupLocalizedDefinition', word: record.word, reading: record.reading || '',
+        readingType: '', uiLocale: locale, cacheOnly: true,
+      }, (response) => resolve(chrome.runtime.lastError || !response?.success ? null : response.data));
+    } catch (_) {
+      resolve(null);
+    }
+  });
+}
+
+/** A saved word's first meanings, translated when the cache already has them. */
+export async function entryMeanings(record) {
+  let english = null;
+  try {
+    english = await lookupDefinition(record.word, record.reading);
+  } catch (_) {
+    return null;
+  }
+  const locale = uiLanguage();
+  if (LOCALIZED_LANGUAGES.has(locale) && english?.source === 'je_dict' && english.entry) {
+    const localized = normalizeDefinitionData(await localizedLookup(record, locale));
+    if (localized?.senses?.length) return { lang: locale, senses: localized.senses.slice(0, ENTRY_SENSES) };
+  }
+  const senses = normalizeDefinitionData(english)?.senses || [];
+  return { lang: 'en', senses: senses.slice(0, ENTRY_SENSES) };
+}
+
+async function toggleEntry(row, record, button) {
+  const open = row.querySelector('.word-ledger-entry');
+  if (open) {
+    open.remove();
+    button.setAttribute('aria-expanded', 'false');
+    return;
+  }
+  const entry = document.createElement('div');
+  entry.className = 'word-ledger-entry';
+  entry.textContent = t('content_loading', undefined, 'Loading...');
+  row.appendChild(entry);
+  button.setAttribute('aria-expanded', 'true');
+  const meanings = await entryMeanings(record);
+  if (!entry.isConnected) return;
+  if (!meanings?.senses.length) {
+    entry.textContent = t('content_no_definition_found', undefined, 'No definition found');
+    return;
+  }
+  const list = document.createElement('ol');
+  list.className = 'word-ledger-senses';
+  list.lang = meanings.lang;
+  meanings.senses.forEach((sense) => {
+    const item = document.createElement('li');
+    appendRubyText(item, (sense.glosses || []).join('; '));
+    list.appendChild(item);
+  });
+  entry.replaceChildren(list);
+}
+
+// Whether this browser holds a Supporter token (null until asked). It only
+// shows or hides the "Supporter" tag; the backend decides who gets audio.
+let sentenceSupporter = null;
+
+function showSentenceSupporterTags(supporter) {
+  sentenceSupporter = supporter;
+  document.querySelectorAll('.word-ledger-supporter-tag').forEach((tag) => { tag.hidden = supporter !== false; });
+}
+
+function refreshSentenceSupporter() {
+  try {
+    chrome.runtime.sendMessage({ action: 'hasSupporterToken' }, (response) => {
+      if (chrome.runtime.lastError || !response?.success) return;
+      showSentenceSupporterTags(response.supporter === true);
+    });
+  } catch (_) {
+    // No background: leave the tags as they are.
+  }
+}
+
+/** Read a saved sentence with Supporter audio; a refusal shows a notice. */
+export function playSentence(sentence, button) {
+  if (!sentence || !button) return;
+  if (audioPlayback && audioPlayback.button === button) return;
+  stopPlayback();
+  const playback = { button, audio: null, speaking: false, stopped: false, failed: false };
+  audioPlayback = playback;
+  button.classList.add('is-playing');
+  chrome.runtime.sendMessage({ action: 'playSentence', text: sentence }, (response) => {
+    if (playback.stopped) return;
+    // Only audio data URLs are played, as in the tooltip.
+    if (chrome.runtime.lastError || !response?.success || !String(response.dataUrl || '').startsWith('data:audio/')) {
+      finishPlayback(playback);
+      const code = chrome.runtime.lastError ? '' : response?.error;
+      if (code === 'supporter_required') showSentenceSupporterTags(false);
+      showNotice(TsukeruUiMessages.sentenceAudioMessage(code, t), code === 'supporter_required' ? 'info' : 'error');
+      return;
+    }
+    showSentenceSupporterTags(true);
+    const audio = new globalThis.Audio(response.dataUrl);
+    playback.audio = audio;
+    audio.addEventListener('ended', () => finishPlayback(playback));
+    audio.addEventListener('error', () => finishPlayback(playback));
+    audio.play().catch(() => finishPlayback(playback));
+  });
+}
+
+function sentenceButton(sentence, word) {
+  const label = t('content_play_sentence', undefined, 'Play sentence');
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'word-ledger-listen word-ledger-sentence-play';
+  button.setAttribute('aria-label', label);
+  button.title = label;
+  button.appendChild(icon(ICONS.play));
+  const spoken = wordRules()?.fitSentence ? wordRules().fitSentence(sentence, word) : sentence;
+  button.addEventListener('click', () => playSentence(spoken, button));
+  return button;
+}
+
 async function changeWord(request) {
   const response = await sendWords(request);
   if (response?.success) await loadMyWords({ keepRows: true });
@@ -345,19 +492,31 @@ function buildLedgerRow(record) {
 
   const term = document.createElement('div');
   term.className = 'word-ledger-term';
-  term.append(
+  // The word opens its meanings in place.
+  const open = document.createElement('button');
+  open.type = 'button';
+  open.className = 'word-ledger-open';
+  open.setAttribute('aria-expanded', 'false');
+  open.title = t('content_show_meaning', undefined, 'Show meaning');
+  open.append(
     textSpan('word-ledger-word', record.word, 'ja'),
-    textSpan('word-ledger-reading', record.reading, 'ja'),
-    listenButton(record)
+    textSpan('word-ledger-reading', record.reading, 'ja')
   );
+  open.addEventListener('click', () => toggleEntry(row, record, open));
+  term.append(open, listenButton(record));
   if (record.level) term.appendChild(levelTag(record.level));
   row.appendChild(term);
 
   const sentence = cardSentence(record);
   if (sentence) {
+    const holder = document.createElement('div');
+    holder.className = 'word-ledger-sentence-row';
     const line = textSpan('word-ledger-sentence', '', 'ja');
     renderSentence(line, sentence, record.word);
-    row.appendChild(line);
+    const tag = textSpan('word-ledger-supporter-tag', t('content_supporter_tag', undefined, 'Supporter'));
+    tag.hidden = sentenceSupporter !== false;
+    holder.append(sentenceButton(sentence, record.word), line, tag);
+    row.appendChild(holder);
   }
 
   const actions = document.createElement('div');
@@ -474,6 +633,7 @@ export async function loadMyWords({ keepRows = false } = {}) {
   const response = await sendWords({ action: 'wordsList' });
   wordRecords = response?.success && Array.isArray(response.records) ? response.records : [];
   wordSummary = response?.success ? response.summary : null;
+  if (sentenceSupporter === null) refreshSentenceSupporter();
   renderStrip(wordSummary);
   selectList(selectedList, { rows: keepRows ? Math.max(vocabularyRenderedCount, VOCABULARY_PAGE_SIZE) : VOCABULARY_PAGE_SIZE });
 }
@@ -763,13 +923,20 @@ function pageStateButton(row, state, label) {
   return button;
 }
 
-async function scrollToWordOnPage(word) {
+/** Open the dictionary popup on the word in the page, then get out of its way. */
+async function openWordOnPage(word) {
   try {
     const tab = await getActiveTab();
     if (!tab?.id || !isSupportedPageTab(tab.url)) return;
-    await chrome.tabs.sendMessage(tab.id, { action: 'scrollToWord', word: word.word, reading: word.reading });
+    const pair = { word: word.word, reading: word.reading };
+    const opened = await chrome.tabs.sendMessage(tab.id, { action: 'openWordTooltip', ...pair });
+    if (opened?.found) {
+      globalThis.close();
+      return;
+    }
+    await chrome.tabs.sendMessage(tab.id, { action: 'scrollToWord', ...pair });
   } catch (err) {
-    console.warn('Tsukeru: could not scroll to the word', err?.message);
+    console.warn('Tsukeru: could not open the word', err?.message);
   }
 }
 
@@ -781,7 +948,7 @@ function buildPageRow(word) {
   const term = document.createElement('button');
   term.type = 'button';
   term.className = 'result-word-jump';
-  term.title = t('vm_jump_to_word', undefined, 'Jump to word on page');
+  term.title = t('content_show_meaning', undefined, 'Show meaning');
   // 〜年 is the usual way to write a counter in dictionaries and textbooks.
   const label = word.examples ? `〜${word.word}` : word.word;
   const reading = textSpan('result-word-reading', word.reading, 'ja');
@@ -792,7 +959,7 @@ function buildPageRow(word) {
   term.append(textSpan('result-word-term', label, 'ja'), reading);
   term.addEventListener('click', () => {
     const currentWord = pageWords.find((item) => item.id === row.dataset.wordId);
-    if (currentWord) scrollToWordOnPage(currentWord);
+    if (currentWord) openWordOnPage(currentWord);
   });
   const controls = document.createElement('span');
   controls.className = 'result-word-states';

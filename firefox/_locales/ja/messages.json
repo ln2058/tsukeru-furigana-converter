@@ -321,6 +321,9 @@
   "content_play_sentence": {
     "message": "文を読み上げる"
   },
+  "content_show_meaning": {
+    "message": "意味を表示"
+  },
   "content_sentence_audio_supporter": {
     "message": "文の読み上げはサポーター限定の機能です。ezfurigana.com にサポーターとしてログインすると使えます。"
   },
@@ -466,9 +469,6 @@
   "content_toast_generic_error": {
     "message": "ふりがなを付けられませんでした。もう一度お試しください。",
     "description": "ふりがなの適用に失敗し、より具体的な理由がないときに表示するトースト"
-  },
-  "vm_jump_to_word": {
-    "message": "ページ内の単語へ移動"
   },
   "csv_header_word": {
     "message": "単語"

@@ -14,6 +14,7 @@ Outputs:
 - The card layout shared with the EZFurigana website: frequency badge, pitch-marked reading, form line with conjugation labels, Meaning / Kanji tabs, and a Kanji tab that loads on first open with stroke-order diagrams and KanjiVG attribution.
 - A "Play sentence" line showing the sentence around the clicked word (Supporter audio), tagged "Supporter" when this browser holds no Supporter token.
 - `tsukeru-learning`, `tsukeru-known`, and `tsukeru-revealed` classes and Study/known-reading attributes on the page.
+- `openTooltipForWord` opens the tooltip on a word named by the extension popup's Words in this text (`openWordTooltip`).
 - A throttled `pageWordsChanged` runtime notice when furigana is applied or cleared, so an open popup re-lists the page's words.
 
 Side Effects:
@@ -197,6 +198,21 @@ function handleDictionaryClick(event) {
     return;
   }
   showDefinitionTooltip(targetEl, wordInfo, { x: event.clientX, y: event.clientY });
+}
+
+/**
+ * Open the dictionary popup on a word from the extension popup's This page
+ * list, as if the reader had clicked it there.
+ */
+function openTooltipForWord(word, reading) {
+  const target = isFuriganaActive ? findAnalysisWord(word, reading) : null;
+  if (!target) return { found: false };
+  target.scrollIntoView({ block: 'center', inline: 'nearest' });
+  const wordInfo = extractWordInfo(target);
+  if (!wordInfo.word) return { found: false };
+  const rect = target.getBoundingClientRect();
+  showDefinitionTooltip(target, wordInfo, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+  return { found: true };
 }
 
 // ── Word info extraction ──────────────────────────────────────────────────────
@@ -1215,13 +1231,7 @@ function speakWord(word, reading, buttonElement) {
 }
 
 function sentenceAudioMessage(code) {
-  if (code === 'supporter_required') {
-    return t('content_sentence_audio_supporter', undefined, 'Sentence audio is a Supporter feature. Sign in on ezfurigana.com as a Supporter to turn it on.');
-  }
-  if (code === 'monthly_limit') {
-    return t('content_sentence_audio_limit', undefined, "You've used this month's sentence audio. It resets at the start of next month.");
-  }
-  return t('content_sentence_audio_failed', undefined, "Sentence audio isn't available right now. Please try again later.");
+  return TsukeruUiMessages.sentenceAudioMessage(code, t);
 }
 
 /** Read the sentence shown on the "Play sentence" line with Supporter audio. */
