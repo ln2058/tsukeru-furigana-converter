@@ -1,5 +1,25 @@
 # Changelog
 
+## 4.3.0 — 2026-11-08
+
+### Added
+
+- **Sentence audio for Supporters**: the dictionary tooltip has a "Play sentence" line that shows the sentence it reads and plays it aloud. It uses your EZFurigana Supporter allowance.
+- **EZFurigana connection**: Settings shows whether this browser is connected to EZFurigana and on which plan. Signing in to ezfurigana.com connects it, and the site confirms the first time. If the connection expires, Reconnect fixes it.
+- **Export to Anki**: the My Words export menu opens EZFurigana's Anki export, which builds a deck with readings, meanings, and audio. CSV export stays under "Other formats".
+- When a day's new dictionary translations are used up, the tooltip links to Supporter.
+
+### Changed
+
+- The tooltip takes its sentence from the clicked word's own line, so sentences no longer run into nearby headings or list items, and closing quotes stay with the sentence. Saved words in My Words get the same cleaner sentences.
+- Localized tooltips show the translated example for each meaning.
+- Pitch-accent readings no longer split inside a sound such as しゅ, and long readings wrap the buttons onto the next line.
+- Furigana requests include a random ID that changes every day, so EZFurigana can count daily users without a lasting identifier.
+
+### Fixed
+
+- Words with no JapanesePod101 recording no longer play its "not available" clip.
+
 ## 4.2.0 — 2026-11-02
 
 ### Added
