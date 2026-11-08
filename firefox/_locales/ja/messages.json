@@ -208,7 +208,13 @@
     "message": "その他"
   },
   "vocab_export_anki": {
-    "message": "Anki用に書き出す（.csv）"
+    "message": "Ankiにエクスポート"
+  },
+  "vocab_export_csv": {
+    "message": "リストをダウンロード（CSV）"
+  },
+  "vocab_export_other": {
+    "message": "その他の形式"
   },
   "vocab_export_menu": {
     "message": "エクスポート"

@@ -573,6 +573,9 @@ export function initMyWordsTab() {
       await changeWord({ action: 'wordsClear', state });
     });
   });
+  // The Anki deck is built on EZFurigana from the synced words.
+  const ankiLink = document.getElementById('ankiExportLink');
+  if (ankiLink) ankiLink.href = ezfuriganaUrl('#anki-export');
   document.getElementById('exportVocabBtn')?.addEventListener('click', exportVocabulary);
 }
 

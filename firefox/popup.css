@@ -389,6 +389,8 @@ input[type="text"]:focus { border-color: var(--blue); outline: none; }
 .vocab-action-btn { width: auto; min-height: 28px; margin: 0; padding: 5px 8px; border: 1px solid var(--border-strong); border-radius: 2px; background: var(--surface); color: var(--text); font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: .03em; white-space: nowrap; }
 .vocab-action-btn:hover { border-color: var(--blue); color: var(--blue); background: var(--surface-hover); }
 .vocab-action-btn:disabled { cursor: wait; opacity: .65; }
+a.vocab-action-btn { display: inline-flex; align-items: center; text-decoration: none; }
+.export-menu-label { margin: 4px 0 0; color: var(--muted); font-family: var(--mono); font-size: 9px; letter-spacing: .03em; }
 .export-disclosure { position: relative; flex: 0 0 auto; }
 .export-disclosure summary { display: inline-flex; align-items: center; min-height: 28px; padding: 5px 8px; border: 1px solid var(--border-strong); border-radius: 2px; background: var(--surface); color: var(--text); font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: .03em; list-style: none; }
 .export-disclosure summary::-webkit-details-marker { display: none; }

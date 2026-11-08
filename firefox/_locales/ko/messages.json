@@ -208,7 +208,13 @@
     "message": "기타"
   },
   "vocab_export_anki": {
-    "message": "Anki용으로 내보내기 (.csv)"
+    "message": "Anki로 내보내기"
+  },
+  "vocab_export_csv": {
+    "message": "목록 다운로드(CSV)"
+  },
+  "vocab_export_other": {
+    "message": "다른 형식"
   },
   "vocab_export_menu": {
     "message": "내보내기"

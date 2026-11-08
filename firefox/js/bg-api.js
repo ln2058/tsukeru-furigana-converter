@@ -58,6 +58,12 @@ const LEGACY_RATE_LIMIT_FALLBACK_SECONDS = 60;
 const MAX_RETRY_AFTER_SECONDS = 86400;
 const MAX_AUDIO_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MIN_AUDIO_RESPONSE_BYTES = 100;
+// JapanesePod101 answers a word it has no recording for with a spoken
+// "audio not available" clip (HTTP 200), recognized by its size and digest.
+const JP101_MISSING_AUDIO_BYTES = 52288;
+const JP101_MISSING_AUDIO_SHA256 = new Set([
+  'ae6398b5a27bc8c0a771df6c907ade794be15518174773c58c7c7ddd17098906',
+]);
 const AUDIO_RESPONSE_MIME_TYPES = new Set(['audio/mpeg']);
 let cooldownState = {};
 let cooldownHydrationPromise = null;
@@ -1068,6 +1074,14 @@ export async function fetchKanjiBreakdown(word) {
   return assertJsonObject(await requestExtensionJson(url, { operation: 'dictionary' }), 'Kanji breakdown');
 }
 
+/** True for JP101's "not available" clip; only clips of its exact size are hashed. */
+async function isMissingWordAudio(blob) {
+  if (blob.size !== JP101_MISSING_AUDIO_BYTES) return false;
+  const digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
+  const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return JP101_MISSING_AUDIO_SHA256.has(hex);
+}
+
 export async function handlePlayAudio(word, reading) {
   const normalizedReading = kata2hira(reading || word || '');
   const enc = encodeURIComponent;
@@ -1113,7 +1127,8 @@ export async function handlePlayAudio(word, reading) {
       maxBytes: MAX_AUDIO_RESPONSE_BYTES,
       allowedMimeTypes: AUDIO_RESPONSE_MIME_TYPES,
     });
-    if (blob.size < MIN_AUDIO_RESPONSE_BYTES) continue; // reject JP101's 52-byte empty placeholder audio
+    if (blob.size < MIN_AUDIO_RESPONSE_BYTES) continue; // empty or truncated
+    if (await isMissingWordAudio(blob)) continue;
     const dataUrl = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result);
@@ -1192,6 +1207,7 @@ export async function handleFetchProxyAudio(url) {
     maxBytes: MAX_AUDIO_RESPONSE_BYTES,
     allowedMimeTypes: AUDIO_RESPONSE_MIME_TYPES,
   });
+  if (await isMissingWordAudio(blob)) throw new Error('Audio not found');
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve({ dataUrl: reader.result });

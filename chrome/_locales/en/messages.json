@@ -208,7 +208,13 @@
     "message": "Other"
   },
   "vocab_export_anki": {
-    "message": "Export to Anki (.csv)"
+    "message": "Export to Anki"
+  },
+  "vocab_export_csv": {
+    "message": "Download list (CSV)"
+  },
+  "vocab_export_other": {
+    "message": "Other formats"
   },
   "vocab_export_menu": {
     "message": "Export"

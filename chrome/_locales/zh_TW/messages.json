@@ -208,7 +208,13 @@
     "message": "其他"
   },
   "vocab_export_anki": {
-    "message": "匯出至 Anki（.csv）"
+    "message": "匯出至 Anki"
+  },
+  "vocab_export_csv": {
+    "message": "下載清單（CSV）"
+  },
+  "vocab_export_other": {
+    "message": "其他格式"
   },
   "vocab_export_menu": {
     "message": "匯出"
