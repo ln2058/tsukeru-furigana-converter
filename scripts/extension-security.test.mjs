@@ -78,7 +78,34 @@ function routerHarness(browser) {
   return { calls, send: message => new Promise(resolve => listener(message, {}, resolve)) };
 }
 
+function sentenceRouter(browser) {
+  let listener;
+  const sandbox = {
+    URL, isWordsAction: () => false,
+    chrome: { runtime: { id: 'tsukeru', onMessage: { addListener(fn) { listener = fn; } } } },
+    fetchSentenceAudio: async () => { const error = new Error('no token'); error.code = 'supporter_required'; throw error; },
+    hasSupporterToken: async () => false,
+  };
+  const source = read(browser, 'background.js');
+  const start = source.indexOf('chrome.runtime.onMessage.addListener');
+  vm.runInNewContext(source.slice(start, source.indexOf('chrome.commands.onCommand.addListener', start)), sandbox);
+  return (message, sender) => new Promise((resolve) => {
+    if (listener(message, sender, (response) => resolve({ ...response })) !== true) resolve('no answer');
+  });
+}
+
 for (const browser of ['chrome', 'firefox']) {
+  test(`${browser} the popup's My Words can ask for sentence audio, other extensions cannot`, async () => {
+    const send = sentenceRouter(browser);
+    const popup = { id: 'tsukeru', url: 'chrome-extension://tsukeru/popup.html' };
+    const page = { id: 'tsukeru', tab: { id: 4 } };
+    for (const sender of [popup, page]) {
+      assert.deepEqual(await send({ action: 'playSentence', text: '天気がいい。' }, sender), { success: false, error: 'supporter_required' });
+      assert.deepEqual(await send({ action: 'hasSupporterToken' }, sender), { success: true, supporter: false });
+    }
+    assert.equal(await send({ action: 'playSentence', text: '天気がいい。' }, { id: 'other', tab: { id: 4 } }), 'no answer');
+  });
+
   test(`${browser} production HTML escaper protects tooltip attribute values`, () => {
     const { sandbox, tooltip } = tooltipHarness(browser);
     assert.equal(sandbox.escapeHtml(`<>&"'`), '&lt;&gt;&amp;&quot;&#39;');

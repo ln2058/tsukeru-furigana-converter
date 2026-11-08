@@ -247,8 +247,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // The dictionary popup on a page and the popup's My Words both play sentences.
   if (message?.action === 'playSentence') {
-    if (sender.id !== chrome.runtime.id || !sender.tab) return false;
+    if (sender.id !== chrome.runtime.id) return false;
     if (typeof message.text !== 'string' || !message.text.trim() || Array.from(message.text).length > 120) {
       sendResponse({ success: false, error: 'invalid_text' });
       return true;
@@ -261,7 +262,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // Whether to tag "Play sentence" as a Supporter feature; never sends the token.
   if (message?.action === 'hasSupporterToken') {
-    if (sender.id !== chrome.runtime.id || !sender.tab) return false;
+    if (sender.id !== chrome.runtime.id) return false;
     hasSupporterToken()
       .then((supporter) => sendResponse({ success: true, supporter }))
       .catch(() => sendResponse({ success: false }));
