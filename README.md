@@ -14,9 +14,9 @@
   </p>
 </div>
 
-Tsukeru is a browser extension for Chrome, Microsoft Edge, and Firefox. It adds readings above kanji while preserving the layout of the page, with dictionary lookup, word lists, and CSV export for Anki.
+Tsukeru is a browser extension for Chrome, Microsoft Edge, and Firefox. It adds readings above kanji while preserving the layout of the page, with dictionary lookup, word lists, and Anki export.
 
-Version **4.1.0** adds Korean and Traditional Chinese, a display language setting, and dictionary translations into easy Japanese, Korean, and Traditional Chinese. See the [changelog](CHANGELOG.md) for details.
+Version **4.3.0** adds sentence audio for EZFurigana Supporters, Anki export with audio through EZFurigana, and the EZFurigana connection in Settings. See the [changelog](CHANGELOG.md) for details.
 
 ![Furigana on a Japanese Wikipedia article](screenshots/wikipedia.png)
 
@@ -24,15 +24,17 @@ Version **4.1.0** adds Korean and Traditional Chinese, a display language settin
 
 - Add furigana to Japanese text on ordinary and dynamic webpages.
 - Choose a minimum JLPT level and adjust reading size, colour, weight, and display style.
-- Look up annotated words for English definitions, parts of speech, JLPT level, example sentences, kanji details, and audio. English entries prefer TKGJE data and fall back to JMdict.
+- Look up annotated words for definitions, parts of speech, JLPT level, word frequency, pitch accent, example sentences, and audio. The Kanji tab shows each character's readings, details, and stroke order. English entries prefer TKGJE data and fall back to JMdict.
+- Read definitions in easy Japanese, Korean, or Traditional Chinese, with AI translation for untranslated entries within daily limits.
+- Play the word's sentence aloud with an EZFurigana Supporter account, in the tooltip or in My Words.
 - Browse **Words in this text** and jump back to a word on the page. Numbers with the same counter are grouped together, such as 2024年 and 1998年 under 〜年.
 - Keep **Learning** and **Known** lists in My Words, see how many words are due, and review them on EZFurigana.
 - Hide readings in **Study mode**. Click a word to reveal its reading, then click again to see its meaning.
 - Hide furigana for Known words, or turn this off in Settings.
-- Export a Learning or Known list to Anki as a CSV file.
+- Export to Anki through EZFurigana, or download a list as a CSV file.
 - Highlight words by JLPT level or part of speech, and choose a light or dark theme.
 - Handle changing content on sites such as YouTube and X when dynamic-page processing is enabled.
-- Use English or Japanese extension controls.
+- Use the extension in English, Japanese, Korean, or Traditional Chinese.
 
 ![Furigana on YouTube subtitles](screenshots/youtubesubtitles.png)
 ![Furigana on YouTube comments](screenshots/youtubecomments.png)
@@ -57,13 +59,15 @@ My Words shows how many words are due for review, with a link to review them on 
 
 When you upgrade, eligible kanji words from the old saved vocabulary list move into Learning automatically. Words already in My Words keep their state. Kana-only entries stay in the old storage because My Words does not track them.
 
-Use **Export to Anki (.csv)** to download the selected Learning or Known list. The file includes words, readings, definitions, and example sentences. Export can request missing definitions from EZFurigana. The CSV does not include audio.
+**Export to Anki** opens EZFurigana's Anki export, which builds a deck with readings, meanings, and audio from your synced words. Under **Other formats**, **Download list (CSV)** saves the selected Learning or Known list with words, readings, definitions, and example sentences. CSV export can request missing definitions from EZFurigana and does not include audio.
 
 ## Sync with EZFurigana
 
 Open a page on [EZFurigana](https://www.ezfurigana.com) to sync My Words with the website. The extension exchanges word records with that page in your browser. Its sync code does not make network requests. See the [EZFurigana privacy policy](https://www.ezfurigana.com/privacy) for how the website handles those records.
 
 The website manages review schedules. After it merges the extension's changes, the extension adopts the website's word list and schedule. Words removed on the website are removed from the extension too. Changes you make in the extension while a sync is running are kept for the next exchange.
+
+When you are signed in on EZFurigana, the page also connects the extension to your account, and the site confirms the first time. Settings shows the connection and plan. Supporters get a token that the extension keeps in local storage and sends with plan checks, sentence audio, and new dictionary translations; the server checks the current plan on each use. If the connection expires, **Reconnect** renews it.
 
 ## Local HTML files
 
@@ -73,14 +77,15 @@ For Chrome and Edge, open the extension's details page and enable **Allow access
 
 ## Privacy and permissions
 
-Tsukeru contains no analytics or advertising code.
+Tsukeru contains no advertising or third-party analytics code.
 
 Settings are kept in browser sync storage. My Words uses `chrome.storage.local` for words, readings, Learning or Known states, review times, short example sentences, and details such as definitions and parts of speech. Furigana results are cached in IndexedDB, and service cooldowns use local browser storage.
 
 The extension sends data to EZFurigana when a feature requires it:
 
-- Japanese text and the current HTTP(S) page URL when you apply furigana. Local-file URLs are excluded.
+- Japanese text and the current HTTP(S) page URL when you apply furigana. Local-file URLs are excluded. These requests include a random ID that changes every UTC day, so EZFurigana can count daily users; there is no lasting install ID.
 - A word and its reading for dictionary, example, kanji, or audio requests.
+- The sentence you choose to play, with your Supporter token, for sentence audio.
 - Words and readings when CSV export needs to look up missing definitions.
 - The captured word, reading, and context, plus any correction you enter, when you submit a reading report.
 - Word records exchanged with an open EZFurigana page during sync, as described above.
