@@ -103,7 +103,7 @@ for (const browserName of ['chrome', 'firefox']) {
   test(`${browserName} keeps the website's Supporter token for the plan check only`, async () => {
     const now = Date.now();
     const expiresAt = Math.floor(now / 1000) + 3 * 86_400;
-    const token = `v1.${'a'.repeat(32)}.${expiresAt}.${'b'.repeat(64)}`;
+    const token = `v2.${'a'.repeat(32)}.0.${expiresAt}.${'b'.repeat(64)}`;
     const storage = memoryStorage();
     const routes = [
       response(200, { ok: true, plan: 'supporter' }),
@@ -148,7 +148,7 @@ for (const browserName of ['chrome', 'firefox']) {
   test(`${browserName} sentence audio needs a Supporter token and reports refusals by code`, async () => {
     const now = Date.now();
     const expiresAt = Math.floor(now / 1000) + 3 * 86_400;
-    const token = `v1.${'e'.repeat(32)}.${expiresAt}.${'f'.repeat(64)}`;
+    const token = `v2.${'e'.repeat(32)}.0.${expiresAt}.${'f'.repeat(64)}`;
     const storage = memoryStorage();
     const routes = [
       response(429, { ok: false, error: 'monthly_limit' }),
@@ -187,7 +187,7 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(await api.getSupporterPlan(now), 'free');
 
     const expiresAt = Math.floor(now / 1000) + 60;
-    const token = `v1.${'c'.repeat(32)}.${expiresAt}.${'d'.repeat(64)}`;
+    const token = `v2.${'c'.repeat(32)}.0.${expiresAt}.${'d'.repeat(64)}`;
     await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
     assert.deepEqual({ ...(await api.supporterHeaders(now + 61_000)) }, {});
     assert.equal(await api.getSupporterPlan(now + 61_000), 'free');
@@ -543,6 +543,22 @@ for (const browserName of ['chrome', 'firefox']) {
     }
     assert.notEqual(fixture.api.getLocalizedDefinitionCacheKey('本', 'ほん', 'ja'), fixture.api.getLocalizedDefinitionCacheKey('本', 'ほん', 'ko'));
     await assert.rejects(() => fixture.api.lookupLocalizedDefinition('本', '', '', 'fr'));
+  });
+
+  test(`${browserName} sends the Supporter token only with localized lookups that may create an entry`, async () => {
+    const now = Date.now();
+    const expiresAt = Math.floor(now / 1000) + 3 * 86_400;
+    const token = `v2.${'9'.repeat(32)}.3.${expiresAt}.${'8'.repeat(64)}`;
+    const storage = memoryStorage();
+    const fixture = loadApi(browserName, url => url.pathname.endsWith('/nonce')
+      ? response(200, { nonce: 'nonce', expires_in: 600 })
+      : response(200, { source: 'je_english_fallback', reason: 'plan_limit', entry: { gloss: 'English' } }), { storage });
+    await fixture.api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
+    await fixture.api.lookupLocalizedDefinition('本', '', '', 'ko', { cacheOnly: true });
+    await fixture.api.lookupLocalizedDefinition('本', '', '', 'ko', { cacheOnly: false });
+    const lookups = fixture.calls.filter(({ url }) => url.includes('/api/extension/ai-dictionary'));
+    assert.deepEqual(lookups.map(({ options }) => options.headers['x-tsukeru-supporter']), [undefined, token]);
+    assert.ok(lookups.every(({ options }) => options.credentials === 'omit'));
   });
 
   test(`${browserName} coalesces matching requests but separates cache-only from generation and never caches denials`, async () => {

@@ -24,7 +24,7 @@ Security Notes:
 - Treat all backend responses as untrusted until sanitized by content scripts.
 - Redacts non-web tab URLs before sending backend metadata.
 - Sends only the per-worker session ID and the manifest version as identifying headers, plus a random day ID on furigana requests that is replaced each UTC day; no stable install ID.
-- Sends the Supporter token only to Supporter endpoints (the plan check and sentence audio), never with furigana or dictionary requests.
+- Sends the Supporter token only to Supporter endpoints (the plan check, sentence audio, and localized dictionary lookups that may create a new entry, which count against the Supporter's allowance), never with furigana, English dictionary, or cache-only requests.
 - Sentence audio sends one plain sentence of at most 120 characters, only after the reader clicks Play sentence; responses are bounded audio/mpeg.
 - Keep endpoint configuration centralized to avoid host sprawl.
 - Audio proxy fetches accept only HTTPS www.ezfurigana.com on the default port and refuse redirects.
@@ -362,7 +362,7 @@ function _extensionHeaders() {
 // Supporter token from the website (see content-sync). It names the account;
 // the backend looks up the current plan on every use.
 const _SUPPORTER_KEY = 'tsukeruSupporter';
-const _SUPPORTER_TOKEN_RE = /^v1\.[0-9a-f]{32}\.[0-9]{1,12}\.[0-9a-f]{64}$/;
+const _SUPPORTER_TOKEN_RE = /^v2\.[0-9a-f]{32}\.[0-9]{1,9}\.[0-9]{1,12}\.[0-9a-f]{64}$/;
 const _SUPPORTER_RECHECK_MS = 24 * 60 * 60 * 1000;
 // A Free answer is asked again on the next visit, so an upgrade or a switch
 // to a Supporter account shows up at once.
@@ -978,14 +978,14 @@ async function refreshNonceForApiRequest(staleNonce) {
   return nonce;
 }
 
-async function requestExtensionJsonWithNonce(url, nonce, retryState, operation = 'dictionary') {
+async function requestExtensionJsonWithNonce(url, nonce, retryState, operation = 'dictionary', extraHeaders = {}) {
   const requestUrl = new URL(url.toString());
   if (nonce) requestUrl.searchParams.set('ext_nonce', nonce);
 
   try {
     const response = await fetchWithCooldown(requestUrl.toString(), {
       method: 'GET',
-      headers: _extensionHeaders(),
+      headers: { ..._extensionHeaders(), ...extraHeaders },
       credentials: 'omit',
       mode: 'cors',
     }, operation);
@@ -998,7 +998,7 @@ async function requestExtensionJsonWithNonce(url, nonce, retryState, operation =
     if (error?.status === 403 && nonce && !retryState.nonceRetryUsed && isRecognizedNonceFailure(error.body)) {
       retryState.nonceRetryUsed = true;
       const refreshedNonce = await refreshNonceForApiRequest(nonce);
-      return requestExtensionJsonWithNonce(url, refreshedNonce, retryState, operation);
+      return requestExtensionJsonWithNonce(url, refreshedNonce, retryState, operation, extraHeaders);
     }
     throw error instanceof Error ? error : new Error('API request failed');
   }
@@ -1012,6 +1012,7 @@ export async function requestExtensionJson(url, options = {}) {
     nonce,
     retryState,
     normalizeOperation(options.operation, 'dictionary'),
+    options.headers || {},
   );
 }
 
@@ -1282,7 +1283,9 @@ export async function lookupLocalizedDefinition(word, reading, readingType, uiLo
     const url = buildDefinitionUrl('/api/extension/ai-dictionary', args);
     url.searchParams.set('locale', locale);
     url.searchParams.set('cache_only', cacheOnly ? '1' : '0');
-    const data = assertLocalizedDefinitionPayload(await requestExtensionJson(url, { operation: 'dictionary' }), locale);
+    // A new entry counts against a Supporter's own allowance; cache-only stays anonymous.
+    const headers = cacheOnly ? {} : await supporterHeaders();
+    const data = assertLocalizedDefinitionPayload(await requestExtensionJson(url, { operation: 'dictionary', headers }), locale);
     if (['je_localized_cache', 'je_localized_generated'].includes(data.source)) await localizedCacheSet(key, data);
     return data;
   })();
