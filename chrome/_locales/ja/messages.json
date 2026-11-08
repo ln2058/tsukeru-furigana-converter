@@ -42,6 +42,9 @@
   "header_title_become_supporter": {
     "message": "サポーターになる"
   },
+  "header_title_supporter_active": {
+    "message": "サポーターです"
+  },
   "header_title_review_chrome": {
     "message": "Chrome ウェブストアでレビュー"
   },
@@ -305,6 +308,21 @@
   },
   "content_play_pronunciation": {
     "message": "発音を再生"
+  },
+  "content_supporter_tag": {
+    "message": "サポーター"
+  },
+  "content_play_sentence": {
+    "message": "文を読み上げる"
+  },
+  "content_sentence_audio_supporter": {
+    "message": "文の読み上げはサポーター限定の機能です。ezfurigana.com にサポーターとしてログインすると使えます。"
+  },
+  "content_sentence_audio_limit": {
+    "message": "今月の文の読み上げ上限に達しました。来月の初めにリセットされます。"
+  },
+  "content_sentence_audio_failed": {
+    "message": "現在、文の読み上げを利用できません。しばらくしてからもう一度お試しください。"
   },
   "content_report_wrong_reading": {
     "message": "誤った読みを報告"

@@ -52,6 +52,12 @@ function loadApi(browserName, route, { cacheLimit = 200, storage = null, manifes
       handleReportReadingError,
       fetchFromAPI,
       getExtensionDayId: _getExtensionDayId,
+      storeSupporterHandoff,
+      supporterHeaders,
+      hasSupporterToken,
+      supporterRefreshDue,
+      getSupporterPlan,
+      fetchSentenceAudio,
     };
   `;
   const calls = [];
@@ -88,10 +94,96 @@ function memoryStorage() {
     values,
     async get(key) { return key in values ? { [key]: values[key] } : {}; },
     async set(entries) { Object.assign(values, entries); },
+    async remove(key) { delete values[key]; },
   };
 }
 
 for (const browserName of ['chrome', 'firefox']) {
+  test(`${browserName} keeps the website's Supporter token for the plan check only`, async () => {
+    const now = Date.now();
+    const expiresAt = Math.floor(now / 1000) + 3 * 86_400;
+    const token = `v1.${'a'.repeat(32)}.${expiresAt}.${'b'.repeat(64)}`;
+    const storage = memoryStorage();
+    const routes = [
+      response(200, { ok: true, plan: 'supporter' }),
+      response(200, { html: '<ruby>猫</ruby>' }, { 'content-type': 'application/json' }),
+      response(401, { ok: false, error: 'invalid_token' }),
+    ];
+    const { api, calls } = loadApi(browserName, queuedRoute(routes), { storage });
+
+    assert.equal(await api.supporterRefreshDue(now), true);
+    await assert.rejects(api.storeSupporterHandoff({ plan: 'supporter', token: 'forged', expiresAt }, now));
+    assert.deepEqual({ ...(await api.supporterHeaders(now)) }, {});
+    assert.equal(await api.hasSupporterToken(now), false);
+
+    await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
+    assert.equal(await api.hasSupporterToken(now), true, 'tags the sentence line without a request');
+    assert.equal(await api.supporterRefreshDue(now), false, 'checked at most daily');
+    assert.equal(await api.supporterRefreshDue(now + 86_400_000), true);
+    assert.equal(await api.getSupporterPlan(now), 'supporter');
+    const planCall = calls.find(({ url }) => url.endsWith('/api/extension/plan'));
+    assert.equal(planCall.options.headers['x-tsukeru-supporter'], token);
+    assert.equal(planCall.options.credentials, 'omit');
+
+    await api.fetchFromAPI('猫', {}, '');
+    const furiganaCall = calls.find(({ url }) => url.endsWith('/api/extension/furigana'));
+    assert.equal(furiganaCall.options.headers['x-tsukeru-supporter'], undefined, 'furigana stays anonymous');
+
+    // A token the backend no longer accepts is dropped until the next website visit.
+    assert.equal(await api.getSupporterPlan(now + 2 * 3_600_000), 'free');
+    assert.equal(storage.values.tsukeruSupporter, undefined);
+    assert.equal(await api.hasSupporterToken(now), false);
+    assert.equal(await api.supporterRefreshDue(now), true);
+  });
+
+  test(`${browserName} sentence audio needs a Supporter token and reports refusals by code`, async () => {
+    const now = Date.now();
+    const expiresAt = Math.floor(now / 1000) + 3 * 86_400;
+    const token = `v1.${'e'.repeat(32)}.${expiresAt}.${'f'.repeat(64)}`;
+    const storage = memoryStorage();
+    const routes = [
+      response(429, { ok: false, error: 'monthly_limit' }),
+      response(401, { ok: false, error: 'invalid_token' }),
+    ];
+    const { api, calls } = loadApi(browserName, queuedRoute(routes), { storage });
+
+    await assert.rejects(api.fetchSentenceAudio('今日はいい天気ですね。'), { code: 'supporter_required' });
+    assert.equal(calls.length, 0, 'no request without a token');
+
+    await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
+    await assert.rejects(api.fetchSentenceAudio(' 今日はいい天気ですね。 '), { code: 'monthly_limit', status: 429 });
+    const call = calls.find(({ url }) => url.endsWith('/api/extension/tts'));
+    assert.equal(call.options.method, 'POST');
+    assert.equal(call.options.headers['x-tsukeru-supporter'], token);
+    assert.equal(call.options.credentials, 'omit');
+    assert.deepEqual(JSON.parse(call.options.body), { text: '今日はいい天気ですね。' });
+
+    // A rejected token is dropped so the website can hand over a new one.
+    await assert.rejects(api.fetchSentenceAudio('今日はいい天気ですね。'), { code: 'supporter_required' });
+    assert.equal(storage.values.tsukeruSupporter, undefined);
+  });
+
+  test(`${browserName} records a Free answer without a token and drops expired tokens`, async () => {
+    const now = Date.now();
+    const storage = memoryStorage();
+    const { api, calls } = loadApi(browserName, queuedRoute([]), { storage });
+
+    await api.storeSupporterHandoff({ plan: 'free', token: 'ignored' }, now);
+    assert.deepEqual({ ...storage.values.tsukeruSupporter }, { plan: 'free', checkedAt: now });
+    // Asked again on the next visit, so an upgrade or account switch shows up at once.
+    assert.equal(await api.supporterRefreshDue(now + 30_000), false);
+    assert.equal(await api.supporterRefreshDue(now + 60_000), true);
+    assert.equal(await api.getSupporterPlan(now), 'free');
+
+    const expiresAt = Math.floor(now / 1000) + 60;
+    const token = `v1.${'c'.repeat(32)}.${expiresAt}.${'d'.repeat(64)}`;
+    await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
+    assert.deepEqual({ ...(await api.supporterHeaders(now + 61_000)) }, {});
+    assert.equal(await api.getSupporterPlan(now + 61_000), 'free');
+    assert.equal(await api.supporterRefreshDue(now + 61_000), true);
+    assert.equal(calls.length, 0, 'no request without a live token');
+  });
+
   test(`${browserName} furigana requests carry a day ID that is replaced each UTC day`, async () => {
     // The first value becomes the per-worker session ID when the module loads.
     const ids = [`${browserName}-session`, '3f2b8c1e-9d4a-4b6f-8e2c-7a1d5b9c0e34', '9a6e2d10-5c3b-4f7a-a1e8-2b4c6d8e0f12'];

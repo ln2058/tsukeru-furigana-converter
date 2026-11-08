@@ -1,6 +1,6 @@
 /*
 Module: content-sync
-Purpose: Keep My Words in step with EZFurigana while one of its pages is open: send the words changed in the extension to the page, then hand the page's full record list to the background store.
+Purpose: Keep My Words in step with EZFurigana while one of its pages is open: send the words changed in the extension to the page, then hand the page's full record list to the background store. Also collect a signed-in Supporter's extension token for the background.
 
 Inputs:
 - Window messages from the EZFurigana page on this origin (ready with its store id, changed, and snapshot).
@@ -9,17 +9,21 @@ Inputs:
 Outputs:
 - Hello and push messages posted to this window for the page's sync module.
 - `wordsSyncStart` and `wordsSyncFinish` runtime messages to the background store.
+- `supporterRefreshDue` and `supporterHandoff` runtime messages with the website's Supporter answer.
 
 Side Effects:
 - Adds one window message listener and one storage change listener on EZFurigana pages only.
+- While signed in, POSTs to the website's own /api/extension/supporter-token (daily for Supporters, at most once a minute otherwise) with its CSRF cookie (the only request this script makes).
 
 Failure Modes:
 - Without an answer from the page, an exchange gives up after a timeout and nothing is merged.
 - Messages from other windows, origins, sources, or protocol versions are ignored.
+- A failed or refused Supporter request changes nothing; the next visit tries again.
 
 Security Notes:
 - Runs only on https://www.ezfurigana.com pages (manifest match) and posts only to that origin.
-- Carries only words, readings, states, schedule times, and short sentences from the reader's lists; nothing is sent to a server.
+- Word sync carries only words, readings, states, schedule times, and short sentences from the reader's lists; nothing is sent to a server.
+- The Supporter token goes straight to the background and is never posted to the page window.
 */
 (function startWordSync() {
   if (window.location.origin !== 'https://www.ezfurigana.com') return;
@@ -111,5 +115,30 @@ Security Notes:
     if (Object.keys(changes).some((key) => key.startsWith('w:') || key.startsWith('wr:'))) schedule();
   });
 
+  // Signed-in pages carry the CSRF cookie; without it there is no account to ask about.
+  async function refreshSupporterToken() {
+    const cookie = document.cookie.split('; ').find((part) => part.startsWith('ez_csrf_token='));
+    if (!cookie || !chrome.runtime?.id) return;
+    const due = await chrome.runtime.sendMessage({ action: 'supporterRefreshDue' });
+    if (!due?.success || !due.due) return;
+    // Chrome content-script fetches run as the page, so they carry the site's cookies.
+    const pageFetch = fetch;
+    const response = await pageFetch(`${window.location.origin}/api/extension/supporter-token`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { 'X-CSRF-Token': decodeURIComponent(cookie.slice('ez_csrf_token='.length)) },
+    });
+    if (!response.ok) return;
+    const body = await response.json();
+    await chrome.runtime.sendMessage({
+      action: 'supporterHandoff',
+      plan: body?.plan,
+      token: body?.token,
+      expiresAt: body?.expires_at,
+    });
+  }
+
   post({ type: 'hello' });
+  refreshSupporterToken().catch((error) => console.warn('Tsukeru: Supporter check failed', error?.message));
 })();

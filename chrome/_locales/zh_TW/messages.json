@@ -42,6 +42,9 @@
   "header_title_become_supporter": {
     "message": "成為支持者"
   },
+  "header_title_supporter_active": {
+    "message": "您是支持者"
+  },
   "header_title_review_chrome": {
     "message": "在 Chrome 線上應用程式商店評分"
   },
@@ -305,6 +308,21 @@
   },
   "content_play_pronunciation": {
     "message": "播放發音"
+  },
+  "content_supporter_tag": {
+    "message": "支持者"
+  },
+  "content_play_sentence": {
+    "message": "朗讀句子"
+  },
+  "content_sentence_audio_supporter": {
+    "message": "句子朗讀是支持者專屬功能。以支持者身分登入 ezfurigana.com 即可使用。"
+  },
+  "content_sentence_audio_limit": {
+    "message": "本月的句子朗讀額度已用完，將於下個月初重設。"
+  },
+  "content_sentence_audio_failed": {
+    "message": "目前無法使用句子朗讀，請稍後再試。"
   },
   "content_report_wrong_reading": {
     "message": "回報錯誤讀音"

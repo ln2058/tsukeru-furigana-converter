@@ -42,6 +42,9 @@
   "header_title_become_supporter": {
     "message": "Become a Supporter"
   },
+  "header_title_supporter_active": {
+    "message": "You're a Supporter"
+  },
   "header_title_review_chrome": {
     "message": "Review on Chrome Web Store"
   },
@@ -305,6 +308,21 @@
   },
   "content_play_pronunciation": {
     "message": "Play pronunciation"
+  },
+  "content_supporter_tag": {
+    "message": "Supporter"
+  },
+  "content_play_sentence": {
+    "message": "Play sentence"
+  },
+  "content_sentence_audio_supporter": {
+    "message": "Sentence audio is a Supporter feature. Sign in on ezfurigana.com as a Supporter to turn it on."
+  },
+  "content_sentence_audio_limit": {
+    "message": "You've used this month's sentence audio. It resets at the start of next month."
+  },
+  "content_sentence_audio_failed": {
+    "message": "Sentence audio isn't available right now. Please try again later."
   },
   "content_report_wrong_reading": {
     "message": "Report wrong reading"

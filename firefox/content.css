@@ -616,9 +616,11 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 .tsukeru-word-tooltip .tooltip-pos-other { background: var(--tsukeru-group-neutral) !important; color: var(--tsukeru-group-ink) !important; }
 
 .tsukeru-word-tooltip .tsukeru-reading-row,
-.tsukeru-word-tooltip .tooltip-reading-row { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 8px !important; margin-bottom: 10px !important; padding: 8px 0 10px !important; }
+.tsukeru-word-tooltip .tooltip-reading-row { display: flex !important; flex-wrap: wrap !important; align-items: center !important; justify-content: space-between !important; gap: 4px 8px !important; margin-bottom: 10px !important; padding: 8px 0 10px !important; }
 .tsukeru-word-tooltip .tsukeru-reading-text,
-.tsukeru-word-tooltip .tooltip-reading { color: var(--tsukeru-blue-readable) !important; font-size: 15px !important; font-weight: 400 !important; line-height: 1.4 !important; overflow-wrap: anywhere !important; }
+.tsukeru-word-tooltip .tooltip-reading { color: var(--tsukeru-blue-readable) !important; font-size: 15px !important; font-weight: 400 !important; line-height: 1.4 !important; overflow-wrap: anywhere !important; min-width: 0 !important; }
+/* Too narrow for both: the buttons move under the reading, still on the right. */
+.tsukeru-word-tooltip .tsukeru-reading-actions { margin-left: auto !important; }
 .tsukeru-word-tooltip .tsukeru-header-right,
 .tsukeru-word-tooltip .tsukeru-reading-actions { display: flex !important; align-items: center !important; gap: 2px !important; flex-shrink: 0 !important; }
 .tsukeru-word-tooltip .tsukeru-tooltip-close,
@@ -916,10 +918,37 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 }
 .tsukeru-word-tooltip .tsukeru-sense-more-toggle:hover { text-decoration: underline !important; text-underline-offset: 3px !important; }
 .tsukeru-word-tooltip .tsukeru-form-line { display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 6px !important; margin: -4px 0 8px !important; color: var(--tsukeru-secondary) !important; font-size: 12px !important; line-height: 1.4 !important; }
+/* "Play sentence": the sentence it reads, the clicked word marked, at most two lines. */
+.tsukeru-word-tooltip .tsukeru-sentence-play {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 7px !important;
+  width: 100% !important;
+  margin: 0 0 10px !important;
+  padding: 6px 8px !important;
+  border: 1px solid var(--tsukeru-border) !important;
+  border-radius: 3px !important;
+  background: transparent !important;
+  color: var(--tsukeru-text) !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  text-align: left !important;
+}
+.tsukeru-word-tooltip .tsukeru-sentence-play:hover,
+.tsukeru-word-tooltip .tsukeru-sentence-play:focus-visible,
+.tsukeru-word-tooltip .tsukeru-sentence-play.speaking { border-color: var(--tsukeru-blue) !important; background: var(--tsukeru-surface-hover) !important; }
+.tsukeru-word-tooltip .tsukeru-sentence-icon { flex: 0 0 auto !important; width: 16px !important; height: 16px !important; margin-top: 2px !important; color: var(--tsukeru-blue) !important; }
+.tsukeru-word-tooltip .tsukeru-sentence-play.speaking .tsukeru-sentence-icon { animation: tsukeru-sentence-pulse 1s ease-in-out infinite !important; }
+@keyframes tsukeru-sentence-pulse { 50% { opacity: .35; } }
+.tsukeru-word-tooltip .tsukeru-sentence-text { flex: 1 1 auto !important; min-width: 0 !important; display: -webkit-box !important; -webkit-box-orient: vertical !important; -webkit-line-clamp: 2 !important; overflow: hidden !important; overflow-wrap: anywhere !important; }
+.tsukeru-word-tooltip .tsukeru-sentence-word { padding: 0 !important; background: transparent !important; color: var(--tsukeru-blue-readable) !important; font-weight: 600 !important; }
+.tsukeru-word-tooltip .tsukeru-supporter-tag { flex: 0 0 auto !important; align-self: center !important; padding: 0 5px !important; border: 1px solid var(--tsukeru-border) !important; border-radius: 2px !important; color: var(--tsukeru-secondary) !important; font-size: 10px !important; line-height: 1.6 !important; }
 .tsukeru-word-tooltip .tsukeru-form-surface { color: var(--tsukeru-text) !important; font-weight: 500 !important; }
 .tsukeru-word-tooltip .tsukeru-form-inflection { color: var(--tsukeru-secondary) !important; }
-.tsukeru-word-tooltip .tsukeru-pitch { display: inline-flex !important; padding-top: 3px !important; }
-.tsukeru-word-tooltip .tsukeru-mora { border-top: 1.5px solid transparent !important; line-height: 1.25 !important; }
+/* A narrow row wraps between morae, never inside one (し|ゅ). */
+.tsukeru-word-tooltip .tsukeru-pitch { display: inline-flex !important; flex-wrap: wrap !important; padding-top: 3px !important; }
+.tsukeru-word-tooltip .tsukeru-mora { border-top: 1.5px solid transparent !important; line-height: 1.25 !important; white-space: nowrap !important; }
 .tsukeru-word-tooltip .tsukeru-mora-high { border-top-color: currentColor !important; }
 .tsukeru-word-tooltip .tsukeru-mora-rise { border-left: 1.5px solid currentColor !important; }
 .tsukeru-word-tooltip .tsukeru-mora-drop { border-right: 1.5px solid currentColor !important; }
@@ -1006,6 +1035,7 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-tooltip-close,
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-tooltip-speaker,
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-tooltip-report-btn { width: 44px !important; height: 44px !important; }
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-sentence-play { min-height: 44px !important; padding: 9px 10px !important; font-size: 15px !important; }
   .tsukeru-word-tooltip.tsukeru-sheet .tooltip-progress-option,
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-dropdown-toggle,
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-alt-readings-toggle,

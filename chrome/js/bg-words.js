@@ -163,7 +163,7 @@ function brief(record) {
   return record ? { id: record.id, word: record.word, reading: record.reading, state: record.state } : null;
 }
 
-function isEzfuriganaSender(sender) {
+export function isEzfuriganaSender(sender) {
   if (!sender || sender.id !== chrome.runtime.id) return false;
   try {
     const url = new URL(sender.url || sender.tab?.url || '');

@@ -25,6 +25,7 @@ Failure Modes:
 Security Notes:
 - Delegates external network traffic to `bg-api` only.
 - Audio proxy messages accept only HTTPS www.ezfurigana.com URLs on the default port.
+- Supporter token handoff messages are accepted only from this extension's script on the website; the popup may only read the plan.
 - Avoid logging raw user page text in error paths.
 */
 // Background script — Firefox message router and command handler.
@@ -32,9 +33,10 @@ Security Notes:
 import {
   handleFuriganaRequest, lookupDefinition, lookupLocalizedDefinition, fetchExampleSentence, fetchKanjiBreakdown,
   handlePlayAudio, handlePlayAudioDirect, handleFetchProxyAudio, handleReportReadingError,
-  DEFAULT_SETTINGS, getRateLimitState,
+  DEFAULT_SETTINGS, getRateLimitState, getSupporterPlan, hasSupporterToken, storeSupporterHandoff, supporterRefreshDue,
+  fetchSentenceAudio,
 } from './js/bg-api.js';
-import { handleWordsMessage, isWordsAction, refreshWordBadge } from './js/bg-words.js';
+import { handleWordsMessage, isEzfuriganaSender, isWordsAction, refreshWordBadge } from './js/bg-words.js';
 import { hasSupportedLocalFileExtension } from './js/utils.js';
 import { REVIEW_USAGE_KEY, localDay, markFirstSeen, recordUsageDay } from './js/review-prompt.js';
 import './js/i18n.js';
@@ -192,6 +194,49 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.warn('Tsukeru: word storage failed', error?.message);
         sendResponse({ success: false, error: 'Word storage failed' });
       });
+    return true;
+  }
+
+  // Supporter token handoff: only this extension's script on the website may set it.
+  if (message?.action === 'supporterRefreshDue' || message?.action === 'supporterHandoff') {
+    if (!isEzfuriganaSender(sender)) {
+      sendResponse({ success: false, error: 'Not allowed' });
+      return true;
+    }
+    const work = message.action === 'supporterRefreshDue'
+      ? supporterRefreshDue().then((due) => ({ success: true, due }))
+      : storeSupporterHandoff({ plan: message.plan, token: message.token, expiresAt: message.expiresAt })
+        .then(({ plan }) => ({ success: true, plan }));
+    work.then(sendResponse).catch(() => sendResponse({ success: false, error: 'Supporter handoff failed' }));
+    return true;
+  }
+
+  if (message?.action === 'playSentence') {
+    if (sender.id !== chrome.runtime.id || !sender.tab) return false;
+    if (typeof message.text !== 'string' || !message.text.trim() || Array.from(message.text).length > 120) {
+      sendResponse({ success: false, error: 'invalid_text' });
+      return true;
+    }
+    fetchSentenceAudio(message.text)
+      .then((result) => sendResponse({ success: true, ...result }))
+      .catch((error) => sendResponse({ success: false, error: error?.code || 'tts_unavailable' }));
+    return true;
+  }
+
+  // Whether to tag "Play sentence" as a Supporter feature; never sends the token.
+  if (message?.action === 'hasSupporterToken') {
+    if (sender.id !== chrome.runtime.id || !sender.tab) return false;
+    hasSupporterToken()
+      .then((supporter) => sendResponse({ success: true, supporter }))
+      .catch(() => sendResponse({ success: false }));
+    return true;
+  }
+
+  if (message?.action === 'getSupporterPlan') {
+    if (sender.id !== chrome.runtime.id || sender.tab) return false;
+    getSupporterPlan()
+      .then((plan) => sendResponse({ success: true, plan }))
+      .catch(() => sendResponse({ success: false }));
     return true;
   }
 

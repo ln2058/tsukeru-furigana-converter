@@ -42,6 +42,9 @@
   "header_title_become_supporter": {
     "message": "서포터 되기"
   },
+  "header_title_supporter_active": {
+    "message": "서포터입니다"
+  },
   "header_title_review_chrome": {
     "message": "Chrome 웹 스토어에서 평가하기"
   },
@@ -305,6 +308,21 @@
   },
   "content_play_pronunciation": {
     "message": "발음 재생"
+  },
+  "content_supporter_tag": {
+    "message": "서포터"
+  },
+  "content_play_sentence": {
+    "message": "문장 읽기"
+  },
+  "content_sentence_audio_supporter": {
+    "message": "문장 읽기는 서포터 전용 기능입니다. ezfurigana.com에 서포터로 로그인하면 사용할 수 있습니다."
+  },
+  "content_sentence_audio_limit": {
+    "message": "이번 달 문장 읽기 한도를 모두 사용했습니다. 다음 달 초에 초기화됩니다."
+  },
+  "content_sentence_audio_failed": {
+    "message": "지금은 문장 읽기를 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."
   },
   "content_report_wrong_reading": {
     "message": "잘못된 읽는 법 신고"

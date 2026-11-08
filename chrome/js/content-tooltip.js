@@ -12,6 +12,7 @@ Inputs:
 Outputs:
 - Tooltip rendering updates with Japanese language tags for words/readings/examples, checked-word and Learning/Known requests to the background store, and report payload messages.
 - The card layout shared with the EZFurigana website: frequency badge, pitch-marked reading, form line with conjugation labels, Meaning / Kanji tabs, and a Kanji tab that loads on first open with stroke-order diagrams and KanjiVG attribution.
+- A "Play sentence" line showing the sentence around the clicked word (Supporter audio), tagged "Supporter" when this browser holds no Supporter token.
 - `tsukeru-learning`, `tsukeru-known`, and `tsukeru-revealed` classes and Study/known-reading attributes on the page.
 - A throttled `pageWordsChanged` runtime notice when furigana is applied or cleared, so an open popup re-lists the page's words.
 
@@ -20,6 +21,7 @@ Side Effects:
 - Places the tooltip with the placement rules shared with EZFurigana (a bottom sheet at 600 px wide or less) and marks the clicked word with `tsukeru-active-word` while it is open.
 - Registers tooltip and report surfaces with content-ui to follow the saved UI theme.
 - Opening the dictionary on a kanji word, or revealing it in Study mode, adds it to Learning (a known word stays known).
+- Play sentence sends the plain sentence around the open word (at most 120 characters) to the background for Supporter audio and shows a toast when it is refused.
 - Excludes tooltip-owned metadata from word capture and word-state marks.
 
 Failure Modes:
@@ -471,6 +473,16 @@ function addTooltipInteractionHandlers(reportInfo = null) {
     };
   }
 
+  const sentenceBtn = tooltip.querySelector('.tsukeru-sentence-play');
+  if (sentenceBtn) {
+    sentenceBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (!e.isTrusted) return;
+      speakSentence(sentenceBtn);
+    };
+    refreshSupporterTag(tooltip);
+  }
+
   const reportBtn = tooltip.querySelector('.tsukeru-tooltip-report-btn');
   if (reportBtn) {
     reportBtn.onclick = (e) => {
@@ -643,6 +655,48 @@ function renderTooltipReadingWithPitch(reading, accentValue) {
   const pattern = positions.map((position) => `[${position}]`).join(' ');
   const title = t('content_pitch_accent_title', [pattern], `Pitch accent ${pattern}`);
   return `<span class="tsukeru-pitch" title="${escapeHtml(title)}" aria-label="${escapeHtml(`${reading} ${title}`)}">${spans}</span>`;
+}
+
+// Whether this browser holds a Supporter token (null until asked). It only
+// shows or hides the "Supporter" tag; the backend decides who gets audio.
+let sentenceAudioSupporter = null;
+
+/** "Play sentence" as the sentence it reads, the clicked word marked; empty without one. */
+function renderTooltipSentenceLine(sentence, word) {
+  if (!sentence) return '';
+  const at = word ? sentence.indexOf(word) : -1;
+  // Two lines show about 36 characters: start a long sentence shortly before the word.
+  const from = at > 24 ? at - 10 : 0;
+  const lead = from > 0 ? '…' : '';
+  const text = at < 0
+    ? escapeHtml(sentence)
+    : `${lead}${escapeHtml(sentence.slice(from, at))}<mark class="tsukeru-sentence-word">${escapeHtml(word)}</mark>${escapeHtml(sentence.slice(at + word.length))}`;
+  const label = t('content_play_sentence', undefined, 'Play sentence');
+  const tagHidden = sentenceAudioSupporter === false ? '' : ' tsukeru-hidden';
+  return `
+      <button type="button" class="tsukeru-sentence-play" data-sentence="${escapeHtml(sentence)}"
+          title="${escapeHtml(label)}" aria-label="${escapeHtml(`${label}: ${sentence}`)}">
+          <svg class="tsukeru-sentence-icon" width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg>
+          <span class="tsukeru-sentence-text" lang="ja">${text}</span>
+          <span class="tsukeru-supporter-tag${tagHidden}">${escapeHtml(t('content_supporter_tag', undefined, 'Supporter'))}</span>
+      </button>`;
+}
+
+function showSupporterTag(tooltip, supporter) {
+  sentenceAudioSupporter = supporter;
+  tooltip?.querySelector('.tsukeru-supporter-tag')?.classList.toggle('tsukeru-hidden', supporter);
+}
+
+/** Ask the background (local storage only, no request) whether to show the tag. */
+function refreshSupporterTag(tooltip) {
+  try {
+    chrome.runtime.sendMessage({ action: 'hasSupporterToken' }, (response) => {
+      if (chrome.runtime.lastError || !response?.success) return;
+      showSupporterTag(tooltip, response.supporter === true);
+    });
+  } catch (_) {
+    // Extension reloaded under the page: leave the tag as it is.
+  }
 }
 
 /** The clicked text when it differs from the headword: [Form] 食べなかった · negative · past. */
@@ -922,6 +976,11 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
       </div>`;
 
   html += renderTooltipFormLine(wordInfo, displayWord);
+  const sentenceWord = String(wordInfo.surface || displayWord || '');
+  html += renderTooltipSentenceLine(
+    tooltip._activeRuby ? plainWordSentence(tooltip._activeRuby, sentenceWord) : '',
+    sentenceWord
+  );
 
   const kanjiCount = countTooltipKanji(displayWord);
   if (kanjiCount > 0) html += renderTooltipTabsHtml(kanjiCount);
@@ -1151,6 +1210,38 @@ function speakWord(word, reading, buttonElement) {
       if (buttonElement) buttonElement.classList.remove('speaking');
       fallbackTTS(word, buttonElement);
     });
+  });
+}
+
+function sentenceAudioMessage(code) {
+  if (code === 'supporter_required') {
+    return t('content_sentence_audio_supporter', undefined, 'Sentence audio is a Supporter feature. Sign in on ezfurigana.com as a Supporter to turn it on.');
+  }
+  if (code === 'monthly_limit') {
+    return t('content_sentence_audio_limit', undefined, "You've used this month's sentence audio. It resets at the start of next month.");
+  }
+  return t('content_sentence_audio_failed', undefined, "Sentence audio isn't available right now. Please try again later.");
+}
+
+/** Read the sentence shown on the "Play sentence" line with Supporter audio. */
+function speakSentence(buttonElement) {
+  const sentence = buttonElement.dataset.sentence || '';
+  if (!sentence || buttonElement.classList.contains('speaking')) return;
+  buttonElement.classList.add('speaking');
+  const done = () => buttonElement.classList.remove('speaking');
+  chrome.runtime.sendMessage({ action: 'playSentence', text: sentence }, (response) => {
+    // Reject non-audio data URLs to prevent polyglot injection via compromised backend.
+    if (!response?.success || typeof response.dataUrl !== 'string' || !response.dataUrl.startsWith('data:audio/')) {
+      done();
+      if (response?.error === 'supporter_required') showSupporterTag(dictionaryTooltip, false);
+      showToast(sentenceAudioMessage(response?.error), { type: response?.error === 'supporter_required' ? 'info' : 'error' });
+      return;
+    }
+    showSupporterTag(dictionaryTooltip, true);
+    const audio = new Audio(response.dataUrl);
+    audio.onended = done;
+    audio.onerror = done;
+    audio.play().catch(done);
   });
 }
 
@@ -1688,10 +1779,55 @@ function wordIdentityOf(element) {
 /** The plain sentence around a word, without readings, at most 120 characters. */
 function plainWordSentence(element, word) {
   try {
+    const around = blockTextAround(element);
+    const sentence = around ? wordRules()?.sentenceAt(around.text, around.start, around.end, word) : '';
+    if (sentence) return sentence;
     return wordRules()?.fitSentence(getPlainTextFromHtml(extractSentenceContext(element)), word) || '';
   } catch (_) {
     return '';
   }
+}
+
+// Elements that start a new line of text; their edges and <br> end a sentence.
+const SENTENCE_BLOCK_TAGS = new Set([
+  'ADDRESS', 'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'CAPTION', 'DD', 'DETAILS', 'DIV', 'DL', 'DT',
+  'FIELDSET', 'FIGCAPTION', 'FIGURE', 'FOOTER', 'FORM', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+  'HEADER', 'HR', 'LI', 'MAIN', 'NAV', 'OL', 'P', 'PRE', 'SECTION', 'SUMMARY', 'TABLE',
+  'TBODY', 'TD', 'TFOOT', 'TH', 'THEAD', 'TR', 'UL',
+]);
+const SENTENCE_SKIP_TAGS = new Set(['RT', 'RP', 'SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'BUTTON']);
+const SENTENCE_SCAN_LIMIT = 20000;
+
+/**
+ * Text of the word's nearest block, without readings, with a line break at
+ * every nested block and <br>, and where the word sits in it. Bounded: a
+ * word further than SENTENCE_SCAN_LIMIT characters into its block gives null.
+ */
+function blockTextAround(element) {
+  if (!element?.parentElement) return null;
+  let container = element.parentElement;
+  while (container && !SENTENCE_BLOCK_TAGS.has(container.tagName)) container = container.parentElement;
+  container = container || element.parentElement;
+  let text = '';
+  let start = -1;
+  let end = -1;
+  const visit = (node) => {
+    if (text.length > SENTENCE_SCAN_LIMIT) return;
+    if (node.nodeType === 3) {
+      text += node.nodeValue || '';
+      return;
+    }
+    if (node.nodeType !== 1 || SENTENCE_SKIP_TAGS.has(node.tagName)) return;
+    if (node.getAttribute?.('data-tsukeru-reading-only') === 'true') return;
+    const block = node !== container && SENTENCE_BLOCK_TAGS.has(node.tagName);
+    if (block || node.tagName === 'BR') text += '\n';
+    if (node === element) start = text.length;
+    for (let child = node.firstChild; child; child = child.nextSibling) visit(child);
+    if (node === element) end = text.length;
+    if (block) text += '\n';
+  };
+  visit(container);
+  return start >= 0 && end >= start ? { text, start, end } : null;
 }
 
 function noteLocalWordState(record) {

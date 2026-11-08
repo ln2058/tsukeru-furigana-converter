@@ -136,6 +136,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const supporterLink = document.getElementById('header-supporter-link');
     if (supporterLink) {
       supporterLink.href = getEzfuriganaPricingUrl();
+      // Never let the plan check stop the popup from starting.
+      Promise.resolve().then(() => chrome.runtime.sendMessage({ action: 'getSupporterPlan' })).then((answer) => {
+        if (answer?.plan !== 'supporter') return;
+        supporterLink.classList.add('is-supporter');
+        supporterLink.href = new URL('/account', TsukeruI18n.websiteUrl()).href;
+        supporterLink.title = t('header_title_supporter_active', undefined, "You're a Supporter");
+        supporterLink.setAttribute('aria-label', supporterLink.title);
+      }).catch(() => { /* Keep the Become a Supporter link. */ });
     }
 
     const shortcutText = document.getElementById('shortcut-text');

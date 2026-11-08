@@ -94,6 +94,30 @@ Security Notes:
     return `${begin > 0 ? '…' : ''}${chars.slice(begin, end).join('').trim()}${end < chars.length ? '…' : ''}`;
   }
 
+  const SENTENCE_ENDS = new Set(['。', '！', '？', '!', '?', '\n']);
+  const SENTENCE_CLOSERS = new Set(['」', '』', '）', ')', '】', '〉', '》', '”', '’', '"']);
+
+  /**
+   * The sentence of `text` holding the characters from `start` to `end`.
+   * Line breaks and 。！？!? end sentences; closing quotes stay with the
+   * sentence they close. The result is fitted like any stored sentence.
+   */
+  function sentenceAt(text, start, end, word = '') {
+    const value = String(text || '');
+    const from = Math.max(0, Math.min(Number(start) || 0, value.length));
+    const to = Math.max(from, Math.min(Number(end) || from, value.length));
+    let begin = from;
+    while (begin > 0 && !SENTENCE_ENDS.has(value[begin - 1])) begin -= 1;
+    while (begin < from && (SENTENCE_CLOSERS.has(value[begin]) || /\s/.test(value[begin]))) begin += 1;
+    let stop = to;
+    while (stop < value.length && !SENTENCE_ENDS.has(value[stop])) stop += 1;
+    if (stop < value.length && value[stop] !== '\n') {
+      stop += 1;
+      while (stop < value.length && SENTENCE_CLOSERS.has(value[stop])) stop += 1;
+    }
+    return fitSentence(value.slice(begin, stop), word);
+  }
+
   const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
 
   /** Plain text of a stored ruby sentence, without its readings. Works without a DOM. */
@@ -458,6 +482,7 @@ Security Notes:
     listRecords,
     mergeSnapshot,
     plainSentenceFromHtml,
+    sentenceAt,
     removeState,
     removeWord,
     setDefinition,

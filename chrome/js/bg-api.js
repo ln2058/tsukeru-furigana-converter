@@ -11,7 +11,7 @@ Outputs:
 
 Side Effects:
 - Performs network fetches, tracks shared cooldown deadlines, and coalesces nonce acquisition/recovery across API requests.
-- Persists only validated cooldown metadata and the current UTC day's random ID through extension-local storage; backend quotas remain authoritative.
+- Persists only validated cooldown metadata, the current UTC day's random ID, and the website's Supporter token answer through extension-local storage; backend quotas remain authoritative.
 - Shares logical dictionary lookups and bounds completed in-memory dictionary results.
 - Reads/writes furigana fragments and successful localized dictionary entries through `bg-cache`.
 
@@ -24,6 +24,8 @@ Security Notes:
 - Treat all backend responses as untrusted until sanitized by content scripts.
 - Redacts non-web tab URLs before sending backend metadata.
 - Sends only the per-worker session ID and the manifest version as identifying headers, plus a random day ID on furigana requests that is replaced each UTC day; no stable install ID.
+- Sends the Supporter token only to Supporter endpoints (the plan check and sentence audio), never with furigana or dictionary requests.
+- Sentence audio sends one plain sentence of at most 120 characters, only after the reader clicks Play sentence; responses are bounded audio/mpeg.
 - Keep endpoint configuration centralized to avoid host sprawl.
 - Audio proxy fetches accept only HTTPS www.ezfurigana.com on the default port and refuse redirects.
 */
@@ -349,6 +351,95 @@ function _extensionHeaders() {
   return _EXT_VERSION
     ? { 'x-extension-session-id': _EXT_SESSION_ID, 'x-extension-version': _EXT_VERSION }
     : { 'x-extension-session-id': _EXT_SESSION_ID };
+}
+
+// Supporter token from the website (see content-sync). It names the account;
+// the backend looks up the current plan on every use.
+const _SUPPORTER_KEY = 'tsukeruSupporter';
+const _SUPPORTER_TOKEN_RE = /^v1\.[0-9a-f]{32}\.[0-9]{1,12}\.[0-9a-f]{64}$/;
+const _SUPPORTER_RECHECK_MS = 24 * 60 * 60 * 1000;
+// A Free answer is asked again on the next visit, so an upgrade or a switch
+// to a Supporter account shows up at once.
+const _FREE_RECHECK_MS = 60 * 1000;
+const _SUPPORTER_PLAN_TTL_MS = 60 * 60 * 1000;
+let _supporterPlanCache = null;
+
+async function _readSupporter() {
+  try {
+    const record = (await getStorageLocal()?.get?.(_SUPPORTER_KEY))?.[_SUPPORTER_KEY];
+    return record && typeof record === 'object' ? record : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function _hasLiveToken(record, now) {
+  return typeof record?.token === 'string' && _SUPPORTER_TOKEN_RE.test(record.token)
+    && Number.isFinite(record.expiresAt) && record.expiresAt * 1000 > now;
+}
+
+/** Whether the website page should ask for a fresh token (Supporters daily, Free each visit). */
+export async function supporterRefreshDue(now = Date.now()) {
+  const record = await _readSupporter();
+  if (!Number.isFinite(record?.checkedAt)) return true;
+  if (record.plan === 'supporter' && !_hasLiveToken(record, now)) return true;
+  const wait = record.plan === 'supporter' ? _SUPPORTER_RECHECK_MS : _FREE_RECHECK_MS;
+  return now - record.checkedAt >= wait;
+}
+
+/** Store the website's answer: a Supporter token, or that the account is Free. */
+export async function storeSupporterHandoff(answer, now = Date.now()) {
+  const storage = getStorageLocal();
+  _supporterPlanCache = null;
+  if (answer?.plan === 'supporter' && _hasLiveToken(answer, now)) {
+    await storage.set({ [_SUPPORTER_KEY]: { plan: 'supporter', token: answer.token, expiresAt: answer.expiresAt, checkedAt: now } });
+    return { plan: 'supporter' };
+  }
+  if (answer?.plan === 'free') {
+    await storage.set({ [_SUPPORTER_KEY]: { plan: 'free', checkedAt: now } });
+    return { plan: 'free' };
+  }
+  throw new Error('Invalid Supporter handoff');
+}
+
+/** Whether a live Supporter token is stored (no request). */
+export async function hasSupporterToken(now = Date.now()) {
+  return _hasLiveToken(await _readSupporter(), now);
+}
+
+/** Header for Supporter-gated endpoints; empty without a live token. */
+export async function supporterHeaders(now = Date.now()) {
+  const record = await _readSupporter();
+  return _hasLiveToken(record, now) ? { 'x-tsukeru-supporter': record.token } : {};
+}
+
+/** The current plan ('supporter' or 'free'), confirmed with the backend at most hourly. */
+export async function getSupporterPlan(now = Date.now()) {
+  const headers = await supporterHeaders(now);
+  if (!headers['x-tsukeru-supporter']) return 'free';
+  if (_supporterPlanCache && now < _supporterPlanCache.until) return _supporterPlanCache.plan;
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}/api/extension/plan`, {
+      method: 'GET',
+      headers: { ..._extensionHeaders(), ...headers },
+      credentials: 'omit',
+      mode: 'cors',
+      cache: 'no-store',
+    });
+  } catch (_) {
+    return 'supporter'; // Offline: keep the last answer the website gave.
+  }
+  if (response.status === 401) {
+    // Expired or no longer valid; the next website visit fetches a new one.
+    try { await getStorageLocal().remove(_SUPPORTER_KEY); } catch (_) { /* retried next time */ }
+    return 'free';
+  }
+  if (!response.ok) return 'supporter';
+  const body = await response.json().catch(() => null);
+  const plan = body?.plan === 'supporter' ? 'supporter' : 'free';
+  _supporterPlanCache = { plan, until: now + _SUPPORTER_PLAN_TTL_MS };
+  return plan;
 }
 
 function _nonceLog(event, detail = {}) {
@@ -1000,6 +1091,50 @@ export async function handlePlayAudio(word, reading) {
     return { dataUrl };
   }
   throw new Error('Audio not found');
+}
+
+/** Supporter sentence audio for one plain Japanese sentence, as a data URL. */
+export async function fetchSentenceAudio(text) {
+  const sentence = String(text || '').trim();
+  const headers = await supporterHeaders();
+  if (!headers['x-tsukeru-supporter']) {
+    const error = new Error('Sentence audio needs a Supporter token');
+    error.code = 'supporter_required';
+    throw error;
+  }
+  const response = await fetch(`${API_BASE_URL}/api/extension/tts`, {
+    method: 'POST',
+    headers: { ..._extensionHeaders(), ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: sentence }),
+    credentials: 'omit',
+    mode: 'cors',
+    cache: 'no-store',
+    redirect: 'error',
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const error = new Error('Sentence audio request failed');
+    error.status = response.status;
+    error.code = typeof body?.error === 'string' ? body.error : 'tts_unavailable';
+    if (response.status === 401) {
+      // The website hands over a new token on the next visit.
+      try { await getStorageLocal().remove(_SUPPORTER_KEY); } catch (_) { /* retried next time */ }
+      error.code = 'supporter_required';
+    }
+    if (error.code === 'supporter_required') _supporterPlanCache = null;
+    throw error;
+  }
+  const blob = await readBoundedResponseBlob(response, {
+    maxBytes: MAX_AUDIO_RESPONSE_BYTES,
+    allowedMimeTypes: AUDIO_RESPONSE_MIME_TYPES,
+  });
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('FileReader failed'));
+    reader.readAsDataURL(blob);
+  });
+  return { dataUrl };
 }
 
 export async function handleFetchProxyAudio(url) {
