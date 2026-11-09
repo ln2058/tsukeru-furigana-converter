@@ -13,6 +13,7 @@ Outputs:
 - Tooltip rendering updates with Japanese language tags for words/readings/examples, checked-word and Learning/Known requests to the background store, and report payload messages.
 - The card layout shared with the EZFurigana website: frequency badge, pitch-marked reading, form line with conjugation labels, Meaning / Kanji tabs, and a Kanji tab that loads on first open with stroke-order diagrams and KanjiVG attribution.
 - A "Play sentence" line showing the sentence around the clicked word (Supporter audio), tagged "Supporter" when this browser holds no Supporter token.
+- A play button, like the word's, at the end of each TKGJE example with a recorded reading (Supporter audio, refused the same way as Play sentence).
 - In ja/ko/zh-TW, translation controls at the top of the Meaning tab: View translation with the new translations a guest has left today, an AI translation / English switch once translated, and a Supporter line when none are left. Supporters' translations start without a click.
 - `tsukeru-learning`, `tsukeru-known`, and `tsukeru-revealed` classes and Study/known-reading attributes on the page.
 - `openTooltipForWord` opens the tooltip on a word named by the extension popup's Words in this text (`openWordTooltip`).
@@ -483,7 +484,7 @@ function addTooltipInteractionHandlers(reportInfo = null) {
     };
   }
 
-  const speakerBtn = tooltip.querySelector('.tsukeru-tooltip-speaker');
+  const speakerBtn = tooltip.querySelector('.tsukeru-tooltip-speaker:not(.tsukeru-example-audio)');
   if (speakerBtn) {
     speakerBtn.onclick = (e) => {
       e.stopPropagation();
@@ -812,6 +813,9 @@ function getSafeDictionarySourceUrl(source, value) {
   }
 }
 
+const EXAMPLE_ID_RE = /^[0-9]{5}_[A-Za-z0-9_-]{1,100}$/;
+const SPEAKER_ICON_SVG = '<svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7H3a1 1 0 00-1 1v4a1 1 0 001 1h2l4 3V4L5 7z"/><path d="M13.5 7.5a3 3 0 010 5"/></svg>';
+
 function normalizeTkgjeExamples(examples, senses, definitionLang = 'en') {
   if (!Array.isArray(examples)) return;
   const valid = examples.map((example) => {
@@ -830,7 +834,9 @@ function normalizeTkgjeExamples(examples, senses, definitionLang = 'en') {
     const senseNumbers = Array.isArray(example.sense_numbers)
       ? example.sense_numbers.map(Number).filter(Number.isFinite)
       : [];
-    return { japanese, english, translationLang, senseNumbers };
+    // A recorded reading plays by example id (bg-api checks the id again).
+    const id = typeof example.id === 'string' && EXAMPLE_ID_RE.test(example.id) ? example.id : '';
+    return { japanese, english, translationLang, senseNumbers, audioId: example.audio === true ? id : '' };
   }).filter(Boolean);
   const unnumbered = valid.filter(example => example.senseNumbers.length === 0);
   let unnumberedIndex = 0;
@@ -928,6 +934,22 @@ function appendAttachedExamples(tooltip, senses) {
     japanese.lang = 'ja';
     if (example.japanese.html) japanese.appendChild(sanitizeHtmlFragment(example.japanese.html));
     else japanese.textContent = example.japanese.text || '';
+    if (example.audioId) {
+      const play = document.createElement('button');
+      play.type = 'button';
+      play.className = 'tooltip-audio-btn tsukeru-tooltip-speaker tsukeru-example-audio';
+      play.dataset.exampleId = example.audioId;
+      const label = t('content_play_example', undefined, 'Play example sentence');
+      play.title = label;
+      play.setAttribute('aria-label', label);
+      play.innerHTML = SPEAKER_ICON_SVG;
+      play.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (!event.isTrusted) return;
+        playSupporterAudio(play, { action: 'playExample', exampleId: play.dataset.exampleId });
+      });
+      japanese.append(play);
+    }
     const english = document.createElement('div');
     english.className = 'tsukeru-example-en';
     english.lang = example.translationLang || 'en';
@@ -1238,10 +1260,16 @@ function sentenceAudioMessage(code) {
 /** Read the sentence shown on the "Play sentence" line with Supporter audio. */
 function speakSentence(buttonElement) {
   const sentence = buttonElement.dataset.sentence || '';
-  if (!sentence || buttonElement.classList.contains('speaking')) return;
+  if (!sentence) return;
+  playSupporterAudio(buttonElement, { action: 'playSentence', text: sentence });
+}
+
+/** Play a Supporter clip (a sentence, or a recorded example) and explain a refusal. */
+function playSupporterAudio(buttonElement, message) {
+  if (buttonElement.classList.contains('speaking')) return;
   buttonElement.classList.add('speaking');
   const done = () => buttonElement.classList.remove('speaking');
-  chrome.runtime.sendMessage({ action: 'playSentence', text: sentence }, (response) => {
+  chrome.runtime.sendMessage(message, (response) => {
     // Reject non-audio data URLs to prevent polyglot injection via compromised backend.
     if (!response?.success || typeof response.dataUrl !== 'string' || !response.dataUrl.startsWith('data:audio/')) {
       done();

@@ -315,6 +315,9 @@
   "content_play_pronunciation": {
     "message": "발음 재생"
   },
+  "content_play_example": {
+    "message": "예문 재생"
+  },
   "content_supporter_tag": {
     "message": "서포터"
   },
@@ -539,9 +542,6 @@
   "review_caught_up": {
     "message": "지금은 복습할 단어가 없습니다"
   },
-  "review_start_hint": {
-    "message": "새 단어의 뜻을 찾아보거나 학습 모드에서 읽는 법을 확인하면 학습 목록에 추가됩니다."
-  },
   "review_next_due": {
     "message": "다음 복습: $1"
   },
@@ -554,11 +554,8 @@
   "state_known": {
     "message": "아는 단어"
   },
-  "learning_list_helper": {
-    "message": "뜻을 찾아보거나 학습 모드에서 읽는 법을 확인한 새 단어가 여기에 추가됩니다. EZFurigana에서 복습할 수 있습니다."
-  },
   "known_list_helper": {
-    "message": "어느 페이지에서든 아는 단어의 후리가나를 숨깁니다. 설정에서 이 기능을 끌 수 있습니다."
+    "message": "이 단어들은 후리가나가 숨겨집니다. 설정에서 바꿀 수 있습니다."
   },
   "clear_list": {
     "message": "목록 비우기"
@@ -567,7 +564,7 @@
     "message": "아직 학습 중인 단어가 없습니다"
   },
   "learning_empty_hint": {
-    "message": "후리가나가 있는 단어를 클릭해 뜻을 찾아보거나 학습 모드에서 읽는 법을 확인하세요. 새 단어가 학습 목록에 추가됩니다."
+    "message": "후리가나가 있는 단어를 클릭하거나 학습 모드에서 읽는 법을 확인하면 여기에 추가됩니다."
   },
   "known_empty_text": {
     "message": "아직 아는 단어가 없습니다"
@@ -621,10 +618,10 @@
     "message": "아는 단어를 모두 삭제할까요? 설정에 따라 이 확장 프로그램과 EZFurigana에서 후리가나가 다시 표시될 수 있습니다."
   },
   "sync_last": {
-    "message": "EZFurigana에서 복습 · 마지막 동기화: $1"
+    "message": "마지막 동기화: $1"
   },
   "sync_never": {
-    "message": "EZFurigana에서 복습하세요. 한 번 열면 단어가 동기화됩니다."
+    "message": "EZFurigana를 한 번 열면 단어가 동기화됩니다."
   },
   "duration_seconds": {
     "message": "$1초"

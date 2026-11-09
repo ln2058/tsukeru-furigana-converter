@@ -598,13 +598,8 @@ function renderStrip(summary) {
     }
   }
   if (meta) {
+    // The Learning and Known tabs already show the counts.
     const parts = [];
-    if (!learning && !known) {
-      parts.push(t('review_start_hint', undefined, 'Look up a new word or reveal its reading in Study mode to add it to your learning list.'));
-    } else {
-      parts.push(t('profile_learning', [String(learning)], `${learning} learning`));
-      parts.push(t('profile_known', [String(known)], `${known} known`));
-    }
     if (!due && summary?.nextDueAt) {
       const when = relativeTime(summary.nextDueAt);
       parts.push(t('review_next_due', [when], `Next review ${when}`));
@@ -618,8 +613,8 @@ function renderStrip(summary) {
   if (strip) strip.dataset.due = due > 0 ? 'true' : 'false';
   if (sync) {
     sync.textContent = summary?.lastSyncAt
-      ? t('sync_last', [relativeTime(summary.lastSyncAt)], `Review on EZFurigana · Last synced: ${relativeTime(summary.lastSyncAt)}`)
-      : t('sync_never', undefined, 'Review on EZFurigana. Open it once to sync your words.');
+      ? t('sync_last', [relativeTime(summary.lastSyncAt)], `Synced ${relativeTime(summary.lastSyncAt)}`)
+      : t('sync_never', undefined, 'Open EZFurigana once to sync your words.');
   }
   LISTS.forEach((state) => {
     const count = document.getElementById(`${state}ListCount`);

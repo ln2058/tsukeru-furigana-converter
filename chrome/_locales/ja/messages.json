@@ -315,6 +315,9 @@
   "content_play_pronunciation": {
     "message": "発音を再生"
   },
+  "content_play_example": {
+    "message": "例文を再生"
+  },
   "content_supporter_tag": {
     "message": "サポーター"
   },
@@ -539,9 +542,6 @@
   "review_caught_up": {
     "message": "今のところ復習する単語はありません"
   },
-  "review_start_hint": {
-    "message": "まだ登録していない単語の意味を調べるか、学習モードで読みを表示すると、学習リストに追加されます。"
-  },
   "review_next_due": {
     "message": "次の復習：$1"
   },
@@ -554,11 +554,8 @@
   "state_known": {
     "message": "覚えた"
   },
-  "learning_list_helper": {
-    "message": "意味を調べた単語や、学習モードで読みを表示した単語がここに追加されます。「覚えた」単語は追加されません。EZFuriganaで復習できます。"
-  },
   "known_list_helper": {
-    "message": "覚えた単語は、どのページでもふりがなが非表示になります。設定でオフにできます。"
+    "message": "これらの単語はふりがなが非表示になります。設定で変更できます。"
   },
   "clear_list": {
     "message": "リストを消去"
@@ -567,7 +564,7 @@
     "message": "学習中の単語はまだありません"
   },
   "learning_empty_hint": {
-    "message": "ふりがなの付いた単語をクリックすると意味が表示されます。学習モードでは読みを表示できます。「覚えた」単語以外は学習リストに追加されます。"
+    "message": "ふりがなの付いた単語をクリックするか、学習モードで読みを表示すると、ここに追加されます。"
   },
   "known_empty_text": {
     "message": "覚えた単語はまだありません"
@@ -621,10 +618,10 @@
     "message": "覚えた単語をすべて削除しますか？設定に応じて、この拡張機能とEZFuriganaでふりがなが再び表示されるようになります。"
   },
   "sync_last": {
-    "message": "復習はEZFuriganaでできます · 最終同期：$1"
+    "message": "最終同期：$1"
   },
   "sync_never": {
-    "message": "復習はEZFuriganaでできます。一度開くと単語が同期されます。"
+    "message": "EZFuriganaを一度開くと単語が同期されます。"
   },
   "duration_seconds": {
     "message": "$1秒"

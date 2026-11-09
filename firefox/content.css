@@ -646,6 +646,9 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 .tsukeru-word-tooltip .tsukeru-tooltip-speaker:focus-visible,
 .tsukeru-word-tooltip .tsukeru-tooltip-report-btn:focus-visible { border-color: var(--tsukeru-blue) !important; background: var(--tsukeru-surface-hover) !important; color: var(--tsukeru-blue) !important; opacity: 1 !important; }
 .tsukeru-word-tooltip .tsukeru-tooltip-speaker.speaking { color: var(--tsukeru-blue) !important; }
+/* The example's play button follows its last character, centred on the
+   Japanese glyphs (middle alone centres on the Latin x-height, slightly low). */
+.tsukeru-word-tooltip .tsukeru-example-audio { position: relative !important; top: -0.08em !important; width: 24px !important; height: 24px !important; margin-left: 2px !important; vertical-align: middle !important; }
 .tsukeru-word-tooltip .tsukeru-tooltip-report-btn { color: var(--tsukeru-attention) !important; }
 
 /* Learning / Known switch: the same two-state control as EZFurigana's dictionary popup. */

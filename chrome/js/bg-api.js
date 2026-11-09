@@ -1143,17 +1143,32 @@ export async function handlePlayAudio(word, reading) {
 
 /** Supporter sentence audio for one plain Japanese sentence, as a data URL. */
 export async function fetchSentenceAudio(text) {
-  const sentence = String(text || '').trim();
+  return fetchSupporterAudio('/api/extension/tts', { text: String(text || '').trim() });
+}
+
+const EXAMPLE_ID_RE = /^[0-9]{5}_[A-Za-z0-9_-]{1,100}$/;
+
+/** A TKGJE example's recorded reading, for Supporters (same failures as sentence audio). */
+export async function fetchExampleAudio(exampleId) {
+  if (typeof exampleId !== 'string' || !EXAMPLE_ID_RE.test(exampleId)) {
+    const error = new Error('Invalid example');
+    error.code = 'not_found';
+    throw error;
+  }
+  return fetchSupporterAudio('/api/extension/tts/example', { example_id: exampleId });
+}
+
+async function fetchSupporterAudio(path, body) {
   const headers = await supporterHeaders();
   if (!headers['x-tsukeru-supporter']) {
     const error = new Error('Sentence audio needs a Supporter token');
     error.code = 'supporter_required';
     throw error;
   }
-  const response = await fetch(`${API_BASE_URL}/api/extension/tts`, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',
     headers: { ..._extensionHeaders(), ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: sentence }),
+    body: JSON.stringify(body),
     credentials: 'omit',
     mode: 'cors',
     cache: 'no-store',

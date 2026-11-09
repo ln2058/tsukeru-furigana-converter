@@ -497,6 +497,8 @@ a.vocab-action-btn { display: inline-flex; align-items: center; text-decoration:
 .word-ledger-intro { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 10px 14px 0; }
 .word-ledger-helper { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
 .word-ledger-clear { flex: 0 0 auto; font-size: 10px; }
+/* The Learning list has no intro text, so its Clear list sits on the right alone. */
+.word-ledger-clear:only-child { margin-left: auto; }
 .word-ledger-list { margin: 9px 12px 12px; padding: 0; border: 1px solid var(--paper-edge); border-radius: 4px; background: var(--paper); background-image: url("paper-texture.svg"); list-style: none; }
 .word-ledger-list[hidden] { display: none; }
 .word-ledger-row { display: grid; grid-template-areas: "term actions" "sentence actions" "entry entry"; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 10px; row-gap: 2px; min-height: 48px; padding: 7px 6px 7px 12px; border-bottom: 1px solid var(--border); }

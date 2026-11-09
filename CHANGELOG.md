@@ -2,7 +2,13 @@
 
 ## 4.3.1 — 2026-11-09
 
+### Added
+
+- **Example audio for Supporters**: dictionary examples recorded for TKGJE have a play button at the end of the sentence, like the word's. It doesn't use your sentence audio allowance.
+
 ### Changed
+
+- My Words has fewer explanations: the review bar shows only when the next review is, the sync line says "Synced 5 min ago", and the Learning and Known lists keep one short hint each.
 
 - **Dictionary translations at the top**: in Japanese, Korean, and Traditional Chinese, View translation now sits at the top of the Meaning tab and shows how many new translations you have left today. Once a word is translated, an AI translation / English switch replaces it. When the day's free translations are used up, the tooltip says how many Supporters get each day.
 - **Supporters translate without a click**: when no translation is stored yet, a Supporter's tooltip starts one as soon as the word is opened.

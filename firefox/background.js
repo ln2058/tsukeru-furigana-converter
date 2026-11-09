@@ -34,7 +34,7 @@ import {
   handleFuriganaRequest, lookupDefinition, lookupLocalizedDefinition, fetchExampleSentence, fetchKanjiBreakdown,
   handlePlayAudio, handlePlayAudioDirect, handleFetchProxyAudio, handleReportReadingError,
   DEFAULT_SETTINGS, getRateLimitState, getSupporterPlan, getSupporterStatus, hasSupporterToken, storeSupporterHandoff, supporterRefreshDue,
-  fetchSentenceAudio,
+  fetchSentenceAudio, fetchExampleAudio,
 } from './js/bg-api.js';
 import { handleWordsMessage, isEzfuriganaSender, isWordsAction, refreshWordBadge } from './js/bg-words.js';
 import { hasSupportedLocalFileExtension } from './js/utils.js';
@@ -208,6 +208,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       : storeSupporterHandoff({ plan: message.plan, token: message.token, expiresAt: message.expiresAt })
         .then(({ plan, changed }) => ({ success: true, plan, changed }));
     work.then(sendResponse).catch(() => sendResponse({ success: false, error: 'Supporter handoff failed' }));
+    return true;
+  }
+
+  // A recorded TKGJE example in the dictionary popup (Supporter audio).
+  if (message?.action === 'playExample') {
+    if (sender.id !== chrome.runtime.id) return false;
+    if (typeof message.exampleId !== 'string' || !/^[0-9]{5}_[A-Za-z0-9_-]{1,100}$/.test(message.exampleId)) {
+      sendResponse({ success: false, error: 'not_found' });
+      return true;
+    }
+    fetchExampleAudio(message.exampleId)
+      .then((result) => sendResponse({ success: true, ...result }))
+      .catch((error) => sendResponse({ success: false, error: error?.code || 'tts_unavailable' }));
     return true;
   }
 

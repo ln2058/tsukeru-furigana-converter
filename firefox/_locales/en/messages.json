@@ -315,6 +315,9 @@
   "content_play_pronunciation": {
     "message": "Play pronunciation"
   },
+  "content_play_example": {
+    "message": "Play example sentence"
+  },
   "content_supporter_tag": {
     "message": "Supporter"
   },
@@ -539,9 +542,6 @@
   "review_caught_up": {
     "message": "All caught up"
   },
-  "review_start_hint": {
-    "message": "Look up a new word or reveal its reading in Study mode to add it to your learning list."
-  },
   "review_next_due": {
     "message": "Next review $1"
   },
@@ -554,11 +554,8 @@
   "state_known": {
     "message": "Known"
   },
-  "learning_list_helper": {
-    "message": "New words you look up or reveal in Study mode are added here. You can review them on EZFurigana."
-  },
   "known_list_helper": {
-    "message": "Furigana is hidden for words you know on every page you read. You can turn this off in Settings."
+    "message": "Furigana is hidden for these words. You can change this in Settings."
   },
   "clear_list": {
     "message": "Clear list"
@@ -567,7 +564,7 @@
     "message": "No words in your learning list yet"
   },
   "learning_empty_hint": {
-    "message": "Click a word with furigana to see its meaning, or reveal its reading in Study mode. New words are added to your learning list."
+    "message": "Click a word with furigana, or reveal one in Study mode, to add it here."
   },
   "known_empty_text": {
     "message": "No known words yet"
@@ -621,10 +618,10 @@
     "message": "Remove every known word? Furigana can appear again, here and on EZFurigana, depending on your settings."
   },
   "sync_last": {
-    "message": "Review on EZFurigana · Last synced: $1"
+    "message": "Synced $1"
   },
   "sync_never": {
-    "message": "Review on EZFurigana. Open it once to sync your words."
+    "message": "Open EZFurigana once to sync your words."
   },
   "duration_seconds": {
     "message": "$1s"

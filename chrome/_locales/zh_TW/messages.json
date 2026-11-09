@@ -315,6 +315,9 @@
   "content_play_pronunciation": {
     "message": "播放發音"
   },
+  "content_play_example": {
+    "message": "播放例句"
+  },
   "content_supporter_tag": {
     "message": "支持者"
   },
@@ -539,9 +542,6 @@
   "review_caught_up": {
     "message": "目前沒有待複習的單字"
   },
-  "review_start_hint": {
-    "message": "查詢新單字的釋義，或在學習模式中顯示讀音，就能加入學習清單。"
-  },
   "review_next_due": {
     "message": "下次複習：$1"
   },
@@ -554,11 +554,8 @@
   "state_known": {
     "message": "已掌握"
   },
-  "learning_list_helper": {
-    "message": "查詢新單字的釋義，或在學習模式中顯示讀音後，單字就會加入這裡。你可以在 EZFurigana 複習。"
-  },
   "known_list_helper": {
-    "message": "閱讀任何網頁時，都會隱藏已掌握單字的振假名。你可以在設定中關閉此功能。"
+    "message": "這些單字的振假名會隱藏。你可以在設定中變更。"
   },
   "clear_list": {
     "message": "清空清單"
@@ -567,7 +564,7 @@
     "message": "學習清單中還沒有單字"
   },
   "learning_empty_hint": {
-    "message": "點選有振假名的單字查看釋義，或在學習模式中顯示讀音，新單字就會加入學習清單。"
+    "message": "點選有振假名的單字，或在學習模式中顯示讀音，即可加入這裡。"
   },
   "known_empty_text": {
     "message": "還沒有已掌握的單字"
@@ -621,10 +618,10 @@
     "message": "要移除所有已掌握的單字嗎？依照你的設定，擴充功能與 EZFurigana 可能會重新顯示這些單字的振假名。"
   },
   "sync_last": {
-    "message": "在 EZFurigana 複習 · 上次同步：$1"
+    "message": "上次同步：$1"
   },
   "sync_never": {
-    "message": "前往 EZFurigana 複習。開啟一次即可同步單字。"
+    "message": "開啟一次 EZFurigana 即可同步單字。"
   },
   "duration_seconds": {
     "message": "$1 秒"
