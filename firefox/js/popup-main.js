@@ -108,7 +108,7 @@ function getEzfuriganaHomeUrl() {
 }
 
 function getEzfuriganaPricingUrl() {
-  return TsukeruI18n.websiteUrl('/pricing');
+  return TsukeruI18n.websiteUrl('/pricing?from=tsukeru');
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

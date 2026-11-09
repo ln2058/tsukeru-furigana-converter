@@ -866,14 +866,28 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 }
 
 /* Translation controls use the tooltip's existing paper, borders and blue accent. */
-.tsukeru-word-tooltip .tsukeru-translation-controls { display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 8px !important; margin-top: 10px !important; padding-top: 9px !important; border-top: 1px solid var(--tsukeru-border) !important; }
-.tsukeru-word-tooltip .tsukeru-translation-label { color: var(--tsukeru-secondary) !important; font-size: 11px !important; }
-.tsukeru-word-tooltip .tsukeru-translation-button { appearance: none !important; padding: 5px 9px !important; border: 1px solid var(--tsukeru-border-strong) !important; border-radius: 3px !important; background: var(--tsukeru-surface) !important; color: var(--tsukeru-blue-readable) !important; font: 600 12px/1.4 var(--tsukeru-sans) !important; cursor: pointer !important; }
-.tsukeru-word-tooltip .tsukeru-translation-button:hover { border-color: var(--tsukeru-blue-readable) !important; }
-.tsukeru-word-tooltip .tsukeru-translation-button:focus-visible { outline: 2px solid var(--tsukeru-blue-readable) !important; outline-offset: 2px !important; }
-.tsukeru-word-tooltip .tsukeru-translation-button:disabled { opacity: .65 !important; cursor: wait !important; }
-.tsukeru-word-tooltip .tsukeru-translation-note { flex-basis: 100% !important; color: var(--tsukeru-secondary) !important; font: 400 12px/1.5 var(--tsukeru-sans) !important; }
+/* Translation controls: the top of the Meaning tab, sized like the Learning / Known switch. */
+.tsukeru-word-tooltip .tsukeru-translation-controls { display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 6px 10px !important; margin: 0 0 10px !important; }
+.tsukeru-word-tooltip .tsukeru-translation-button { display: inline-flex !important; align-items: center !important; gap: 7px !important; min-height: 26px !important; padding: 0 10px !important; border: 1px solid var(--tsukeru-blue-border) !important; border-radius: 4px !important; background: var(--tsukeru-blue-soft) !important; color: var(--tsukeru-blue-readable) !important; cursor: pointer !important; font: 600 11px/1 var(--tsukeru-sans) !important; white-space: nowrap !important; transition: color .14s ease, background-color .14s ease, border-color .14s ease !important; }
+.tsukeru-word-tooltip .tsukeru-translation-button:hover:not(:disabled) { border-color: var(--tsukeru-blue-readable) !important; background: color-mix(in srgb, var(--tsukeru-blue) 16%, var(--tsukeru-surface)) !important; }
+.tsukeru-word-tooltip .tsukeru-translation-button:focus-visible,
+.tsukeru-word-tooltip .tsukeru-translation-option:focus-visible { outline: 2px solid var(--tsukeru-blue) !important; outline-offset: 2px !important; box-shadow: none !important; }
+.tsukeru-word-tooltip .tsukeru-translation-button:disabled { border-color: var(--tsukeru-border) !important; background: var(--tsukeru-surface) !important; color: var(--tsukeru-secondary) !important; cursor: progress !important; }
+.tsukeru-word-tooltip .tsukeru-translation-button[aria-busy="true"]::before { content: "" !important; box-sizing: border-box !important; width: 10px !important; height: 10px !important; border: 2px solid var(--tsukeru-border) !important; border-top-color: var(--tsukeru-blue) !important; border-radius: 2px !important; animation: tsukeru-tooltip-loading-spin .75s steps(12) infinite !important; }
+.tsukeru-word-tooltip .tsukeru-translation-left { color: var(--tsukeru-secondary) !important; font: 500 10px/1 var(--tsukeru-mono) !important; letter-spacing: .04em !important; white-space: nowrap !important; }
+.tsukeru-word-tooltip .tsukeru-translation-switch { display: inline-flex !important; flex: 0 0 auto !important; overflow: hidden !important; border: 1px solid var(--tsukeru-border) !important; border-radius: 4px !important; background: var(--tsukeru-surface) !important; }
+.tsukeru-word-tooltip .tsukeru-translation-option { min-height: 26px !important; padding: 0 9px !important; border: 0 !important; border-left: 1px solid var(--tsukeru-border) !important; border-radius: 0 !important; background: transparent !important; color: var(--tsukeru-secondary) !important; cursor: pointer !important; font: 600 11px/1 var(--tsukeru-sans) !important; white-space: nowrap !important; transition: color .14s ease, background-color .14s ease !important; }
+.tsukeru-word-tooltip .tsukeru-translation-option:first-child { border-left: 0 !important; }
+.tsukeru-word-tooltip .tsukeru-translation-option:focus-visible { outline-offset: -2px !important; }
+.tsukeru-word-tooltip .tsukeru-translation-option:hover:not([aria-pressed="true"]) { background: var(--tsukeru-surface-muted) !important; color: var(--tsukeru-text) !important; }
+.tsukeru-word-tooltip .tsukeru-translation-option[aria-pressed="true"] { background: var(--tsukeru-blue-soft) !important; box-shadow: inset 0 0 0 1px var(--tsukeru-blue-border) !important; color: var(--tsukeru-blue-readable) !important; }
+.tsukeru-word-tooltip .tsukeru-translation-note { flex-basis: 100% !important; margin: 0 !important; color: var(--tsukeru-secondary) !important; font: 400 11px/1.5 var(--tsukeru-sans) !important; }
 .tsukeru-word-tooltip .tsukeru-translation-upsell { color: var(--tsukeru-blue-readable) !important; font-weight: 600 !important; text-decoration: underline !important; text-underline-offset: 2px !important; }
+@media (prefers-reduced-motion: reduce) {
+  .tsukeru-word-tooltip .tsukeru-translation-button,
+  .tsukeru-word-tooltip .tsukeru-translation-option { transition: none !important; }
+  .tsukeru-word-tooltip .tsukeru-translation-button[aria-busy="true"]::before { animation: none !important; }
+}
 .tsukeru-word-tooltip .tsukeru-sense-gloss ruby,
 .tsukeru-word-tooltip .tsukeru-sense-explanation ruby { ruby-position: over !important; }
 .tsukeru-word-tooltip .tsukeru-sense-gloss rt,
@@ -1038,6 +1052,8 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-tooltip-report-btn { width: 44px !important; height: 44px !important; }
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-sentence-play { min-height: 44px !important; padding: 9px 10px !important; font-size: 15px !important; }
   .tsukeru-word-tooltip.tsukeru-sheet .tooltip-progress-option,
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-translation-button,
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-translation-option,
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-dropdown-toggle,
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-alt-readings-toggle,
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-sense-more-toggle,

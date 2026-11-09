@@ -277,6 +277,7 @@ for (const browser of ['chrome', 'firefox']) {
     assert.equal(response.catalog.messages.tab_settings.description, undefined);
     const localizedCalls = [];
     fixture.sandbox.lookupLocalizedDefinition = async (...args) => { localizedCalls.push(args); return { source: 'je_localized_cache' }; };
+    fixture.sandbox.hasSupporterToken = async () => true;
     const payload = { action: 'lookupLocalizedDefinition', word: '本', reading: 'ほん', readingType: 'hiragana', uiLocale: 'ko', cacheOnly: true };
     for (const [change, sender] of [[{}, 'external'], [{ word: {} }, 'internal-id'],
       [{ word: 'a'.repeat(65) }, 'internal-id'], [{ reading: '\n' }, 'internal-id'],
@@ -288,6 +289,7 @@ for (const browser of ['chrome', 'firefox']) {
     assert.equal(localizedCalls.length, 0);
     const localized = await new Promise(resolve => handler(payload, { id: 'internal-id' }, resolve));
     assert.equal(localized.success, true);
+    assert.equal(localized.supporter, true, 'a Supporter tooltip may translate by itself');
     assert.equal(localizedCalls.length, 1);
     assert.equal(localizedCalls[0][3], 'ko');
     assert.equal(localizedCalls[0][4].cacheOnly, true);
@@ -340,7 +342,7 @@ for (const browser of ['chrome', 'firefox']) {
     assert.equal(root.pending, false);
     assert.equal(tabs.find(item => item.active).dataset.tab, 'settings');
     assert.equal(links['header-ezfurigana-link'].href, 'https://www.ezfurigana.com/ko');
-    assert.equal(links['header-supporter-link'].href, 'https://www.ezfurigana.com/ko/pricing');
+    assert.equal(links['header-supporter-link'].href, 'https://www.ezfurigana.com/ko/pricing?from=tsukeru');
     const store = browser === 'firefox' ? 'firefox' : 'chrome';
     assert.equal(links['header-review-link'].href, `${store}:ko`);
     assert.deepEqual(reviewPrompts.map(options => ({ ...options })), [{ store, language: 'ko' }]);

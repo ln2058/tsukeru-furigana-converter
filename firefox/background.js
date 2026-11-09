@@ -284,7 +284,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     lookupLocalizedDefinition(message.word, message.reading, message.readingType,
       message.uiLocale, { cacheOnly: message.cacheOnly })
-      .then(data => sendResponse({ success: true, data }))
+      // `supporter` (a local token check) lets a Supporter's tooltip translate without a click.
+      .then(async data => sendResponse({ success: true, data, supporter: await hasSupporterToken().catch(() => false) }))
       .catch(() => sendResponse({ success: false, error: 'Localized lookup unavailable' }));
     return true;
   }

@@ -13,6 +13,7 @@ Outputs:
 - Tooltip rendering updates with Japanese language tags for words/readings/examples, checked-word and Learning/Known requests to the background store, and report payload messages.
 - The card layout shared with the EZFurigana website: frequency badge, pitch-marked reading, form line with conjugation labels, Meaning / Kanji tabs, and a Kanji tab that loads on first open with stroke-order diagrams and KanjiVG attribution.
 - A "Play sentence" line showing the sentence around the clicked word (Supporter audio), tagged "Supporter" when this browser holds no Supporter token.
+- In ja/ko/zh-TW, translation controls at the top of the Meaning tab: View translation with the new translations a guest has left today, an AI translation / English switch once translated, and a Supporter line when none are left. Supporters' translations start without a click.
 - `tsukeru-learning`, `tsukeru-known`, and `tsukeru-revealed` classes and Study/known-reading attributes on the page.
 - `openTooltipForWord` opens the tooltip on a word named by the extension popup's Words in this text (`openWordTooltip`).
 - A throttled `pageWordsChanged` runtime notice when furigana is applied or cleared, so an open popup re-lists the page's words.
@@ -32,7 +33,7 @@ Failure Modes:
 - Completed dictionary results are TTL-bound and size-bounded; shared in-flight requests are retained only until settlement.
 
 Security Notes:
-- Escapes/sanitizes rendered content; AI ruby uses DOM text nodes. Only trusted clicks can generate translations.
+- Escapes/sanitizes rendered content; AI ruby uses DOM text nodes. Only trusted clicks can generate translations: a reader's click on View translation, or, for a Supporter, the trusted click that opened the word.
 - Stroke diagrams are built with DOM APIs from paths re-checked against SVG path syntax; tier, accent, and inflection values are matched against fixed allowlists before rendering.
 - Report opening/submission requires trusted clicks; word, reading, and context are held in isolated-script state rather than read back from page fields.
 - Avoids direct third-party media fetches from page context.
@@ -197,7 +198,7 @@ function handleDictionaryClick(event) {
     hideDefinitionTooltip();
     return;
   }
-  showDefinitionTooltip(targetEl, wordInfo, { x: event.clientX, y: event.clientY });
+  showDefinitionTooltip(targetEl, wordInfo, { x: event.clientX, y: event.clientY }, { trusted: event.isTrusted });
 }
 
 /**
@@ -211,7 +212,8 @@ function openTooltipForWord(word, reading) {
   const wordInfo = extractWordInfo(target);
   if (!wordInfo.word) return { found: false };
   const rect = target.getBoundingClientRect();
-  showDefinitionTooltip(target, wordInfo, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+  // The extension popup's own click asked for this word.
+  showDefinitionTooltip(target, wordInfo, { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }, { trusted: true });
   return { found: true };
 }
 
@@ -237,7 +239,7 @@ function extractWordInfo(target) {
 
 // ── Tooltip lifecycle ─────────────────────────────────────────────────────────
 
-async function showDefinitionTooltip(ruby, wordInfo, point = null) {
+async function showDefinitionTooltip(ruby, wordInfo, point = null, { trusted = false } = {}) {
   const tooltip = ensureDictionaryTooltip();
 
   tooltip._lookupVersion = (tooltip._lookupVersion || 0) + 1;
@@ -279,7 +281,7 @@ async function showDefinitionTooltip(ruby, wordInfo, point = null) {
     renderDefinitionTooltip(tooltip, wordInfo, definitionData);
     bindTooltipProgress(tooltip, recordPromise, myToken);
     rememberWordDefinition(recordPromise, definitionData);
-    startLocalizedTooltip(tooltip, wordInfo, definitionData, recordPromise, myToken);
+    startLocalizedTooltip(tooltip, wordInfo, definitionData, recordPromise, myToken, { trusted });
   } catch (err) {
     if (tooltip._lookupVersion !== myToken || tooltip.dataset.word !== wordInfo.word) return;
     console.error('Tsukeru: dictionary lookup failed', err);
@@ -2114,6 +2116,68 @@ function isCurrentTranslation(state) {
     && TsukeruI18n.language() === state.locale;
 }
 
+/** New translations a guest has left today; Supporters never see a count. */
+function translationsLeft(state) {
+  return !state.supporter && Number.isInteger(state.remaining) && state.remaining >= 0 ? state.remaining : null;
+}
+
+function translationNote(text, upsell) {
+  const note = document.createElement('div');
+  note.className = 'tsukeru-translation-note';
+  note.setAttribute('role', 'status');
+  note.setAttribute('aria-live', 'polite');
+  note.textContent = text;
+  if (upsell) {
+    const link = document.createElement('a');
+    link.className = 'tsukeru-translation-upsell';
+    link.href = TsukeruI18n.websiteUrl('/pricing?from=tsukeru');
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = t('header_title_become_supporter', undefined, 'Become a Supporter');
+    note.append(document.createTextNode(' '), link);
+  }
+  return note;
+}
+
+function translationsLeftLabel(count) {
+  const left = document.createElement('span');
+  left.className = 'tsukeru-translation-left';
+  left.textContent = t('dictionary_translations_left', [String(count)], `${count} left today`);
+  return left;
+}
+
+/** AI translation / English, the same two-state look as Learning / Known. */
+function translationSwitch(state) {
+  const group = document.createElement('div');
+  group.className = 'tsukeru-translation-switch';
+  group.setAttribute('role', 'group');
+  group.setAttribute('aria-label', t('dictionary_ai_translation', undefined, 'AI translation'));
+  let pressed = null;
+  [
+    [true, t('dictionary_ai_translation', undefined, 'AI translation')],
+    [false, t('dictionary_english_option', undefined, 'English')],
+  ].forEach(([translation, label]) => {
+    const option = document.createElement('button');
+    option.type = 'button';
+    option.className = 'tsukeru-translation-option';
+    option.dataset.view = translation ? 'translation' : 'english';
+    const on = translation === state.showingTranslation;
+    option.setAttribute('aria-pressed', on ? 'true' : 'false');
+    option.textContent = label;
+    option.addEventListener('click', event => handleTranslationView(event, state, translation));
+    if (on) pressed = option;
+    group.append(option);
+  });
+  return { group, focus: pressed };
+}
+
+/** The controls sit at the top of the Meaning tab, above the first sense. */
+function placeTranslationControls(tooltip, controls) {
+  const panel = tooltip.querySelector('.tsukeru-tab-panel');
+  if (panel) panel.prepend(controls);
+  else tooltip.append(controls);
+}
+
 function drawTranslationControls(state) {
   if (!isCurrentTranslation(state)) return;
   const { tooltip } = state;
@@ -2122,38 +2186,37 @@ function drawTranslationControls(state) {
   previous?.remove();
   const controls = document.createElement('div');
   controls.className = 'tsukeru-translation-controls';
-  const label = document.createElement('span');
-  label.className = 'tsukeru-translation-label';
-  label.textContent = state.showingTranslation ? t('dictionary_ai_translation', undefined, 'AI translation') : '';
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'tsukeru-translation-button';
-  button.disabled = state.busy;
-  button.textContent = state.checking ? t('content_loading', undefined, 'Loading...')
-    : state.busy ? t('dictionary_translation_loading', undefined, 'Translating…')
-    : state.showingTranslation ? t('dictionary_english', undefined, 'Show English')
-      : t('dictionary_translate', undefined, 'View translation');
-  button.addEventListener('click', event => handleTranslationClick(event, state));
-  controls.append(label, button);
-  if (state.reason) {
-    const note = document.createElement('div');
-    note.className = 'tsukeru-translation-note';
-    note.setAttribute('role', 'status');
-    note.setAttribute('aria-live', 'polite');
-    note.textContent = TsukeruUiMessages.dictionaryTranslationMessage(state.reason, t);
-    if (TsukeruUiMessages.dictionaryTranslationOffersSupporter(state.reason)) {
-      const link = document.createElement('a');
-      link.className = 'tsukeru-translation-upsell';
-      link.href = TsukeruI18n.websiteUrl('/pricing');
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.textContent = t('header_title_become_supporter', undefined, 'Become a Supporter');
-      note.append(document.createTextNode(' '), link);
-    }
-    controls.append(note);
+  const left = translationsLeft(state);
+  let focus = null;
+  if (state.translated) {
+    const view = translationSwitch(state);
+    controls.append(view.group);
+    focus = view.focus;
+  } else if (left === 0) {
+    // The day's free translations are used up: no button, just what Supporter adds.
+    const text = state.supporterDaily
+      ? t('dictionary_translation_supporter_daily', [String(state.supporterDaily)], `Supporters get ${state.supporterDaily} new translations a day.`)
+      : TsukeruUiMessages.dictionaryTranslationMessage('plan_limit', t);
+    controls.append(translationsLeftLabel(0), translationNote(text, true));
+  } else if (!state.supporter && TsukeruUiMessages.dictionaryTranslationOffersSupporter(state.reason)) {
+    controls.append(translationNote(TsukeruUiMessages.dictionaryTranslationMessage(state.reason, t), true));
+  } else {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'tsukeru-translation-button';
+    button.disabled = state.busy;
+    if (state.busy) button.setAttribute('aria-busy', 'true');
+    button.textContent = state.checking ? t('content_loading', undefined, 'Loading...')
+      : state.busy ? t('dictionary_translation_loading', undefined, 'Translating…')
+        : t('dictionary_translate', undefined, 'View translation');
+    button.addEventListener('click', event => handleTranslationClick(event, state));
+    controls.append(button);
+    if (left !== null && !state.busy) controls.append(translationsLeftLabel(left));
+    if (state.reason) controls.append(translationNote(TsukeruUiMessages.dictionaryTranslationMessage(state.reason, t), false));
+    if (!button.disabled) focus = button;
   }
-  tooltip.append(controls);
-  if (state.restoreFocus && !button.disabled) { button.focus?.({ preventScroll: true }); state.restoreFocus = false; }
+  placeTranslationControls(tooltip, controls);
+  if (state.restoreFocus && focus) { focus.focus?.({ preventScroll: true }); state.restoreFocus = false; }
   requestAnimationFrame(() => positionTooltip(tooltip._activeRuby, tooltip));
 }
 
@@ -2167,7 +2230,7 @@ function drawTranslationEntry(state) {
 }
 
 async function requestTooltipTranslation(state, cacheOnly) {
-  const result = await new Promise(resolve => {
+  const reply = await new Promise(resolve => {
     try {
       chrome.runtime.sendMessage({
         action: 'lookupLocalizedDefinition', word: state.wordInfo.word,
@@ -2175,11 +2238,15 @@ async function requestTooltipTranslation(state, cacheOnly) {
         uiLocale: state.locale, cacheOnly,
       }, response => {
         if (chrome.runtime.lastError || !response?.success) resolve(null);
-        else resolve(response.data);
+        else resolve(response);
       });
     } catch (_) { resolve(null); }
   });
   if (!isCurrentTranslation(state)) return;
+  const result = reply?.data || null;
+  if (typeof reply?.supporter === 'boolean') state.supporter = reply.supporter;
+  if (Number.isInteger(result?.remaining) && result.remaining >= 0) state.remaining = result.remaining;
+  if (Number.isInteger(result?.supporter_daily) && result.supporter_daily > 0) state.supporterDaily = result.supporter_daily;
   state.busy = false;
   state.checking = false;
   if (result && ['je_localized_cache', 'je_localized_generated'].includes(result.source)
@@ -2189,42 +2256,57 @@ async function requestTooltipTranslation(state, cacheOnly) {
     state.showingTranslation = true;
     state.reason = '';
     drawTranslationEntry(state);
-  } else {
-    const reason = result?.reason || 'service_unavailable';
-    // A disabled feature, missing route or failed passive check leaves the English tooltip unchanged.
-    if (reason === 'disabled' || (cacheOnly && !result)) {
-      state.tooltip.querySelector('.tsukeru-translation-controls')?.remove();
-      return;
-    }
-    // Notes explain a reader's own request; the passive cache check only offers the button.
-    state.reason = cacheOnly ? '' : reason;
-    drawTranslationControls(state);
+    return;
   }
+  const reason = result?.reason || 'service_unavailable';
+  // A disabled feature, missing route or failed passive check leaves the English tooltip unchanged.
+  if (reason === 'disabled' || (cacheOnly && !result)) {
+    state.tooltip.querySelector('.tsukeru-translation-controls')?.remove();
+    return;
+  }
+  // Supporters get a new translation without asking, started by the click that opened the word.
+  if (cacheOnly && reason === 'not_cached' && state.supporter && state.trusted) {
+    state.busy = true;
+    state.reason = '';
+    drawTranslationControls(state);
+    void requestTooltipTranslation(state, false);
+    return;
+  }
+  // Notes explain a reader's own request; the passive cache check only offers the button.
+  state.reason = cacheOnly ? '' : reason;
+  drawTranslationControls(state);
+}
+
+function handleTranslationView(event, state, translation) {
+  if (!event.isTrusted || !state.translated || !isCurrentTranslation(state)) return;
+  event.stopPropagation();
+  if (state.showingTranslation === translation) return;
+  state.restoreFocus = true;
+  state.showingTranslation = translation;
+  drawTranslationEntry(state);
 }
 
 function handleTranslationClick(event, state) {
   if (!event.isTrusted || state.busy || !isCurrentTranslation(state)) return;
   event.stopPropagation();
   state.restoreFocus = true;
-  if (state.showingTranslation) {
-    state.showingTranslation = false;
-    drawTranslationEntry(state);
-  } else if (state.translated) {
-    state.showingTranslation = true;
-    drawTranslationEntry(state);
-  } else {
-    state.busy = true;
-    state.reason = '';
-    drawTranslationControls(state);
-    void requestTooltipTranslation(state, false);
-  }
+  state.busy = true;
+  state.reason = '';
+  drawTranslationControls(state);
+  void requestTooltipTranslation(state, false);
 }
 
-function startLocalizedTooltip(tooltip, wordInfo, english, recordPromise, token) {
+/**
+ * Localized tooltips start in English and look for a stored translation.
+ * `trusted` is true when a reader's own click opened the word; only then may
+ * a Supporter's popup start a new translation by itself.
+ */
+function startLocalizedTooltip(tooltip, wordInfo, english, recordPromise, token, { trusted = false } = {}) {
   const locale = TsukeruI18n.language();
   if (!['ja', 'ko', 'zh-TW'].includes(locale) || english?.source !== 'je_dict' || !english.entry) return;
-  const state = { tooltip, wordInfo, english, recordPromise, token, locale,
-    translated: null, showingTranslation: false, busy: true, checking: true, reason: '' };
+  const state = { tooltip, wordInfo, english, recordPromise, token, locale, trusted: trusted === true,
+    translated: null, showingTranslation: false, busy: true, checking: true, reason: '',
+    supporter: false, remaining: null, supporterDaily: 0 };
   tooltip._translationState = state;
   // Controls appear only after the cache check shows translations are available.
   void requestTooltipTranslation(state, true);

@@ -3,7 +3,8 @@ Module: content-sync
 Purpose: Keep My Words in step with EZFurigana while one of its pages is open: send the words changed in the extension to the page, then hand the page's full record list to the background store. Also collect a signed-in Supporter's extension token for the background.
 
 Inputs:
-- Window messages from the EZFurigana page on this origin (ready with its store id, changed, and snapshot).
+- Window messages from the EZFurigana page on this origin (ready with its store id, changed, snapshot, and supporter once checkout has activated Supporter).
+- A `?tsukeru=connect` page address (the popup's Connect button and the checkout success page).
 - Outbox and merge responses from the background store, and local word changes from `chrome.storage.onChanged`.
 
 Outputs:
@@ -13,7 +14,7 @@ Outputs:
 
 Side Effects:
 - Adds one window message listener and one storage change listener on EZFurigana pages only.
-- While signed in, POSTs to the website's own /api/extension/supporter-token (daily for Supporters, at most once a minute otherwise) with its CSRF cookie (the only request this script makes).
+- While signed in, POSTs to the website's own /api/extension/supporter-token (daily for Supporters, at most once a minute otherwise) with its CSRF cookie (the only request this script makes). A `?tsukeru=connect` address or the page's supporter message asks right away, at most once per page for the message.
 
 Failure Modes:
 - Without an answer from the page, an exchange gives up after a timeout and nothing is merged.
@@ -106,6 +107,10 @@ Security Notes:
       schedule();
     } else if (data.type === 'snapshot') {
       finishExchange(data);
+    } else if (data.type === 'supporter' && !checkoutRefreshed) {
+      // The checkout success page saw Supporter activate after this page loaded.
+      checkoutRefreshed = true;
+      refreshSupporterToken({ now: true }).catch((error) => console.warn('Tsukeru: Supporter check failed', error?.message));
     }
   });
 
@@ -116,11 +121,20 @@ Security Notes:
   });
 
   // Signed-in pages carry the CSRF cookie; without it there is no account to ask about.
-  async function refreshSupporterToken() {
+  let checkoutRefreshed = false;
+
+  // Asked to connect (the popup's Connect button or a finished checkout): skip the recheck wait.
+  function connectAsked() {
+    return new URLSearchParams(window.location.search).get('tsukeru') === 'connect';
+  }
+
+  async function refreshSupporterToken({ now = connectAsked() } = {}) {
     const cookie = document.cookie.split('; ').find((part) => part.startsWith('ez_csrf_token='));
     if (!cookie || !chrome.runtime?.id) return;
-    const due = await chrome.runtime.sendMessage({ action: 'supporterRefreshDue' });
-    if (!due?.success || !due.due) return;
+    if (!now) {
+      const due = await chrome.runtime.sendMessage({ action: 'supporterRefreshDue' });
+      if (!due?.success || !due.due) return;
+    }
     // Firefox content-script fetches run as the extension; content.fetch runs
     // as the page, so the request carries the site's cookies like Chrome's does.
     const pageFetch = typeof content !== 'undefined' && typeof content?.fetch === 'function'
@@ -140,12 +154,11 @@ Security Notes:
       token: body?.token,
       expiresAt: body?.expires_at,
     });
-    confirmConnection(stored);
+    confirmConnection(stored, now);
   }
 
   // A new connection (or the popup's Connect button) gets a short confirmation.
-  function confirmConnection(stored) {
-    const asked = new URLSearchParams(window.location.search).get('tsukeru') === 'connect';
+  function confirmConnection(stored, asked) {
     if (!stored?.success || (!stored.changed && !asked) || typeof showToast !== 'function') return;
     const message = stored.plan === 'supporter'
       ? TsukeruI18n.t('supporter_connected_toast', undefined, 'Tsukeru is connected to your Supporter account. Sentence audio is on.')

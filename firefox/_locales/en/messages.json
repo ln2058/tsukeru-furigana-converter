@@ -670,9 +670,6 @@
   "dictionary_translate": {
     "message": "View translation"
   },
-  "dictionary_english": {
-    "message": "Show English"
-  },
   "dictionary_ai_translation": {
     "message": "AI translation"
   },
@@ -690,6 +687,15 @@
   },
   "dictionary_translation_unavailable": {
     "message": "Translation unavailable. Showing English."
+  },
+  "dictionary_english_option": {
+    "message": "English"
+  },
+  "dictionary_translations_left": {
+    "message": "$1 left today"
+  },
+  "dictionary_translation_supporter_daily": {
+    "message": "Supporters get $1 new translations a day."
   },
   "review_prompt_title": {
     "message": "Enjoying Tsukeru?"

@@ -670,9 +670,6 @@
   "dictionary_translate": {
     "message": "한국어로 보기"
   },
-  "dictionary_english": {
-    "message": "영어로 보기"
-  },
   "dictionary_ai_translation": {
     "message": "AI 번역"
   },
@@ -690,6 +687,15 @@
   },
   "dictionary_translation_unavailable": {
     "message": "지금은 번역을 불러올 수 없어 영어로 표시합니다."
+  },
+  "dictionary_english_option": {
+    "message": "영어"
+  },
+  "dictionary_translations_left": {
+    "message": "오늘 $1회 남음"
+  },
+  "dictionary_translation_supporter_daily": {
+    "message": "서포터는 하루에 새 번역을 $1개까지 받을 수 있습니다."
   },
   "review_prompt_title": {
     "message": "Tsukeru가 도움이 되셨나요?"

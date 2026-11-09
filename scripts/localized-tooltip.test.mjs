@@ -10,6 +10,7 @@ class Element {
     this.text = text;
     this.dataset = {};
     this.events = {};
+    this.attrs = {};
     this.classList = { contains: () => true, add() {} };
   }
   set textContent(value) { this.children = []; this.text = String(value); }
@@ -21,8 +22,13 @@ class Element {
     }
   }
   replaceChildren(...children) { this.text = ''; this.children = []; this.append(...children); }
+  prepend(child) { child.parent = this; this.children.unshift(child); }
   remove() { this.parent.children = this.parent.children.filter(child => child !== this); }
-  setAttribute() {}
+  setAttribute(name, value) { this.attrs[name] = String(value); }
+  getAttribute(name) { return this.attrs[name] ?? null; }
+  all(selector) {
+    return this.children.flatMap(child => [...(`.${child.className}` === selector ? [child] : []), ...child.all(selector)]);
+  }
   addEventListener(name, callback) { this.events[name] = callback; }
   querySelector(selector) {
     return this.children.find(child => `.${child.className}` === selector)
@@ -59,7 +65,7 @@ function fixture(browser, language = 'ko') {
   const english = { source: 'je_dict', entry: { gloss: 'book' } };
   const translated = { source: 'je_localized_cache', locale: language === 'zh-TW' ? 'zh-Hant' : language, entry: { gloss: '번역' } };
   return { sandbox, tooltip, requests, renders, english, translated,
-    start() { sandbox.startLocalizedTooltip(tooltip, { word: '本', lookupReading: 'ほん' }, english, Promise.resolve({}), 1); },
+    start(options) { sandbox.startLocalizedTooltip(tooltip, { word: '本', lookupReading: 'ほん' }, english, Promise.resolve({}), 1, options); },
     button() { return tooltip.querySelector('.tsukeru-translation-button'); },
   };
 }
@@ -68,13 +74,15 @@ const tick = async () => { for (let index = 0; index < 5; index += 1) await Prom
 const click = isTrusted => ({ isTrusted, stopPropagation() {} });
 
 for (const browser of ['chrome', 'firefox']) {
+  const notCached = (extra = {}) => ({ success: true, data: { reason: 'not_cached', ...extra }, supporter: false });
+
   test(`${browser} shows English first, checks cache, and requires a trusted click for generation`, async () => {
     const f = fixture(browser);
     f.start();
     assert.equal(f.renders.length, 0);
     assert.equal(f.requests[0].message.cacheOnly, true);
     assert.equal(f.button(), null, 'no controls until the cache check answers');
-    f.requests[0].callback({ success: true, data: { reason: 'not_cached' } });
+    f.requests[0].callback(notCached());
     await tick();
     assert.equal(f.button().disabled, false);
     f.button().events.click(click(false));
@@ -83,17 +91,69 @@ for (const browser of ['chrome', 'firefox']) {
     assert.equal(f.requests.length, 2);
     assert.equal(f.requests[1].message.cacheOnly, false);
     assert.equal(f.button().disabled, true);
+    assert.equal(f.button().getAttribute('aria-busy'), 'true');
     f.button().events.click(click(true));
     assert.equal(f.requests.length, 2);
     f.requests[1].callback({ success: true, data: f.translated });
     await tick();
     assert.equal(f.renders[0], f.translated);
-    assert.match(f.tooltip.textContent, /AI translation/);
-    f.button().events.click(click(true));
+    const [translation, english] = f.tooltip.all('.tsukeru-translation-option');
+    assert.equal(translation.textContent, 'AI translation');
+    assert.equal(translation.getAttribute('aria-pressed'), 'true');
+    assert.equal(english.getAttribute('aria-pressed'), 'false');
+    english.events.click(click(false));
+    assert.equal(f.renders.length, 1, 'an untrusted click does not switch');
+    english.events.click(click(true));
     assert.equal(f.renders[1], f.english);
-    f.button().events.click(click(true));
+    f.tooltip.all('.tsukeru-translation-option')[0].events.click(click(true));
     assert.equal(f.renders[2], f.translated);
     assert.equal(f.requests.length, 2, 'switching between already loaded entries stays local');
+  });
+
+  test(`${browser} guests see what is left today; Supporters see no count`, async () => {
+    const f = fixture(browser);
+    f.start();
+    f.requests[0].callback(notCached({ remaining: 2, supporter_daily: 200 }));
+    await tick();
+    assert.equal(f.tooltip.querySelector('.tsukeru-translation-left').textContent, '2 left today');
+    f.button().events.click(click(true));
+    assert.equal(f.tooltip.querySelector('.tsukeru-translation-left'), null, 'no count while translating');
+
+    const spent = fixture(browser);
+    spent.start();
+    spent.requests[0].callback(notCached({ remaining: 0, supporter_daily: 200 }));
+    await tick();
+    assert.equal(spent.button(), null, 'nothing to click once none are left');
+    assert.equal(spent.tooltip.querySelector('.tsukeru-translation-left').textContent, '0 left today');
+    assert.match(spent.tooltip.textContent, /Supporters get 200 new translations a day\./);
+    assert.equal(spent.tooltip.querySelector('.tsukeru-translation-upsell').href, 'https://www.ezfurigana.com/ko/pricing?from=tsukeru');
+  });
+
+  test(`${browser} a Supporter's word translates without a click, only when a click opened it`, async () => {
+    const opened = fixture(browser);
+    opened.start({ trusted: true });
+    opened.requests[0].callback({ ...notCached({ remaining: 3 }), supporter: true });
+    await tick();
+    assert.equal(opened.requests.length, 2);
+    assert.equal(opened.requests[1].message.cacheOnly, false);
+    assert.equal(opened.button().disabled, true);
+    assert.equal(opened.tooltip.querySelector('.tsukeru-translation-left'), null);
+    opened.requests[1].callback({ success: true, data: opened.translated, supporter: true });
+    await tick();
+    assert.equal(opened.renders[0], opened.translated);
+
+    const scripted = fixture(browser);
+    scripted.start();
+    scripted.requests[0].callback({ ...notCached(), supporter: true });
+    await tick();
+    assert.equal(scripted.requests.length, 1, 'a page-made click never generates by itself');
+    assert.equal(scripted.button().disabled, false);
+
+    const guest = fixture(browser);
+    guest.start({ trusted: true });
+    guest.requests[0].callback(notCached({ remaining: 3 }));
+    await tick();
+    assert.equal(guest.requests.length, 1, 'guests always choose');
   });
 
   test(`${browser} cached translations appear automatically; stale and English lookups do not generate`, async () => {
@@ -129,25 +189,38 @@ for (const browser of ['chrome', 'firefox']) {
   });
 
   test(`${browser} a spent plan allowance offers Supporter; a Supporter's spent day does not`, async () => {
-    for (const [reason, offers] of [['plan_limit', true], ['anonymous_budget', true], ['daily_limit', false]]) {
+    for (const [reason, offers, supporter] of [['plan_limit', true, false], ['anonymous_budget', true, false], ['daily_limit', false, true]]) {
       const f = fixture(browser);
       f.start();
-      f.requests[0].callback({ success: true, data: { reason: 'not_cached' } });
+      f.requests[0].callback({ ...notCached(), supporter });
       await tick();
       f.button().events.click(click(true));
-      f.requests[1].callback({ success: true, data: { reason } });
+      f.requests[1].callback({ success: true, data: { reason }, supporter });
       await tick();
       const link = f.tooltip.querySelector('.tsukeru-translation-upsell');
       assert.equal(Boolean(link), offers, reason);
       if (offers) {
         assert.match(f.tooltip.textContent, /You've used today's free dictionary translations\. Supporters get more each day\./);
-        assert.equal(link.href, 'https://www.ezfurigana.com/ko/pricing');
+        assert.equal(link.href, 'https://www.ezfurigana.com/ko/pricing?from=tsukeru');
         assert.equal(link.rel, 'noopener noreferrer');
+        assert.equal(f.button(), null);
       } else {
         assert.match(f.tooltip.textContent, /You've used today's dictionary translations\. Showing English until tomorrow\./);
       }
       assert.equal(f.renders.length, 0, 'English stays');
     }
+  });
+
+  test(`${browser} the controls sit at the top of the Meaning tab`, async () => {
+    const f = fixture(browser);
+    const panel = new Element();
+    panel.className = 'tsukeru-tab-panel';
+    panel.append(new Element('div', 'first sense'));
+    f.tooltip.append(panel);
+    f.start();
+    f.requests[0].callback(notCached());
+    await tick();
+    assert.equal(panel.children[0].className, 'tsukeru-translation-controls');
   });
 
   test(`${browser} a disabled feature or missing route leaves the English tooltip unchanged`, async () => {
@@ -162,7 +235,7 @@ for (const browser of ['chrome', 'firefox']) {
     }
     const f = fixture(browser);
     f.start();
-    f.requests[0].callback({ success: true, data: { reason: 'not_cached' } });
+    f.requests[0].callback(notCached());
     await tick();
     f.button().events.click(click(true));
     f.requests[1].callback({ success: false });

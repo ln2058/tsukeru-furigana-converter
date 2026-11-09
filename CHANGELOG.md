@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.3.1 — 2026-11-09
+
+### Changed
+
+- **Dictionary translations at the top**: in Japanese, Korean, and Traditional Chinese, View translation now sits at the top of the Meaning tab and shows how many new translations you have left today. Once a word is translated, an AI translation / English switch replaces it. When the day's free translations are used up, the tooltip says how many Supporters get each day.
+- **Supporters translate without a click**: when no translation is stored yet, a Supporter's tooltip starts one as soon as the word is opened.
+- After Supporter checkout on EZFurigana, Tsukeru connects right away instead of on a later visit.
+- Supporter links open EZFurigana's pricing page with a note that Tsukeru connects after checkout.
+- In dark mode, the popup header no longer shows a light line at its rounded top corners.
+
 ## 4.3.0 — 2026-11-08
 
 ### Added

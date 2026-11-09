@@ -670,9 +670,6 @@
   "dictionary_translate": {
     "message": "顯示中文釋義"
   },
-  "dictionary_english": {
-    "message": "顯示英文釋義"
-  },
   "dictionary_ai_translation": {
     "message": "AI 翻譯"
   },
@@ -690,6 +687,15 @@
   },
   "dictionary_translation_unavailable": {
     "message": "目前無法提供翻譯，暫時顯示英文釋義。"
+  },
+  "dictionary_english_option": {
+    "message": "英文"
+  },
+  "dictionary_translations_left": {
+    "message": "今天還剩 $1 次"
+  },
+  "dictionary_translation_supporter_daily": {
+    "message": "支持者每天可取得 $1 則新翻譯。"
   },
   "review_prompt_title": {
     "message": "Tsukeru 對你有幫助嗎？"

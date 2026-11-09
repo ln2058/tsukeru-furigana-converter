@@ -670,9 +670,6 @@
   "dictionary_translate": {
     "message": "やさしい日本語で見る"
   },
-  "dictionary_english": {
-    "message": "英語に戻す"
-  },
   "dictionary_ai_translation": {
     "message": "AI翻訳"
   },
@@ -690,6 +687,15 @@
   },
   "dictionary_translation_unavailable": {
     "message": "今は翻訳を表示できません。英語で表示します。"
+  },
+  "dictionary_english_option": {
+    "message": "英語"
+  },
+  "dictionary_translations_left": {
+    "message": "今日はあと$1回"
+  },
+  "dictionary_translation_supporter_daily": {
+    "message": "サポーターは毎日$1回まで新しく翻訳できます。"
   },
   "review_prompt_title": {
     "message": "Tsukeruは役に立っていますか？"
