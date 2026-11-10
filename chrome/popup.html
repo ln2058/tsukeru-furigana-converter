@@ -145,6 +145,15 @@
             <button type="button" class="segment" data-value="large" aria-pressed="false" data-i18n="settings_popup_size_large">Large</button>
           </div>
         </div>
+        <label class="setting-switch" for="autoSite" id="autoSiteRow" hidden>
+          <span class="setting-switch-text">
+            <span id="autoSiteLabel" class="setting-switch-label" data-i18n="settings_auto_site">Always add furigana on this site</span>
+            <span id="autoSiteHost" class="setting-hint auto-site-host"></span>
+          </span>
+          <input type="checkbox" id="autoSite" role="switch" aria-labelledby="autoSiteLabel" aria-describedby="autoSiteHost">
+          <span class="study-switch-track" aria-hidden="true"></span>
+        </label>
+        <ul id="autoSiteList" class="auto-site-list" aria-label="Sites with automatic furigana" data-i18n-aria-label="settings_auto_sites_list" hidden></ul>
       </section>
 
       <section class="settings-section">

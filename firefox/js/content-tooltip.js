@@ -12,12 +12,12 @@ Inputs:
 Outputs:
 - Tooltip rendering updates with Japanese language tags for words/readings/examples, checked-word and Learning/Known requests to the background store, and report payload messages.
 - The card layout shared with the EZFurigana website: frequency badge, pitch-marked reading, form line with conjugation labels, Meaning / Kanji tabs, and a Kanji tab that loads on first open with stroke-order diagrams and KanjiVG attribution.
-- A "Play sentence" line showing the sentence around the clicked word (Supporter audio), tagged "Supporter" when this browser holds no Supporter token.
+- A "Play sentence" line showing the sentence around the clicked word (Supporter audio), tagged "Supporter" when this browser holds no Supporter token, with "Explain" to its right: the sentence explained in the display language (Supporters), opened below the line.
 - A play button, like the word's, at the end of each TKGJE example with a recorded reading (Supporter audio, refused the same way as Play sentence).
 - In ja/ko/zh-TW, translation controls at the top of the Meaning tab: View translation with the new translations a guest has left today, an AI translation / English switch once translated, and a Supporter line when none are left. Supporters' translations start without a click.
 - `tsukeru-learning`, `tsukeru-known`, and `tsukeru-revealed` classes and Study/known-reading attributes on the page.
 - `openTooltipForWord` opens the tooltip on a word named by the extension popup's Words in this text (`openWordTooltip`).
-- A throttled `pageWordsChanged` runtime notice when furigana is applied or cleared, so an open popup re-lists the page's words.
+- A `pageWordsChanged` runtime notice once furigana insertions pause (at most every few seconds while they continue), so an open popup re-lists the page's words.
 
 Side Effects:
 - Creates/removes tooltip DOM on the root element, scroll/resize/Escape listeners that re-place or close it, and disclosure state.
@@ -25,6 +25,7 @@ Side Effects:
 - Registers tooltip and report surfaces with content-ui to follow the saved UI theme.
 - Opening the dictionary on a kanji word, or revealing it in Study mode, adds it to Learning (a known word stays known).
 - Play sentence sends the plain sentence around the open word (at most 120 characters) to the background for Supporter audio and shows a toast when it is refused.
+- Explain sends the same sentence and the display language to the background for a Supporter explanation, after a one-time notice that the sentence goes to OpenAI (remembered as `explainNoticeSeen` in local storage); a browser without a Supporter token gets a toast instead and sends nothing.
 - Excludes tooltip-owned metadata from word capture and word-state marks.
 
 Failure Modes:
@@ -34,11 +35,11 @@ Failure Modes:
 - Completed dictionary results are TTL-bound and size-bounded; shared in-flight requests are retained only until settlement.
 
 Security Notes:
-- Escapes/sanitizes rendered content; AI ruby uses DOM text nodes. Only trusted clicks can generate translations: a reader's click on View translation, or, for a Supporter, the trusted click that opened the word.
+- Escapes/sanitizes rendered content; AI ruby and sentence explanations use DOM text nodes. Only trusted clicks can generate translations: a reader's click on View translation, or, for a Supporter, the trusted click that opened the word.
 - Stroke diagrams are built with DOM APIs from paths re-checked against SVG path syntax; tier, accent, and inflection values are matched against fixed allowlists before rendering.
 - Report opening/submission requires trusted clicks; word, reading, and context are held in isolated-script state rather than read back from page fields.
 - Avoids direct third-party media fetches from page context.
-- Checked words carry only the word, reading, JLPT level, part of speech, and a short plain-text sentence; no page URL.
+- Checked words carry only the word, reading, JLPT level, part of speech, a short plain-text sentence, and the readings Tsukeru gave that sentence's words (positions and kana only); no page URL.
 */
 // ============================================================================
 // content-tooltip.js — Dictionary tooltip, My Words states, TTS, report modal
@@ -503,6 +504,9 @@ function addTooltipInteractionHandlers(reportInfo = null) {
     refreshSupporterTag(tooltip);
   }
 
+  const explainBtn = tooltip.querySelector('.tsukeru-explain-btn');
+  if (explainBtn) bindSentenceExplain(tooltip, explainBtn);
+
   const reportBtn = tooltip.querySelector('.tsukeru-tooltip-report-btn');
   if (reportBtn) {
     reportBtn.onclick = (e) => {
@@ -693,18 +697,33 @@ function renderTooltipSentenceLine(sentence, word) {
     : `${lead}${escapeHtml(sentence.slice(from, at))}<mark class="tsukeru-sentence-word">${escapeHtml(word)}</mark>${escapeHtml(sentence.slice(at + word.length))}`;
   const label = t('content_play_sentence', undefined, 'Play sentence');
   const tagHidden = sentenceAudioSupporter === false ? '' : ' tsukeru-hidden';
+  const explainLabel = t('content_explain_sentence', undefined, 'Explain this sentence');
   return `
+      <div class="tsukeru-sentence-row">
       <button type="button" class="tsukeru-sentence-play" data-sentence="${escapeHtml(sentence)}"
           title="${escapeHtml(label)}" aria-label="${escapeHtml(`${label}: ${sentence}`)}">
           <svg class="tsukeru-sentence-icon" width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg>
           <span class="tsukeru-sentence-text" lang="ja">${text}</span>
           <span class="tsukeru-supporter-tag${tagHidden}">${escapeHtml(t('content_supporter_tag', undefined, 'Supporter'))}</span>
-      </button>`;
+      </button>
+      <button type="button" class="tsukeru-explain-btn" title="${escapeHtml(explainLabel)}"
+          aria-label="${escapeHtml(explainLabel)}" aria-expanded="false">${escapeHtml(t('content_explain', undefined, 'Explain'))}</button>
+      </div>`;
 }
 
 function showSupporterTag(tooltip, supporter) {
   sentenceAudioSupporter = supporter;
   tooltip?.querySelector('.tsukeru-supporter-tag')?.classList.toggle('tsukeru-hidden', supporter);
+}
+
+/** Below the sentence line: Explain's notice and where the explanation opens. */
+function renderTooltipExplainPanel(sentence) {
+  if (!sentence) return '';
+  return `
+      <div class="tsukeru-explain" data-sentence="${escapeHtml(sentence)}">
+          <div class="tsukeru-explain-notice tsukeru-hidden" role="status"></div>
+          <div class="tsukeru-explain-result tsukeru-hidden" aria-live="polite"></div>
+      </div>`;
 }
 
 /** Ask the background (local storage only, no request) whether to show the tag. */
@@ -1018,10 +1037,9 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
 
   html += renderTooltipFormLine(wordInfo, displayWord);
   const sentenceWord = String(wordInfo.surface || displayWord || '');
-  html += renderTooltipSentenceLine(
-    tooltip._activeRuby ? plainWordSentence(tooltip._activeRuby, sentenceWord) : '',
-    sentenceWord
-  );
+  const tooltipSentence = tooltip._activeRuby ? plainWordSentence(tooltip._activeRuby, sentenceWord) : '';
+  html += renderTooltipSentenceLine(tooltipSentence, sentenceWord);
+  html += renderTooltipExplainPanel(tooltipSentence);
 
   const kanjiCount = countTooltipKanji(displayWord);
   if (kanjiCount > 0) html += renderTooltipTabsHtml(kanjiCount);
@@ -1284,6 +1302,154 @@ function playSupporterAudio(buttonElement, message) {
     audio.onerror = done;
     audio.play().catch(done);
   });
+}
+
+// ── Explain (Supporters) ──────────────────────────────────────────────────────
+
+const EXPLAIN_NOTICE_KEY = 'explainNoticeSeen';
+const MAX_SHOWN_EXPLANATIONS = 30;
+// Explanations shown on this page, by language and sentence, so reopening a word does not ask again.
+const shownExplanations = new Map();
+
+function askBackground(message) {
+  return new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage(message, (response) => resolve(chrome.runtime.lastError ? null : response));
+    } catch (_) {
+      // Extension reloaded under the page.
+      resolve(null);
+    }
+  });
+}
+
+function explainTextElement(tag, className, text, lang) {
+  const node = document.createElement(tag);
+  node.className = className;
+  node.textContent = text;
+  if (lang) node.setAttribute('lang', lang);
+  return node;
+}
+
+/** Fill `box` with an explanation: the translation, the points, the note, and the AI line. */
+function renderTooltipExplanation(box, explanation, language) {
+  box.setAttribute('lang', language);
+  box.replaceChildren(explainTextElement('p', 'tsukeru-explain-translation', explanation.translation));
+  if (explanation.points.length) {
+    const list = document.createElement('ul');
+    list.className = 'tsukeru-explain-points';
+    explanation.points.forEach((point) => {
+      const item = document.createElement('li');
+      item.append(
+        explainTextElement('span', 'tsukeru-explain-piece', point.japanese, 'ja'),
+        explainTextElement('span', 'tsukeru-explain-text', point.explanation),
+      );
+      list.append(item);
+    });
+    box.append(list);
+  }
+  if (explanation.note) box.append(explainTextElement('p', 'tsukeru-explain-note', explanation.note));
+  box.append(explainTextElement('p', 'tsukeru-explain-ai', t('content_explain_ai_note', undefined, 'Written by AI. It can contain mistakes.')));
+  box.classList.remove('tsukeru-hidden');
+}
+
+async function explainNoticeSeen() {
+  try {
+    const stored = await chrome.storage.local.get({ [EXPLAIN_NOTICE_KEY]: false });
+    return stored[EXPLAIN_NOTICE_KEY] === true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/** The first-use notice with its Continue button; resolves when it is pressed. */
+function confirmExplainNotice(notice) {
+  return new Promise((resolve) => {
+    const proceed = explainTextElement('button', 'tsukeru-explain-continue', t('content_explain_continue', undefined, 'Continue'));
+    proceed.type = 'button';
+    proceed.onclick = (event) => {
+      event.stopPropagation();
+      if (!event.isTrusted) return;
+      chrome.storage.local.set({ [EXPLAIN_NOTICE_KEY]: true }).catch(() => {});
+      notice.classList.add('tsukeru-hidden');
+      resolve();
+    };
+    notice.replaceChildren(
+      explainTextElement('p', '', t(
+        'content_explain_notice',
+        undefined,
+        'This sentence will be sent to OpenAI to write the explanation, and OpenAI may use it to improve its models.'
+      )),
+      proceed,
+    );
+    notice.classList.remove('tsukeru-hidden');
+  });
+}
+
+/** Wire "Explain" for a freshly rendered tooltip: toggle a shown explanation, or ask for one. */
+function bindSentenceExplain(tooltip, button) {
+  const panel = tooltip.querySelector('.tsukeru-explain');
+  const notice = panel?.querySelector('.tsukeru-explain-notice');
+  const result = panel?.querySelector('.tsukeru-explain-result');
+  if (!panel || !notice || !result) return;
+  const sentence = panel.dataset.sentence || '';
+  const language = TsukeruI18n.language();
+  const key = `${language}\n${sentence}`;
+  const open = (box, toggle, explanation) => {
+    renderTooltipExplanation(box, explanation, language);
+    toggle.setAttribute('aria-expanded', 'true');
+  };
+  if (shownExplanations.has(key)) open(result, button, shownExplanations.get(key));
+
+  button.onclick = async (event) => {
+    event.stopPropagation();
+    if (!event.isTrusted || button.disabled) return;
+    notice.classList.add('tsukeru-hidden');
+    if (!result.classList.contains('tsukeru-hidden')) {
+      result.classList.add('tsukeru-hidden');
+      button.setAttribute('aria-expanded', 'false');
+      return;
+    }
+    if (result.childElementCount) {
+      result.classList.remove('tsukeru-hidden');
+      button.setAttribute('aria-expanded', 'true');
+      return;
+    }
+    const refuse = (code) => {
+      if (code === 'supporter_required') showSupporterTag(dictionaryTooltip, false);
+      showToast(TsukeruUiMessages.explainMessage(code, t), { type: code === 'supporter_required' ? 'info' : 'error' });
+    };
+    // Without a Supporter token nothing is sent, so the notice is not shown either.
+    const token = await askBackground({ action: 'hasSupporterToken' });
+    if (token?.success && token.supporter !== true) {
+      refuse('supporter_required');
+      return;
+    }
+    if (!(await explainNoticeSeen())) await confirmExplainNotice(notice);
+    button.disabled = true;
+    const idle = button.textContent;
+    button.textContent = t('content_explain_working', undefined, 'Explaining…');
+    const response = await askBackground({ action: 'explainSentence', text: sentence, language });
+    button.disabled = false;
+    button.textContent = idle;
+    if (!response?.success || !response.explanation) {
+      refuse(response?.error);
+      return;
+    }
+    shownExplanations.delete(key);
+    shownExplanations.set(key, response.explanation);
+    while (shownExplanations.size > MAX_SHOWN_EXPLANATIONS) shownExplanations.delete(shownExplanations.keys().next().value);
+    showSupporterTag(dictionaryTooltip, true);
+    if (panel.isConnected) {
+      open(result, button, response.explanation);
+      return;
+    }
+    // The tooltip re-rendered while waiting: show it in the panel that replaced this one.
+    const live = [...(dictionaryTooltip?.querySelectorAll('.tsukeru-explain') || [])]
+      .find((candidate) => candidate.dataset.sentence === sentence);
+    const box = live?.querySelector('.tsukeru-explain-result');
+    const toggle = dictionaryTooltip?.querySelector('.tsukeru-explain-btn');
+    if (box && toggle) open(box, toggle, response.explanation);
+  };
 }
 
 function fallbackTTS(word, buttonElement) {
@@ -1819,14 +1985,34 @@ function wordIdentityOf(element) {
 
 /** The plain sentence around a word, without readings, at most 120 characters. */
 function plainWordSentence(element, word) {
+  return wordSentenceWithReadings(element, word).sentence;
+}
+
+/**
+ * The plain sentence around a word and the readings Tsukeru gave the words
+ * in it, as [start, length, reading, word id] spans (as on EZFurigana).
+ */
+function wordSentenceWithReadings(element, word) {
   try {
     const around = blockTextAround(element);
-    const sentence = around ? wordRules()?.sentenceAt(around.text, around.start, around.end, word) : '';
-    if (sentence) return sentence;
-    return wordRules()?.fitSentence(getPlainTextFromHtml(extractSentenceContext(element)), word) || '';
+    const found = around
+      ? wordRules()?.sentenceWithReadingsAt(around.text, around.start, around.end, word, around.words)
+      : null;
+    if (found?.sentence) return found;
+    const sentence = wordRules()?.fitSentence(getPlainTextFromHtml(extractSentenceContext(element)), word) || '';
+    return { sentence, readings: [] };
   } catch (_) {
-    return '';
+    return { sentence: '', readings: [] };
   }
+}
+
+/** A page word's reading and identity for its sentence span, or null for words without one. */
+function sentenceWordOf(node) {
+  if (!isAnalysisWordElement(node) || resolveAnalysisWordElement(node) !== node) return null;
+  const info = getAnalysisWordData(node);
+  const reading = String(info.surfaceReading || '').trim();
+  if (!reading) return null;
+  return { reading, id: wordRules()?.identityForWordInfo(info)?.id || '' };
 }
 
 // Elements that start a new line of text; their edges and <br> end a sentence.
@@ -1841,8 +2027,9 @@ const SENTENCE_SCAN_LIMIT = 20000;
 
 /**
  * Text of the word's nearest block, without readings, with a line break at
- * every nested block and <br>, and where the word sits in it. Bounded: a
- * word further than SENTENCE_SCAN_LIMIT characters into its block gives null.
+ * every nested block and <br>, where the word sits in it, and where each
+ * page word with a reading sits in it (`words`, in order). Bounded: a word
+ * further than SENTENCE_SCAN_LIMIT characters into its block gives null.
  */
 function blockTextAround(element) {
   if (!element?.parentElement) return null;
@@ -1852,6 +2039,7 @@ function blockTextAround(element) {
   let text = '';
   let start = -1;
   let end = -1;
+  const words = [];
   const visit = (node) => {
     if (text.length > SENTENCE_SCAN_LIMIT) return;
     if (node.nodeType === 3) {
@@ -1863,12 +2051,15 @@ function blockTextAround(element) {
     const block = node !== container && SENTENCE_BLOCK_TAGS.has(node.tagName);
     if (block || node.tagName === 'BR') text += '\n';
     if (node === element) start = text.length;
+    const unit = sentenceWordOf(node);
+    const from = text.length;
     for (let child = node.firstChild; child; child = child.nextSibling) visit(child);
+    if (unit && text.length > from) words.push({ from, to: text.length, ...unit });
     if (node === element) end = text.length;
     if (block) text += '\n';
   };
   visit(container);
-  return start >= 0 && end >= start ? { text, start, end } : null;
+  return start >= 0 && end >= start ? { text, start, end, words } : null;
 }
 
 function noteLocalWordState(record) {
@@ -1888,12 +2079,14 @@ async function captureCheckedWord(element, wordInfo, source) {
   if (!identity || !chrome.runtime?.id) return null;
   const countCheck = !countedWordIds.has(identity.id);
   countedWordIds.add(identity.id);
+  const context = wordSentenceWithReadings(element, wordInfo?.surface || identity.word);
   try {
     const response = await chrome.runtime.sendMessage({
       action: 'wordsCapture',
       word: identity.word,
       reading: identity.reading,
-      sentence: plainWordSentence(element, wordInfo?.surface || identity.word),
+      sentence: context.sentence,
+      readings: context.readings,
       level: wordInfo?.jlpt || '',
       pos: wordInfo?.pos || '',
       countCheck,
@@ -1909,13 +2102,15 @@ async function captureCheckedWord(element, wordInfo, source) {
 }
 
 async function setCheckedWordState(record, state, element) {
+  const context = element ? wordSentenceWithReadings(element, record.word) : { sentence: '', readings: [] };
   try {
     const response = await chrome.runtime.sendMessage({
       action: 'wordsSetState',
       word: record.word,
       reading: record.reading,
       state,
-      sentence: element ? plainWordSentence(element, record.word) : '',
+      sentence: context.sentence,
+      readings: context.readings,
     });
     const updated = response?.success ? response.record : null;
     if (updated) noteLocalWordState(updated);
@@ -2038,14 +2233,36 @@ function clearWordDisplaySettings() {
   notePageWordsChanged();
 }
 
-/** Tell an open popup that furigana was added or removed, so Words in this text re-lists the page. */
+// While furigana is still being added, the popup re-lists the page once
+// insertions pause, and at least this often while they continue.
+const PAGE_WORDS_NOTICE_QUIET_MS = 1200;
+const PAGE_WORDS_NOTICE_MAX_WAIT_MS = 5000;
+
+/**
+ * Tell an open popup that furigana was added or removed, so Words in this
+ * text re-lists the page: once changes pause, not after every inserted batch.
+ */
 function notePageWordsChanged() {
+  const now = Date.now();
+  pageWordsChangedAt = now;
   if (pageWordsNoticeTimer) return;
-  pageWordsNoticeTimer = setTimeout(() => {
+  pageWordsNoticeStartedAt = now;
+  const settle = () => {
+    const current = Date.now();
+    const quiet = current - pageWordsChangedAt;
+    const waited = current - pageWordsNoticeStartedAt;
+    if (quiet < PAGE_WORDS_NOTICE_QUIET_MS && waited < PAGE_WORDS_NOTICE_MAX_WAIT_MS) {
+      pageWordsNoticeTimer = setTimeout(settle, Math.min(
+        PAGE_WORDS_NOTICE_QUIET_MS - quiet,
+        PAGE_WORDS_NOTICE_MAX_WAIT_MS - waited
+      ));
+      return;
+    }
     pageWordsNoticeTimer = 0;
     // No listener when the popup is closed; that is expected.
     chrome.runtime.sendMessage({ action: 'pageWordsChanged' })?.catch?.(() => {});
-  }, 400);
+  };
+  pageWordsNoticeTimer = setTimeout(settle, PAGE_WORDS_NOTICE_QUIET_MS);
 }
 
 /** Mark learning and known words: known words lose their readings, learning words keep them. */

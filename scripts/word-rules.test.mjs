@@ -173,4 +173,28 @@ for (const browserName of ['chrome', 'firefox']) {
     // Only the word changed during the exchange goes out next time.
     assert.deepEqual(plain(Words.buildOutbox(store, 'store-a', T0 + 30).changes.map((change) => change.word)), ['宿題']);
   });
+
+  test(`${browserName} sentence readings travel with the word both ways and survive a page without them`, () => {
+    const store = Words.createStore();
+    const sentence = '今日は天気がいい。';
+    const spans = [[0, 2, 'きょう', ''], [3, 2, 'てんき', '天気\u0000てんき']];
+    Words.captureWord(store, { word: '天気', reading: 'てんき', sentence, readings: spans }, T0);
+    const [sent] = Words.buildOutbox(store, 'store-a', T0 + 10).changes;
+    assert.deepEqual(plain(sent.sentenceReadings), { [sentence]: spans });
+
+    // A page that keeps no readings yet does not erase this browser's.
+    Words.mergeSnapshot(store, [{ word: '天気', reading: 'てんき', state: 'learning', sentences: [sentence, '雨の天気。'] }],
+      { startedAt: T0 + 10, storeId: 'store-a', at: T0 + 20 });
+    assert.deepEqual(plain(store.records['天気\u0000てんき'].sentenceReadings), { [sentence]: spans });
+
+    // The page's own readings come in, checked; invalid spans are dropped.
+    Words.mergeSnapshot(store, [{
+      word: '天気', reading: 'てんき', state: 'learning', sentences: [sentence, '雨の天気。'],
+      sentenceReadings: { '雨の天気。': [[0, 1, 'あめ', ''], [2, 9, 'てんき', '']] },
+    }], { startedAt: T0 + 30, storeId: 'store-a', at: T0 + 40 });
+    assert.deepEqual(plain(store.records['天気\u0000てんき'].sentenceReadings), {
+      [sentence]: spans,
+      '雨の天気。': [[0, 1, 'あめ', '']],
+    });
+  });
 }

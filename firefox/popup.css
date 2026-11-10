@@ -314,6 +314,20 @@ input[type="text"]:focus { border-color: var(--blue); outline: none; }
 .setting-switch-text { display: flex; flex-direction: column; min-width: 0; }
 .setting-switch-label { color: var(--text); font-size: 11px; font-weight: 650; line-height: 1.35; }
 .setting-switch input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.setting-switch[hidden] { display: none; }
+/* Sites with automatic furigana: the open tab's host under its switch, then the other listed sites. */
+.auto-site-host { font-family: var(--mono); letter-spacing: .02em; overflow-wrap: anywhere; }
+.auto-site-list { margin: -4px 0 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); list-style: none; }
+.auto-site-list[hidden] { display: none; }
+/* The list closes the section; with it hidden, the control above ends it instead. */
+.setting-switch:has(+ .auto-site-list[hidden]),
+.setting-row:has(+ .setting-switch[hidden] + .auto-site-list[hidden]) { margin-bottom: 0; }
+.auto-site { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; padding: 0 3px 0 9px; border-top: 1px solid var(--border); }
+.auto-site:first-child { border-top: 0; }
+.auto-site-name { min-width: 0; overflow: hidden; color: var(--text); font-family: var(--mono); font-size: 10px; letter-spacing: .02em; text-overflow: ellipsis; white-space: nowrap; }
+.auto-site-remove { display: grid; flex: 0 0 auto; width: 22px; height: 22px; place-items: center; margin: 0; padding: 0; border: 1px solid transparent; border-radius: 3px; background: transparent; color: var(--muted); }
+.auto-site-remove svg { width: 8px; height: 8px; }
+.auto-site-remove:hover { border-color: var(--border); background: var(--surface-hover); color: var(--text); }
 
 .settings-preview { display: flex; align-items: center; justify-content: space-between; min-height: 64px; margin: 0 0 12px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 3px; background: var(--surface); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28); }
 .preview-label { color: var(--muted); font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }

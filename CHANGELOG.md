@@ -1,5 +1,19 @@
 # Changelog
 
+## 4.4.0 — 2026-11-10
+
+### Added
+
+- **Explain this sentence (Supporters)**: the dictionary tooltip has an Explain button to the right of Play sentence. It explains the sentence in your display language, with a translation and notes on its key parts. The first time, Tsukeru says that the sentence goes to OpenAI and waits for Continue. Without a Supporter connection, nothing is sent and a note explains that it is a Supporter feature.
+- **Automatic furigana on chosen sites**: Settings > Page behavior has "Always add furigana on this site" for the open tab's site. Listed sites get furigana as soon as a page opens, and the list below the switch lets you remove a site. The list stays in your browser. A site means its exact address (www. counts as the same site), so other subdomains are not included.
+
+### Changed
+
+- Pages taller than three screens, such as most Wikipedia articles, now get furigana around what you are reading and add more as you scroll, instead of all at once.
+- Words in this text updates once furigana stops being added, at most every few seconds while it continues, instead of every fraction of a second.
+- Saved sentences in My Words keep the readings Tsukeru gave their words, and sync them with EZFurigana, so the website's review cards can show them.
+- The keyboard shortcut and context menu now use your furigana size, colour, and weight, as the Apply button does.
+
 ## 4.3.1 — 2026-11-09
 
 ### Added

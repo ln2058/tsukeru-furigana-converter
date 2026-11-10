@@ -93,6 +93,18 @@
   "settings_watch_dynamic_hint": {
     "message": "當 YouTube、X 等網站載入新的動態消息、留言或聊天內容時，自動加上振假名。"
   },
+  "settings_auto_site": {
+    "message": "在此網站一律加上振假名"
+  },
+  "settings_auto_sites_list": {
+    "message": "自動加上振假名的網站"
+  },
+  "settings_auto_site_remove": {
+    "message": "移除 $1"
+  },
+  "settings_auto_site_failed": {
+    "message": "無法儲存此網站，請再試一次。"
+  },
   "settings_custom_styling": {
     "message": "自訂振假名外觀"
   },
@@ -329,6 +341,36 @@
   },
   "content_sentence_audio_supporter": {
     "message": "句子朗讀是支持者專屬功能。以支持者身分登入 ezfurigana.com 即可使用。"
+  },
+  "content_explain": {
+    "message": "解說"
+  },
+  "content_explain_sentence": {
+    "message": "解說這句話"
+  },
+  "content_explain_working": {
+    "message": "正在解說…"
+  },
+  "content_explain_continue": {
+    "message": "繼續"
+  },
+  "content_explain_notice": {
+    "message": "為了產生解說，這句話會傳送給 OpenAI，OpenAI 可能會用它來改進模型。"
+  },
+  "content_explain_ai_note": {
+    "message": "由 AI 產生，可能有錯誤。"
+  },
+  "content_explain_supporter": {
+    "message": "句子解說是支持者專屬功能。以支持者身分登入 ezfurigana.com 即可使用。"
+  },
+  "content_explain_limit": {
+    "message": "今天的解說次數已用完，明天會重新計算。"
+  },
+  "content_explain_not_available": {
+    "message": "此帳號無法使用句子解說。"
+  },
+  "content_explain_failed": {
+    "message": "解說暫時無法使用，請稍後再試。"
   },
   "content_sentence_audio_limit": {
     "message": "本月的句子朗讀額度已用完，將於下個月初重設。"

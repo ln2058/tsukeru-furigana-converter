@@ -18,7 +18,7 @@ Failure Modes:
 - Invalid words (no kanji, empty, or too long), states, and snapshot rows are ignored rather than stored.
 
 Security Notes:
-- Records keep only a word, its reading, its state, schedule times, a short definition, and at most three short plain-text sentences; no URLs or page markup.
+- Records keep only a word, its reading, its state, schedule times, a short definition, and at most three short plain-text sentences with the readings their words were given (checked [start, length, kana reading, word id] spans); no URLs or page markup.
 - The rules match EZFurigana's word records so both sides agree on identity and on which change wins.
 */
 (function attachWordRules(root) {
@@ -97,13 +97,8 @@ Security Notes:
   const SENTENCE_ENDS = new Set(['。', '！', '？', '!', '?', '\n']);
   const SENTENCE_CLOSERS = new Set(['」', '』', '）', ')', '】', '〉', '》', '”', '’', '"']);
 
-  /**
-   * The sentence of `text` holding the characters from `start` to `end`.
-   * Line breaks and 。！？!? end sentences; closing quotes stay with the
-   * sentence they close. The result is fitted like any stored sentence.
-   */
-  function sentenceAt(text, start, end, word = '') {
-    const value = String(text || '');
+  /** Where the sentence holding text[start, end) begins and stops in `text`. */
+  function sentenceRange(value, start, end) {
     const from = Math.max(0, Math.min(Number(start) || 0, value.length));
     const to = Math.max(from, Math.min(Number(end) || from, value.length));
     let begin = from;
@@ -115,7 +110,113 @@ Security Notes:
       stop += 1;
       while (stop < value.length && SENTENCE_CLOSERS.has(value[stop])) stop += 1;
     }
+    return { begin, stop };
+  }
+
+  /**
+   * The sentence of `text` holding the characters from `start` to `end`.
+   * Line breaks and 。！？!? end sentences; closing quotes stay with the
+   * sentence they close. The result is fitted like any stored sentence.
+   */
+  function sentenceAt(text, start, end, word = '') {
+    const value = String(text || '');
+    const { begin, stop } = sentenceRange(value, start, end);
     return fitSentence(value.slice(begin, stop), word);
+  }
+
+  // Readings kept per sentence, as on EZFurigana: at most this many words, each this long.
+  const MAX_SENTENCE_READINGS = 40;
+  const MAX_READING_LENGTH = 24;
+  const KANA_READING_RE = /^[ぁ-ゖァ-ヺー]+$/;
+
+  function toHiragana(text) {
+    return String(text || '').normalize('NFKC')
+      .replace(/[ァ-ヶ]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0x60));
+  }
+
+  /**
+   * Where one word's reading goes in its sentence: over its kanji only
+   * (食べる -> 食 た), as [start, length, reading, word id], or null when it
+   * has no kanji or no kana reading. Same rule as EZFurigana's word-progress.js.
+   */
+  function readingSpan(surface, reading, at, id = '') {
+    if (!KANJI_RE.test(surface) || !KANA_READING_RE.test(reading || '')) return null;
+    const written = Array.from(surface);
+    const spoken = Array.from(toHiragana(reading));
+    // Kana the surface and reading share at either end are not under the reading.
+    let head = 0;
+    while (head < written.length && head < spoken.length && !KANJI_RE.test(written[head])
+      && toHiragana(written[head]) === spoken[head]) head += 1;
+    let tail = 0;
+    while (tail < written.length - head && tail < spoken.length - head
+      && !KANJI_RE.test(written[written.length - 1 - tail])
+      && toHiragana(written[written.length - 1 - tail]) === spoken[spoken.length - 1 - tail]) tail += 1;
+    const base = written.slice(head, written.length - tail).join('');
+    const over = spoken.slice(head, spoken.length - tail).join('');
+    if (!base || !over || !KANJI_RE.test(base) || charLength(over) > MAX_READING_LENGTH) return null;
+    return [at + written.slice(0, head).join('').length, base.length, over, typeof id === 'string' ? id : ''];
+  }
+
+  /** Valid reading spans for `sentence` (the website's checks), or none. */
+  function boundedReadings(sentence, readings) {
+    if (!sentence || !Array.isArray(readings)) return [];
+    return readings.filter((span) => Array.isArray(span) && span.length === 4
+      && Number.isInteger(span[0]) && Number.isInteger(span[1]) && span[0] >= 0 && span[1] > 0
+      && span[0] + span[1] <= sentence.length && typeof span[2] === 'string'
+      && KANA_READING_RE.test(span[2]) && charLength(span[2]) <= MAX_READING_LENGTH
+      && typeof span[3] === 'string' && span[3].length <= 2 * MAX_FIELD_LENGTH + 1)
+      .slice(0, MAX_SENTENCE_READINGS)
+      .map((span) => [span[0], span[1], span[2], span[3]]);
+  }
+
+  /**
+   * The sentence holding text[start, end) and the readings of the page's
+   * words inside it. `words` are {from, to, reading, id} ranges in `text`,
+   * in order; each is found again in the fitted sentence, whose spaces were
+   * collapsed and which may be cut.
+   */
+  function sentenceWithReadingsAt(text, start, end, word = '', words = []) {
+    const value = String(text || '');
+    const { begin, stop } = sentenceRange(value, start, end);
+    const sentence = fitSentence(value.slice(begin, stop), word);
+    const readings = [];
+    let cursor = 0;
+    (Array.isArray(words) ? words : []).forEach((unit) => {
+      if (readings.length >= MAX_SENTENCE_READINGS || !(unit.from >= begin && unit.to <= stop)) return;
+      const surface = value.slice(unit.from, unit.to).replace(/\s+/g, ' ').trim();
+      const at = surface ? sentence.indexOf(surface, cursor) : -1;
+      if (at < 0) return;
+      cursor = at + surface.length;
+      const span = readingSpan(surface, unit.reading, at, unit.id);
+      if (span) readings.push(span);
+    });
+    return { sentence, readings };
+  }
+
+  /** The record's readings for each sentence it keeps: `readings` for `sentence`, earlier ones for the rest. */
+  function keepSentenceReadings(record, sentence, readings) {
+    const current = record.sentenceReadings && typeof record.sentenceReadings === 'object' ? record.sentenceReadings : {};
+    const kept = {};
+    (record.sentences || []).forEach((text) => {
+      const spans = text === sentence ? boundedReadings(text, readings) : [];
+      if (spans.length) kept[text] = spans;
+      else if (Array.isArray(current[text]) && current[text].length) kept[text] = current[text];
+    });
+    if (Object.keys(kept).length) record.sentenceReadings = kept;
+    else delete record.sentenceReadings;
+  }
+
+  /** Readings from a website row for the sentences kept from it unchanged. */
+  function snapshotReadings(row, sentences) {
+    const given = row?.sentenceReadings && typeof row.sentenceReadings === 'object' && !Array.isArray(row.sentenceReadings)
+      ? row.sentenceReadings
+      : {};
+    const kept = {};
+    sentences.forEach((text) => {
+      const spans = Object.prototype.hasOwnProperty.call(given, text) ? boundedReadings(text, given[text]) : [];
+      if (spans.length) kept[text] = spans;
+    });
+    return kept;
   }
 
   const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
@@ -193,8 +294,10 @@ Security Notes:
     };
   }
 
-  function addDetails(record, { sentence = '', level = 0, pos = '', definition = '' }) {
-    record.sentences = withSentence(record.sentences, fitSentence(sentence, record.word));
+  function addDetails(record, { sentence = '', readings = [], level = 0, pos = '', definition = '' }) {
+    const fitted = fitSentence(sentence, record.word);
+    record.sentences = withSentence(record.sentences, fitted);
+    keepSentenceReadings(record, fitted, readings);
     if (!record.level) record.level = levelOf(level);
     if (!record.pos && pos) record.pos = String(pos).split(',')[0].trim().slice(0, 40);
     if (!record.definition && definition) record.definition = boundedDefinition(definition);
@@ -375,6 +478,7 @@ Security Notes:
       level: record.level || 0,
       count: record.count || 0,
       sentences: (record.sentences || []).slice(0, MAX_SENTENCES),
+      ...(record.sentenceReadings ? { sentenceReadings: record.sentenceReadings } : {}),
     };
   }
 
@@ -400,15 +504,18 @@ Security Notes:
     const lastSeenAt = timeOf(row.lastSeenAt) || firstSeenAt;
     const step = Number.parseInt(row.step, 10);
     const count = Number.parseInt(row.count, 10);
+    const sentences = (Array.isArray(row.sentences) ? row.sentences : [])
+      .filter((value) => typeof value === 'string')
+      .map((value) => fitSentence(value, identity.word))
+      .filter(Boolean)
+      .slice(0, MAX_SENTENCES);
+    const readings = snapshotReadings(row, sentences);
     return {
       ...identity,
       state: row.state,
       count: count > 0 ? Math.min(count, 100000) : 0,
-      sentences: (Array.isArray(row.sentences) ? row.sentences : [])
-        .filter((value) => typeof value === 'string')
-        .map((value) => fitSentence(value, identity.word))
-        .filter(Boolean)
-        .slice(0, MAX_SENTENCES),
+      sentences,
+      ...(Object.keys(readings).length ? { sentenceReadings: readings } : {}),
       step: step >= 0 && step <= 20 ? step : 0,
       dueAt: timeOf(row.dueAt),
       firstSeenAt,
@@ -420,8 +527,23 @@ Security Notes:
     };
   }
 
-  const SYNCED_FIELDS = ['state', 'count', 'sentences', 'step', 'dueAt', 'firstSeenAt', 'lastSeenAt',
+  const SYNCED_FIELDS = ['state', 'count', 'sentences', 'sentenceReadings', 'step', 'dueAt', 'firstSeenAt', 'lastSeenAt',
     'lastReviewedAt', 'knownAt', 'changedAt', 'level'];
+
+  /** The page's record with this browser's readings for sentences the page sent none for. */
+  function withLocalReadings(record, local) {
+    const mine = local?.sentenceReadings || {};
+    const theirs = record.sentenceReadings || {};
+    const kept = {};
+    record.sentences.forEach((text) => {
+      const spans = theirs[text] || mine[text];
+      if (spans) kept[text] = spans;
+    });
+    const next = { ...record };
+    if (Object.keys(kept).length) next.sentenceReadings = kept;
+    else delete next.sentenceReadings;
+    return next;
+  }
 
   function sameSynced(a, b) {
     return SYNCED_FIELDS.every((field) => JSON.stringify(a[field]) === JSON.stringify(b[field]));
@@ -441,9 +563,10 @@ Security Notes:
       if (record) incoming.set(record.id, record);
     });
     let changed = false;
-    incoming.forEach((record, id) => {
+    incoming.forEach((page, id) => {
       const local = store.records[id];
       if (local && local.updatedAt > startedAt) return;
+      const record = withLocalReadings(page, local);
       if (local && sameSynced(local, record)) return;
       putRecord(store, {
         ...record,
@@ -483,6 +606,7 @@ Security Notes:
     mergeSnapshot,
     plainSentenceFromHtml,
     sentenceAt,
+    sentenceWithReadingsAt,
     removeState,
     removeWord,
     setDefinition,

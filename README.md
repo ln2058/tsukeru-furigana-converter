@@ -16,7 +16,7 @@
 
 Tsukeru is a browser extension for Chrome, Microsoft Edge, and Firefox. It adds readings above kanji while preserving the layout of the page, with dictionary lookup, word lists, and Anki export.
 
-Version **4.3.1** moves dictionary translations to the top of the tooltip, shows how many you have left today, and connects Tsukeru right after Supporter checkout. Version 4.3.0 added sentence audio for EZFurigana Supporters, Anki export with audio through EZFurigana, and the EZFurigana connection in Settings. See the [changelog](CHANGELOG.md) for details.
+Version **4.4.0** adds Explain this sentence for EZFurigana Supporters and automatic furigana on sites you choose, and loads long pages around what you are reading. Version 4.3.1 moved dictionary translations to the top of the tooltip, and 4.3.0 added sentence audio for Supporters and Anki export with audio. See the [changelog](CHANGELOG.md) for details.
 
 ![Furigana on a Japanese Wikipedia article](screenshots/wikipedia.png)
 
@@ -27,6 +27,8 @@ Version **4.3.1** moves dictionary translations to the top of the tooltip, shows
 - Look up annotated words for definitions, parts of speech, JLPT level, word frequency, pitch accent, example sentences, and audio. The Kanji tab shows each character's readings, details, and stroke order. English entries prefer TKGJE data and fall back to JMdict.
 - Read definitions in easy Japanese, Korean, or Traditional Chinese, with AI translation for untranslated entries within daily limits.
 - Play the word's sentence aloud with an EZFurigana Supporter account, in the tooltip or in My Words.
+- Explain the word's sentence in your display language with an EZFurigana Supporter account.
+- Add furigana automatically on sites you choose in Settings.
 - Browse **Words in this text** and jump back to a word on the page. Numbers with the same counter are grouped together, such as 2024年 and 1998年 under 〜年.
 - Keep **Learning** and **Known** lists in My Words, see how many words are due, and review them on EZFurigana.
 - Hide readings in **Study mode**. Click a word to reveal its reading, then click again to see its meaning.
@@ -47,7 +49,7 @@ Open the extension and select **Apply Furigana**. You can also use the context m
 - Chrome and Edge: `Ctrl+Shift+Z` (`Command+Shift+Z` on macOS)
 - Firefox: `Ctrl+Shift+F` (`Command+Shift+F` on macOS)
 
-On shorter pages, Tsukeru can process the available Japanese text at once. On long pages, it starts with visible and nearby sections, then processes more as you scroll. This keeps the page responsive and avoids sending unseen content in the background. The **Words in this text** list grows as more sections are processed.
+On shorter pages, Tsukeru can process the available Japanese text at once. On long pages (taller than three screens, or with a lot of text), it starts with visible and nearby sections, then processes more as you scroll. This keeps the page responsive and avoids sending unseen content in the background. The **Words in this text** list grows as more sections are processed.
 
 The extension sends text in bounded batches to the [EZFurigana](https://www.ezfurigana.com) service. Returned markup is sanitized before it is added to the page. Results are cached for a limited time to avoid repeated requests.
 
@@ -67,7 +69,7 @@ Open a page on [EZFurigana](https://www.ezfurigana.com) to sync My Words with th
 
 The website manages review schedules. After it merges the extension's changes, the extension adopts the website's word list and schedule. Words removed on the website are removed from the extension too. Changes you make in the extension while a sync is running are kept for the next exchange.
 
-When you are signed in on EZFurigana, the page also connects the extension to your account, and the site confirms the first time. Settings shows the connection and plan. Supporters get a token that the extension keeps in local storage and sends with plan checks, sentence audio, and new dictionary translations; the server checks the current plan on each use. If the connection expires, **Reconnect** renews it.
+When you are signed in on EZFurigana, the page also connects the extension to your account, and the site confirms the first time. Settings shows the connection and plan. Supporters get a token that the extension keeps in local storage and sends with plan checks, sentence audio, sentence explanations, and new dictionary translations; the server checks the current plan on each use. If the connection expires, **Reconnect** renews it.
 
 ## Local HTML files
 
@@ -79,18 +81,19 @@ For Chrome and Edge, open the extension's details page and enable **Allow access
 
 Tsukeru contains no advertising or third-party analytics code.
 
-Settings are kept in browser sync storage. My Words uses `chrome.storage.local` for words, readings, Learning or Known states, review times, short example sentences, and details such as definitions and parts of speech. Furigana results are cached in IndexedDB, and service cooldowns use local browser storage.
+Settings, including the sites with automatic furigana, are kept in browser sync storage and are not sent to EZFurigana. My Words uses `chrome.storage.local` for words, readings, Learning or Known states, review times, short example sentences, and details such as definitions and parts of speech. Furigana results are cached in IndexedDB, and service cooldowns use local browser storage.
 
 The extension sends data to EZFurigana when a feature requires it:
 
 - Japanese text and the current HTTP(S) page URL when you apply furigana. Local-file URLs are excluded. These requests include a random ID that changes every UTC day, so EZFurigana can count daily users; there is no lasting install ID.
 - A word and its reading for dictionary, example, kanji, or audio requests.
 - The sentence you choose to play, with your Supporter token, for sentence audio.
+- The sentence you choose to explain and your display language, with your Supporter token. EZFurigana sends that sentence to OpenAI to write the explanation.
 - Words and readings when CSV export needs to look up missing definitions.
 - The captured word, reading, and context, plus any correction you enter, when you submit a reading report.
 - Word records exchanged with an open EZFurigana page during sync, as described above.
 
-Content scripts are declared for webpages so the extension can respond when you use it. They do not annotate a page or submit its text until you choose Apply, use the shortcut, or select the context-menu action. After Apply, optional dynamic-page processing can continue while the page changes.
+Content scripts are declared for webpages so the extension can respond when you use it. They do not annotate a page or submit its text until you choose Apply, use the shortcut, or select the context-menu action, or open a page on a site you listed for automatic furigana. After Apply, optional dynamic-page processing can continue while the page changes.
 
 A separate content script runs only on `https://www.ezfurigana.com` for word sync. It can sync while that page is open without applying furigana.
 

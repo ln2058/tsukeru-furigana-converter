@@ -93,6 +93,18 @@
   "settings_watch_dynamic_hint": {
     "message": "フィード、コメント、チャットなどが読み込まれるたびにふりがなを付けます（YouTube、Xなど）。"
   },
+  "settings_auto_site": {
+    "message": "このサイトでは常にふりがなを付ける"
+  },
+  "settings_auto_sites_list": {
+    "message": "自動でふりがなを付けるサイト"
+  },
+  "settings_auto_site_remove": {
+    "message": "$1 を削除"
+  },
+  "settings_auto_site_failed": {
+    "message": "このサイトを保存できませんでした。もう一度お試しください。"
+  },
   "settings_custom_styling": {
     "message": "ふりがなの見た目を変更"
   },
@@ -329,6 +341,36 @@
   },
   "content_sentence_audio_supporter": {
     "message": "文の読み上げはサポーター限定の機能です。ezfurigana.com にサポーターとしてログインすると使えます。"
+  },
+  "content_explain": {
+    "message": "解説"
+  },
+  "content_explain_sentence": {
+    "message": "この文を解説する"
+  },
+  "content_explain_working": {
+    "message": "解説中…"
+  },
+  "content_explain_continue": {
+    "message": "続ける"
+  },
+  "content_explain_notice": {
+    "message": "解説を作成するため、この文をOpenAIに送信します。OpenAIがモデルの改善に利用する場合があります。"
+  },
+  "content_explain_ai_note": {
+    "message": "AIが作成した解説です。誤りを含むことがあります。"
+  },
+  "content_explain_supporter": {
+    "message": "文の解説はサポーター限定の機能です。ezfurigana.com にサポーターとしてログインすると使えます。"
+  },
+  "content_explain_limit": {
+    "message": "今日の解説の回数を使い切りました。明日またご利用いただけます。"
+  },
+  "content_explain_not_available": {
+    "message": "このアカウントでは文の解説を利用できません。"
+  },
+  "content_explain_failed": {
+    "message": "現在、解説を利用できません。しばらくしてからもう一度お試しください。"
   },
   "content_sentence_audio_limit": {
     "message": "今月の文の読み上げ上限に達しました。来月の初めにリセットされます。"

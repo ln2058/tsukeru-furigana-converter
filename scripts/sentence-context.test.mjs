@@ -11,6 +11,11 @@ function load(browser) {
   const tooltip = read('js/content-tooltip.js').replace(/\r\n/g, '\n');
   const start = tooltip.indexOf('// Elements that start a new line of text');
   const end = tooltip.indexOf('\n}\n', tooltip.indexOf('function blockTextAround')) + 2;
+  // Page words: elements with a data-reading (and an optional data-id), as sentenceWordOf reads them.
+  sandbox.sentenceWordOf = (node) => {
+    const reading = node.getAttribute?.('data-reading');
+    return reading ? { reading, id: node.getAttribute('data-id') || '' } : null;
+  };
   vm.runInNewContext(`${tooltip.slice(start, end)}\nglobalThis.blockTextAround = blockTextAround;`, sandbox);
   const lineStart = tooltip.indexOf('let sentenceAudioSupporter');
   const lineEnd = tooltip.indexOf('\nfunction showSupporterTag');
@@ -61,6 +66,28 @@ for (const browser of ['chrome', 'firefox']) {
     const around = blockTextAround(ruby);
     assert.equal(around.text.slice(around.start, around.end), '百科');
     assert.equal(Words.sentenceAt(around.text, around.start, around.end, '百科'), 'ウィキペディアは誰でも編集できるフリー百科事典です');
+  });
+
+  test(`${browser} keeps the readings of the sentence's words, over their kanji only`, () => {
+    const ate = el('SPAN', ['食べました'], { 'data-reading': 'たべました', 'data-id': '食べる\u0000たべる' });
+    el('P', [
+      el('SPAN', ['昨日'], { 'data-reading': 'きのう' }), 'は休み。',
+      el('SPAN', ['今日'], { 'data-reading': 'きょう' }), 'はパンを', ate, '。',
+    ]);
+    const around = blockTextAround(ate);
+    const found = Words.sentenceWithReadingsAt(around.text, around.start, around.end, '食べました', around.words);
+    assert.equal(found.sentence, '今日はパンを食べました。');
+    assert.deepEqual(JSON.parse(JSON.stringify(found.readings)), [[0, 2, 'きょう', ''], [6, 1, 'た', '食べる\u0000たべる']]);
+
+    // A word is kept with the readings of its sentence, and only valid spans.
+    const store = Words.createStore();
+    const record = Words.captureWord(store, {
+      word: '食べる', reading: 'たべる', sentence: found.sentence,
+      readings: [...found.readings, [20, 5, 'あ', ''], [0, 1, 'kyou', '']],
+    }, 1000);
+    assert.deepEqual(JSON.parse(JSON.stringify(record.sentenceReadings)), {
+      '今日はパンを食べました。': [[0, 2, 'きょう', ''], [6, 1, 'た', '食べる\u0000たべる']],
+    });
   });
 
   test(`${browser} shows the sentence it will read, tagged Supporter only for known Free browsers`, () => {

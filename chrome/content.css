@@ -961,6 +961,41 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 @keyframes tsukeru-sentence-pulse { 50% { opacity: .35; } }
 .tsukeru-word-tooltip .tsukeru-sentence-text { flex: 1 1 auto !important; min-width: 0 !important; display: -webkit-box !important; -webkit-box-orient: vertical !important; -webkit-line-clamp: 2 !important; overflow: hidden !important; overflow-wrap: anywhere !important; }
 .tsukeru-word-tooltip .tsukeru-sentence-word { padding: 0 !important; background: transparent !important; color: var(--tsukeru-blue-readable) !important; font-weight: 600 !important; }
+/* "Explain" (Supporters): a quiet button to the right of the sentence; the explanation opens below both. */
+.tsukeru-word-tooltip .tsukeru-sentence-row { display: flex !important; align-items: stretch !important; gap: 6px !important; margin: 0 0 10px !important; }
+.tsukeru-word-tooltip .tsukeru-sentence-row .tsukeru-sentence-play { flex: 1 1 auto !important; width: auto !important; min-width: 0 !important; margin: 0 !important; }
+.tsukeru-word-tooltip .tsukeru-explain-btn {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  margin: 0 !important;
+  padding: 3px 10px !important;
+  border: 1px solid var(--tsukeru-border) !important;
+  border-radius: 3px !important;
+  background: transparent !important;
+  color: var(--tsukeru-blue-readable) !important;
+  cursor: pointer !important;
+  font: inherit !important;
+  font-size: .92em !important;
+  font-weight: 650 !important;
+  line-height: 1.5 !important;
+  white-space: nowrap !important;
+}
+.tsukeru-word-tooltip .tsukeru-explain-btn:hover,
+.tsukeru-word-tooltip .tsukeru-explain-btn:focus-visible,
+.tsukeru-word-tooltip .tsukeru-explain-btn[aria-expanded="true"] { border-color: var(--tsukeru-blue) !important; background: var(--tsukeru-blue-soft) !important; }
+.tsukeru-word-tooltip .tsukeru-explain-btn:disabled { cursor: progress !important; opacity: .7 !important; }
+.tsukeru-word-tooltip .tsukeru-explain-notice { margin: -4px 0 10px !important; padding: 8px 10px !important; border: 1px solid var(--tsukeru-blue-border) !important; border-radius: 3px !important; background: var(--tsukeru-blue-soft) !important; color: var(--tsukeru-text) !important; font-size: .92em !important; line-height: 1.5 !important; }
+.tsukeru-word-tooltip .tsukeru-explain-notice p,
+.tsukeru-word-tooltip .tsukeru-explain-result p { margin: 0 !important; padding: 0 !important; }
+.tsukeru-word-tooltip .tsukeru-explain-continue { margin: 6px 0 0 !important; padding: 3px 10px !important; border: 1px solid var(--tsukeru-blue) !important; border-radius: 3px !important; background: var(--tsukeru-blue) !important; color: #fff !important; cursor: pointer !important; font: inherit !important; font-weight: 650 !important; }
+.tsukeru-word-tooltip .tsukeru-explain-result { margin: -4px 0 10px !important; padding: 6px 10px !important; border-left: 2px solid var(--tsukeru-blue) !important; color: var(--tsukeru-text) !important; font-size: .96em !important; line-height: 1.55 !important; }
+.tsukeru-word-tooltip .tsukeru-explain-result .tsukeru-explain-translation { color: var(--tsukeru-ink) !important; font-weight: 650 !important; }
+.tsukeru-word-tooltip .tsukeru-explain-points { margin: 6px 0 0 !important; padding: 0 !important; list-style: none !important; }
+.tsukeru-word-tooltip .tsukeru-explain-points li { margin: 4px 0 0 !important; padding: 0 !important; list-style: none !important; }
+.tsukeru-word-tooltip .tsukeru-explain-piece { display: block !important; color: var(--tsukeru-blue-readable) !important; font-weight: 650 !important; }
+.tsukeru-word-tooltip .tsukeru-explain-result .tsukeru-explain-note { margin-top: 6px !important; color: var(--tsukeru-secondary) !important; }
+.tsukeru-word-tooltip .tsukeru-explain-result .tsukeru-explain-ai { margin-top: 6px !important; color: var(--tsukeru-secondary) !important; font-family: var(--tsukeru-mono) !important; font-size: 10px !important; letter-spacing: .03em !important; }
 .tsukeru-word-tooltip .tsukeru-supporter-tag { flex: 0 0 auto !important; align-self: center !important; padding: 0 5px !important; border: 1px solid var(--tsukeru-border) !important; border-radius: 2px !important; color: var(--tsukeru-secondary) !important; font-size: 10px !important; line-height: 1.6 !important; }
 .tsukeru-word-tooltip .tsukeru-form-surface { color: var(--tsukeru-text) !important; font-weight: 500 !important; }
 .tsukeru-word-tooltip .tsukeru-form-inflection { color: var(--tsukeru-secondary) !important; }
@@ -1054,6 +1089,8 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-tooltip-speaker,
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-tooltip-report-btn { width: 44px !important; height: 44px !important; }
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-sentence-play { min-height: 44px !important; padding: 9px 10px !important; font-size: 15px !important; }
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-explain-btn { min-height: 44px !important; padding: 9px 12px !important; font-size: 14px !important; }
+  .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-explain-continue { min-height: 44px !important; padding: 9px 14px !important; }
   .tsukeru-word-tooltip.tsukeru-sheet .tooltip-progress-option,
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-translation-button,
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-translation-option,

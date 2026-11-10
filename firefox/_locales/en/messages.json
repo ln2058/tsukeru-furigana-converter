@@ -93,6 +93,18 @@
   "settings_watch_dynamic_hint": {
     "message": "Adds furigana as feeds, comments and chat load, such as on YouTube and X."
   },
+  "settings_auto_site": {
+    "message": "Always add furigana on this site"
+  },
+  "settings_auto_sites_list": {
+    "message": "Sites with automatic furigana"
+  },
+  "settings_auto_site_remove": {
+    "message": "Remove $1"
+  },
+  "settings_auto_site_failed": {
+    "message": "Could not save this site. Try again."
+  },
   "settings_custom_styling": {
     "message": "Customize furigana appearance"
   },
@@ -329,6 +341,36 @@
   },
   "content_sentence_audio_supporter": {
     "message": "Sentence audio is a Supporter feature. Sign in on ezfurigana.com as a Supporter to turn it on."
+  },
+  "content_explain": {
+    "message": "Explain"
+  },
+  "content_explain_sentence": {
+    "message": "Explain this sentence"
+  },
+  "content_explain_working": {
+    "message": "Explaining…"
+  },
+  "content_explain_continue": {
+    "message": "Continue"
+  },
+  "content_explain_notice": {
+    "message": "This sentence will be sent to OpenAI to write the explanation, and OpenAI may use it to improve its models."
+  },
+  "content_explain_ai_note": {
+    "message": "Written by AI. It can contain mistakes."
+  },
+  "content_explain_supporter": {
+    "message": "Sentence explanations are a Supporter feature. Sign in on ezfurigana.com as a Supporter to turn them on."
+  },
+  "content_explain_limit": {
+    "message": "You've used today's explanations. They reset tomorrow."
+  },
+  "content_explain_not_available": {
+    "message": "Sentence explanations aren't available for this account."
+  },
+  "content_explain_failed": {
+    "message": "Explanations aren't available right now. Please try again later."
   },
   "content_sentence_audio_limit": {
     "message": "You've used this month's sentence audio. It resets at the start of next month."

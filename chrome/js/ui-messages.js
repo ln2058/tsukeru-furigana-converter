@@ -98,8 +98,22 @@ Security Notes:
     return t('content_sentence_audio_failed', undefined, "Sentence audio isn't available right now. Please try again later.");
   }
 
+  /** Why "Explain" gave no explanation, from its refusal code. */
+  function explainMessage(code, t) {
+    if (code === 'supporter_required') {
+      return t('content_explain_supporter', undefined, 'Sentence explanations are a Supporter feature. Sign in on ezfurigana.com as a Supporter to turn them on.');
+    }
+    if (code === 'daily_limit') {
+      return t('content_explain_limit', undefined, "You've used today's explanations. They reset tomorrow.");
+    }
+    if (code === 'not_available') {
+      return t('content_explain_not_available', undefined, "Sentence explanations aren't available for this account.");
+    }
+    return t('content_explain_failed', undefined, "Explanations aren't available right now. Please try again later.");
+  }
+
   globalThis.TsukeruUiMessages = {
     formatDuration, errorMessage, dictionaryTranslationMessage, dictionaryTranslationOffersSupporter,
-    sentenceAudioMessage,
+    sentenceAudioMessage, explainMessage,
   };
 })();

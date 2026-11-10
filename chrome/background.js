@@ -26,6 +26,7 @@ Security Notes:
 - Delegates external network traffic to `bg-api` only.
 - Audio proxy messages accept only HTTPS www.ezfurigana.com URLs on the default port.
 - Supporter token handoff messages are accepted only from this extension's script on the website; the popup may only read the plan.
+- Automatic furigana is decided from the tab address the browser reports for a top-level page, never from a URL the page sends.
 - Avoid logging raw user page text in error paths.
 */
 // Background service worker — Chrome message router and command handler.
@@ -34,9 +35,10 @@ import {
   handleFuriganaRequest, lookupDefinition, lookupLocalizedDefinition, fetchExampleSentence, fetchKanjiBreakdown,
   handlePlayAudio, handleFetchProxyAudio, handleReportReadingError,
   DEFAULT_SETTINGS, getRateLimitState, getSupporterPlan, getSupporterStatus, hasSupporterToken, storeSupporterHandoff, supporterRefreshDue,
-  fetchSentenceAudio, fetchExampleAudio,
+  fetchSentenceAudio, fetchExampleAudio, fetchSentenceExplanation,
 } from './js/bg-api.js';
 import { handleWordsMessage, isEzfuriganaSender, isWordsAction, refreshWordBadge } from './js/bg-words.js';
+import { isAutoSite } from './js/auto-sites.js';
 import { hasSupportedLocalFileExtension } from './js/utils.js';
 import { REVIEW_USAGE_KEY, localDay, markFirstSeen, recordUsageDay } from './js/review-prompt.js';
 import './js/i18n.js';
@@ -270,6 +272,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     fetchSentenceAudio(message.text)
       .then((result) => sendResponse({ success: true, ...result }))
       .catch((error) => sendResponse({ success: false, error: error?.code || 'tts_unavailable' }));
+    return true;
+  }
+
+  // A page asks whether its site gets furigana automatically (Settings > Page
+  // behavior). The site comes from the browser's tab address, and only the
+  // top-level page is answered, with the stored settings to apply.
+  if (message?.action === 'getAutoApply') {
+    if (sender.id !== chrome.runtime.id || !sender.tab || sender.frameId !== 0) return false;
+    isAutoSite(sender.tab.url || '')
+      .then((listed) => (listed ? chrome.storage.sync.get(DEFAULT_SETTINGS) : null))
+      .then((settings) => sendResponse({ success: true, settings }))
+      .catch(() => sendResponse({ success: false }));
+    return true;
+  }
+
+  // "Explain" in the dictionary popup (Supporters): one sentence, in the display language.
+  if (message?.action === 'explainSentence') {
+    if (sender.id !== chrome.runtime.id) return false;
+    if (typeof message.text !== 'string' || !message.text.trim() || Array.from(message.text).length > 120) {
+      sendResponse({ success: false, error: 'invalid_text' });
+      return true;
+    }
+    fetchSentenceExplanation(message.text, typeof message.language === 'string' ? message.language : 'en')
+      .then((result) => sendResponse({ success: true, ...result }))
+      .catch((error) => sendResponse({ success: false, error: error?.code || 'explain_unavailable' }));
     return true;
   }
 

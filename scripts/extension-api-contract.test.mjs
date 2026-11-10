@@ -14,6 +14,7 @@ function response(status, body, headers = {}) {
       if (body === Symbol.for('invalid-json')) throw new Error('invalid json');
       return body;
     },
+    async blob() { return new Blob([JSON.stringify(body)]); },
   };
 }
 
@@ -59,6 +60,7 @@ function loadApi(browserName, route, { cacheLimit = 200, storage = null, manifes
       getSupporterPlan,
       getSupporterStatus,
       fetchSentenceAudio,
+      fetchSentenceExplanation,
     };
   `;
   const calls = [];
@@ -67,6 +69,7 @@ function loadApi(browserName, route, { cacheLimit = 200, storage = null, manifes
     crypto: { randomUUID: randomUUID || (() => `${browserName}-session`) },
     URL,
     FormData,
+    Blob,
     fetch: (url, options) => {
       calls.push({ url: String(url), options });
       return Promise.resolve(route(new URL(String(url)), options));
@@ -171,6 +174,53 @@ for (const browserName of ['chrome', 'firefox']) {
     await assert.rejects(api.fetchSentenceAudio('今日はいい天気ですね。'), { code: 'supporter_required' });
     assert.equal(storage.values.tsukeruSupporter.plan, 'expired');
     assert.equal(storage.values.tsukeruSupporter.token, undefined);
+  });
+
+  test(`${browserName} explains sentences only with a Supporter token, as bounded plain text`, async () => {
+    const now = Date.now();
+    const expiresAt = Math.floor(now / 1000) + 3 * 86_400;
+    const token = `v2.${'e'.repeat(32)}.0.${expiresAt}.${'f'.repeat(64)}`;
+    const storage = memoryStorage();
+    const json = { 'content-type': 'application/json' };
+    const routes = [
+      response(200, {
+        ok: true,
+        explanation: {
+          translation: 'The weather is nice today.',
+          points: [{ japanese: 'ですね', explanation: 'It asks for agreement.' }, { japanese: '', explanation: 'dropped' }],
+          note: '',
+          extra: '<b>ignored</b>',
+        },
+        allowance: { plan: 'supporter', used: 1, limit: 50 },
+      }, json),
+      response(429, { ok: false, error: 'daily_limit' }, json),
+      response(401, { ok: false, error: 'invalid_token' }, json),
+    ];
+    const { api, calls } = loadApi(browserName, queuedRoute(routes), { storage });
+
+    await assert.rejects(api.fetchSentenceExplanation('今日はいい天気ですね。', 'ko'), { code: 'supporter_required' });
+    assert.equal(calls.length, 0, 'no request without a token');
+
+    await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
+    const result = await api.fetchSentenceExplanation(' 今日はいい天気ですね。 ', 'zh-TW');
+    assert.deepEqual(JSON.parse(JSON.stringify(result)), {
+      explanation: {
+        translation: 'The weather is nice today.',
+        points: [{ japanese: 'ですね', explanation: 'It asks for agreement.' }],
+        note: '',
+      },
+      limit: 50,
+    });
+    const call = calls.find(({ url }) => url.endsWith('/api/extension/explain'));
+    assert.equal(call.options.headers['x-tsukeru-supporter'], token);
+    assert.equal(call.options.credentials, 'omit');
+    assert.deepEqual(JSON.parse(call.options.body), { text: '今日はいい天気ですね。', locale: 'zh-TW' });
+
+    await assert.rejects(api.fetchSentenceExplanation('今日はいい天気ですね。', 'fr'), { code: 'daily_limit', status: 429 });
+    assert.equal(JSON.parse(calls.at(-1).options.body).locale, 'en', 'unknown languages ask for English');
+    // A rejected token is dropped so the website can hand over a new one.
+    await assert.rejects(api.fetchSentenceExplanation('今日はいい天気ですね。', 'en'), { code: 'supporter_required' });
+    assert.equal(storage.values.tsukeruSupporter.plan, 'expired');
   });
 
   test(`${browserName} records a Free answer without a token and drops expired tokens`, async () => {

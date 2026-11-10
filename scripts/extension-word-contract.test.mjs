@@ -444,6 +444,15 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(charThresholdPlan.isLongPage, true);
   });
 
+  test(`${browserName} loads a page taller than three screens around the viewport`, () => {
+    const { sandbox, root } = loadBrowser(browserName);
+    for (let i = 0; i < 3; i++) root.appendChild(new FakeElement('p', {}, [new FakeText('日本語の段落')]));
+    assert.equal(sandbox.collectLongPagePlan(root).isLongPage, false);
+
+    root.rect = { top: 0, bottom: 301, width: 100, height: 301 };
+    assert.equal(sandbox.collectLongPagePlan(root).isLongPage, true);
+  });
+
   test(`${browserName} chooses viewport mode only for long or configured plans`, () => {
     const { sandbox } = loadBrowser(browserName);
     assert.equal(sandbox.shouldUseViewportProcessing({ isLongPage: false }, { useIntersectionObserver: false }), false);

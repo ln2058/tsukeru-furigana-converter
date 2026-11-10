@@ -153,6 +153,8 @@ function wordInput(message) {
     word: text(message.word, 200),
     reading: text(message.reading, 200),
     sentence: text(message.sentence),
+    // [start, length, reading, word id] spans; word-rules keeps only valid ones.
+    readings: Array.isArray(message.readings) ? message.readings.slice(0, 40) : [],
     level: message.level,
     pos: text(message.pos, 80),
     definition: text(message.definition),

@@ -36,6 +36,9 @@ const TOKEN_PREFIX = '__TSUKERU_SPLIT__';
 const MAX_BATCH_BYTES = 40000;
 const LONG_PAGE_BLOCK_THRESHOLD = 150;
 const LONG_PAGE_JA_CHAR_THRESHOLD = 30000;
+// A page taller than this many screens also loads around the viewport, however
+// few blocks it has, so an ordinary article is not sent whole.
+const LONG_PAGE_SCREEN_THRESHOLD = 3;
 const VIEWPORT_ROOT_MARGIN = '1200px 0px';
 const MAX_INSERTIONS_PER_SLICE = 24;
 const MAX_INSERTION_SLICE_MS = 8;
@@ -740,7 +743,19 @@ function createLongPagePlanAccumulator(rootNode) {
   };
 }
 
-function finalizeLongPagePlanRecords(blocks, japaneseCharacterCount) {
+/** Whether the root's content is taller than LONG_PAGE_SCREEN_THRESHOLD screens. */
+function isTallerThanScreens(rootNode) {
+  const viewportHeight = window.innerHeight || document.documentElement?.clientHeight || 0;
+  const element = rootNode?.nodeType === 9 ? rootNode.documentElement : rootNode;
+  if (!viewportHeight || !element) return false;
+  const height = Math.max(
+    Number(element.scrollHeight) || 0,
+    Number(element.getBoundingClientRect?.().height) || 0
+  );
+  return height > viewportHeight * LONG_PAGE_SCREEN_THRESHOLD;
+}
+
+function finalizeLongPagePlanRecords(blocks, japaneseCharacterCount, rootNode = null) {
   const nonEmptyBlocks = blocks.filter((record) => record.japaneseCharacterCount > 0);
   blocks.length = 0;
   blocks.push(...nonEmptyBlocks);
@@ -756,7 +771,8 @@ function finalizeLongPagePlanRecords(blocks, japaneseCharacterCount) {
     blocks,
     japaneseCharacterCount,
     isLongPage: blocks.length >= LONG_PAGE_BLOCK_THRESHOLD ||
-      japaneseCharacterCount >= LONG_PAGE_JA_CHAR_THRESHOLD,
+      japaneseCharacterCount >= LONG_PAGE_JA_CHAR_THRESHOLD ||
+      (blocks.length > 0 && isTallerThanScreens(rootNode)),
   };
 }
 
@@ -778,7 +794,7 @@ function finalizeLongPagePlan(rootNode, accumulator) {
   }
   if (largeFallbacks.length) japaneseCharacterCount = recomputeLongPagePlanCounts(rootNode, blocks, blockByElement);
 
-  return finalizeLongPagePlanRecords(blocks, japaneseCharacterCount);
+  return finalizeLongPagePlanRecords(blocks, japaneseCharacterCount, rootNode);
 }
 
 async function finalizeLongPagePlanCooperatively(rootNode, accumulator, { signal = null, isCurrent = null } = {}) {
@@ -821,7 +837,7 @@ async function finalizeLongPagePlanCooperatively(rootNode, accumulator, { signal
   }
 
   assertDiscoveryCurrent(signal, isCurrent);
-  return finalizeLongPagePlanRecords(blocks, japaneseCharacterCount);
+  return finalizeLongPagePlanRecords(blocks, japaneseCharacterCount, rootNode);
 }
 
 function buildLongPagePlanFromTextNodes(rootNode, textNodes) {

@@ -79,7 +79,9 @@ function loadTooltip(browserName) {
   const fileUrl = new URL(`../${browserName}/js/content-tooltip.js`, import.meta.url);
   const sent = [];
   const timers = [];
+  const clock = { now: 1_000_000 };
   const sandbox = {
+    Date: class extends Date { static now() { return clock.now; } },
     console,
     URL,
     chrome: {
@@ -90,12 +92,14 @@ function loadTooltip(browserName) {
     requestAnimationFrame() {},
     setTimeout: (callback) => { timers.push(callback); return timers.length; },
     pageWordsNoticeTimer: 0,
+    pageWordsChangedAt: 0,
+    pageWordsNoticeStartedAt: 0,
     wordStates: new Map(),
     wordStatesApplied: false,
     DICTIONARY_MAX_SENSES: 5,
   };
   vm.runInNewContext(readFileSync(fileUrl, 'utf8'), sandbox, { filename: fileUrl.pathname });
-  return { sandbox, sent, timers };
+  return { sandbox, sent, timers, clock };
 }
 
 for (const browserName of ['chrome', 'firefox']) {
@@ -281,16 +285,31 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(pageState(firstWord.id), 'known');
   });
 
-  test(`${browserName} applying or clearing furigana sends one throttled notice to the popup`, async () => {
-    const { sandbox, sent, timers } = loadTooltip(browserName);
+  test(`${browserName} tells the popup about added furigana once insertions pause`, async () => {
+    const { sandbox, sent, timers, clock } = loadTooltip(browserName);
     sandbox.applyWordStatesTo(sandbox.document);
+    clock.now += 1000;
     sandbox.applyWordStatesTo({});
     assert.equal(timers.length, 1);
-    timers[0]();
+
+    // Still inserting: the notice waits for a pause.
+    clock.now += 200;
+    timers.shift()();
+    await flush();
+    assert.deepEqual(sent, []);
+    clock.now += 1000;
+    timers.shift()();
     await flush();
     assert.deepEqual(sent, ['pageWordsChanged']);
 
+    // Insertions that never pause still re-list the page every few seconds.
     sandbox.clearWordDisplaySettings();
-    assert.equal(timers.length, 2);
+    for (let step = 0; step < 10 && sent.length < 2; step++) {
+      clock.now += 1000;
+      sandbox.applyWordStatesTo({});
+      timers.shift()?.();
+      await flush();
+    }
+    assert.deepEqual(sent, ['pageWordsChanged', 'pageWordsChanged']);
   });
 }

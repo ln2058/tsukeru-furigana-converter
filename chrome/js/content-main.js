@@ -4,6 +4,7 @@ Purpose: Coordinate eager and viewport-limited furigana apply/clear lifecycles a
 
 Inputs:
 - Popup/background message actions and persisted settings payloads.
+- The background's answer to whether this page's site gets furigana automatically.
 - DOM helper functions, runtime state flags, and the lazy tooltip coordinator dependency.
 
 Outputs:
@@ -18,6 +19,7 @@ Side Effects:
 Failure Modes:
 - Concurrent apply requests are ignored while an operation token is active; stale viewport work is cancelled cooperatively.
 - Runtime messaging/API failures surface as localized toast notifications via structured error metadata and shared retry helpers.
+- Automatic furigana stays silent on pages without Japanese text, retrying once for pages that render their text late.
 
 Security Notes:
 - Sends only required text payloads to background processing.
@@ -77,7 +79,10 @@ function isCurrentApplyOperation(operation) {
   );
 }
 
-async function applyFurigana(settings) {
+// Pages that render their text after loading get one more automatic try.
+const AUTO_APPLY_RETRY_MS = 2000;
+
+async function applyFurigana(settings, { automatic = false } = {}) {
   if (activeApplyOperation) return;
 
   const pageRoot = document.body || document.documentElement;
@@ -271,7 +276,10 @@ async function applyFurigana(settings) {
     if (error.rateLimitType || error.errorCode === 'service_unavailable') {
       // Rate-limit and service-availability toasts are guaranteed by the retry helper.
     } else {
-      showToast(getUserFacingApplyError(error), { type: 'error', duration: 8000 });
+      // Automatic furigana says nothing on a listed site's pages without Japanese text.
+      if (!(automatic && error.errorCode === 'no_text')) {
+        showToast(getUserFacingApplyError(error), { type: 'error', duration: 8000 });
+      }
       setHighlightMode('off');
       clearWordDisplaySettings();
     }
@@ -279,6 +287,35 @@ async function applyFurigana(settings) {
   } finally {
     // Toasts manage their own lifetime; do not dismiss them here.
     if (activeApplyOperation === operation) activeApplyOperation = null;
+  }
+}
+
+/**
+ * Apply furigana when the reader listed this site in Settings. The background
+ * decides from the tab's address and answers with the stored settings. A
+ * Clear or a manual Apply meanwhile cancels the automatic one.
+ */
+async function autoApplyIfListed() {
+  if (window.top !== window) return;
+  let response;
+  try {
+    response = await chrome.runtime.sendMessage({ action: 'getAutoApply' });
+  } catch (_) {
+    return;
+  }
+  const settings = response?.success ? response.settings : null;
+  if (!settings || typeof settings !== 'object') return;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (isFuriganaActive || activeApplyOperation) return;
+    const generation = lifecycleGeneration;
+    try {
+      await applyFurigana(settings, { automatic: true });
+      return;
+    } catch (error) {
+      if (error?.errorCode !== 'no_text' || attempt) return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, AUTO_APPLY_RETRY_MS));
+    if (generation !== lifecycleGeneration) return;
   }
 }
 
@@ -397,8 +434,10 @@ if (!window.__TSUKERU_LOADED__) {
   var wordStateRefreshFrame = 0;
   // Each word counts as checked at most once per page, like a website result.
   var countedWordIds = new Set();
-  // Throttles the notice that tells an open popup to re-list the page's words.
+  // Debounces the notice that tells an open popup to re-list the page's words.
   var pageWordsNoticeTimer = 0;
+  var pageWordsChangedAt = 0;
+  var pageWordsNoticeStartedAt = 0;
 
   chrome.storage?.onChanged?.addListener((changes, area) => {
     if (area === 'local') noteWordStateChanges(changes);
@@ -486,4 +525,6 @@ if (!window.__TSUKERU_LOADED__) {
       sendResponse({ ok: true });
     }
   });
+
+  autoApplyIfListed();
 }

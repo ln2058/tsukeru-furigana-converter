@@ -1,6 +1,6 @@
 /*
 Module: popup-settings
-Purpose: Manage popup settings, display language and UI theme, the live furigana preview, content-script bootstrapping, and apply/clear actions.
+Purpose: Manage popup settings, display language and UI theme, the live furigana preview, the sites with automatic furigana, content-script bootstrapping, and apply/clear actions.
 
 Inputs:
 - Settings controls (reading-type and popup-size segments, level chips, switches, ruby style toolbar) and theme-toggle events, system theme changes, active-tab info, stored sync settings (including UI language/theme and My Words display settings), and the popup theme cache.
@@ -9,7 +9,7 @@ Outputs:
 - Updated settings in storage, popup theme and accessible toggle labels, apply/clear command messages, and live Study mode / known-reading updates to content scripts.
 
 Side Effects:
-- Reads/writes `chrome.storage.sync` and the popup's localStorage language/theme cache; listens for preference changes and reloads after a language save.
+- Reads/writes `chrome.storage.sync` (including the automatic-furigana site list) and the popup's localStorage language/theme cache; listens for preference changes and reloads after a language save.
 - Injects content scripts/CSS in dependency order, mutates popup notices, Apply/Clear state, preview UI, and sends live level and appearance updates.
 
 Failure Modes:
@@ -24,6 +24,7 @@ Security Notes:
 */
 // Settings constants, shared utilities, report modal — imported by all popup modules.
 import { hasSupportedLocalFileExtension } from './utils.js';
+import { readAutoSites, setAutoSite, siteKey } from './auto-sites.js';
 
 export const DEFAULT_SETTINGS = {
   // Level filter, as on EZFurigana (see normalizeLevel).
@@ -392,6 +393,85 @@ export async function sendWordDisplaySettings() {
   }).catch(() => {});
 }
 
+// ── Automatic furigana sites ──────────────────────────────────────────────────
+
+function removeIcon() {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 5 5');
+  svg.setAttribute('fill', 'currentColor');
+  svg.setAttribute('shape-rendering', 'crispEdges');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', 'M0 0h1v1H0zM4 0h1v1H4zM1 1h1v1H1zM3 1h1v1H3zM2 2h1v1H2zM1 3h1v1H1zM3 3h1v1H3zM0 4h1v1H0zM4 4h1v1H4z');
+  svg.appendChild(path);
+  return svg;
+}
+
+/**
+ * Settings > Page behavior: a switch for the open tab's site and, below it,
+ * the other listed sites, each with a remove button. `onListed` runs when the
+ * open tab's site is switched on, so its page gets furigana right away.
+ */
+async function initAutoSites({ onListed = () => {} } = {}) {
+  const row = document.getElementById('autoSiteRow');
+  const toggle = document.getElementById('autoSite');
+  const hostLabel = document.getElementById('autoSiteHost');
+  const list = document.getElementById('autoSiteList');
+  if (!row || !toggle || !hostLabel || !list) return;
+  const tab = await getActiveTab().catch(() => null);
+  const current = siteKey(tab?.url || '');
+  let sites = await readAutoSites().catch(() => []);
+
+  const render = () => {
+    row.hidden = !current;
+    hostLabel.textContent = current;
+    toggle.checked = Boolean(current) && sites.includes(current);
+    const others = sites.filter((site) => site !== current);
+    list.replaceChildren(...others.map((site) => {
+      const item = document.createElement('li');
+      item.className = 'auto-site';
+      const name = document.createElement('span');
+      name.className = 'auto-site-name';
+      name.textContent = site;
+      name.title = site;
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'auto-site-remove';
+      const label = t('settings_auto_site_remove', [site], `Remove ${site}`);
+      remove.setAttribute('aria-label', label);
+      remove.title = label;
+      remove.appendChild(removeIcon());
+      remove.addEventListener('click', async () => {
+        const index = others.indexOf(site);
+        await save(site, false);
+        // Keep keyboard focus in the list after its row goes away.
+        const buttons = list.querySelectorAll('.auto-site-remove');
+        (buttons[Math.min(index, buttons.length - 1)] || (row.hidden ? null : toggle))?.focus();
+      });
+      item.append(name, remove);
+      return item;
+    }));
+    list.hidden = others.length === 0;
+  };
+
+  async function save(site, listed) {
+    try {
+      sites = await setAutoSite(site, listed);
+    } catch (_) {
+      showNotice(t('settings_auto_site_failed', undefined, 'Could not save this site. Try again.'), 'error');
+    }
+    render();
+  }
+
+  toggle.addEventListener('change', async () => {
+    await save(current, toggle.checked);
+    if (sites.includes(current)) onListed();
+  });
+  render();
+}
+
 // ── Level filter and ruby size ────────────────────────────────────────────────
 
 // As on EZFurigana: JLPT 5 is "All kanji", 6 is "Beyond N1"; school grades run 2-8,
@@ -720,6 +800,8 @@ export async function initSettingsForm() {
     });
   });
   watchDynamicCheckbox.addEventListener('change', saveSettings);
+  // Switching on the open tab's site also adds furigana to it now.
+  initAutoSites({ onListed: () => { if (!pageApplied) applyFuriganaToPage(); } });
   customStylingCheckbox.addEventListener('change', () => {
     renderAppearance();
     saveSettings();

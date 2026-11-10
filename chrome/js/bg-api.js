@@ -1,6 +1,6 @@
 /*
 Module: bg-api
-Purpose: Execute backend workflows for furigana processing, dictionary data, audio proxying and reading-error reports.
+Purpose: Execute backend workflows for furigana processing, dictionary data, audio proxying, Supporter sentence explanations and reading-error reports.
 
 Inputs:
 - Text chunk payloads, settings, tab URLs, and action parameters.
@@ -24,8 +24,9 @@ Security Notes:
 - Treat all backend responses as untrusted until sanitized by content scripts.
 - Redacts non-web tab URLs before sending backend metadata.
 - Sends only the per-worker session ID and the manifest version as identifying headers, plus a random day ID on furigana requests that is replaced each UTC day; no stable install ID.
-- Sends the Supporter token only to Supporter endpoints (the plan check, sentence audio, and localized dictionary lookups that may create a new entry, which count against the Supporter's allowance), never with furigana, English dictionary, or cache-only requests.
+- Sends the Supporter token only to Supporter endpoints (the plan check, sentence audio, sentence explanations, and localized dictionary lookups that may create a new entry, which count against the Supporter's allowance), never with furigana, English dictionary, or cache-only requests.
 - Sentence audio sends one plain sentence of at most 120 characters, only after the reader clicks Play sentence; responses are bounded audio/mpeg.
+- Sentence explanations send one plain sentence of at most 120 characters and the display language, only after the reader clicks Explain; responses are bounded JSON, reduced to bounded plain-text fields.
 - Keep endpoint configuration centralized to avoid host sprawl.
 - Audio proxy fetches accept only HTTPS www.ezfurigana.com on the default port and refuse redirects.
 */
@@ -43,6 +44,11 @@ export const DEFAULT_SETTINGS = {
   highlightMode: 'off',
   watchDynamic: false,
   removeCustomStyling: false,
+  // The popup's ruby style, so the keyboard shortcut, context menu and
+  // automatic sites apply it as the popup's Apply button does.
+  rubySize: 0.65,
+  rubyColor: '#475569',
+  rubyWeight: 'normal',
   hideKnownFurigana: true,
   studyMode: false,
 };
@@ -1144,6 +1150,74 @@ export async function handlePlayAudio(word, reading) {
 /** Supporter sentence audio for one plain Japanese sentence, as a data URL. */
 export async function fetchSentenceAudio(text) {
   return fetchSupporterAudio('/api/extension/tts', { text: String(text || '').trim() });
+}
+
+const MAX_EXPLAIN_RESPONSE_BYTES = 32 * 1024;
+const EXPLAIN_LANGUAGES = new Set(['en', 'ja', 'ko', 'zh-TW']);
+
+function explainText(value, maxLength) {
+  return typeof value === 'string' ? Array.from(value.trim()).slice(0, maxLength).join('') : '';
+}
+
+/** The explanation fields the tooltip shows, as bounded plain text, or null. */
+function cleanExplanation(value) {
+  const translation = explainText(value?.translation, 600);
+  if (!translation) return null;
+  const points = (Array.isArray(value.points) ? value.points : []).slice(0, 8)
+    .map((point) => ({
+      japanese: explainText(point?.japanese, 80),
+      explanation: explainText(point?.explanation, 400),
+    }))
+    .filter((point) => point.japanese && point.explanation);
+  return { translation, points, note: explainText(value.note, 400) };
+}
+
+/**
+ * Explain one sentence in the display language, for Supporters. Throws with
+ * `code` supporter_required (no token, or the token was refused), daily_limit,
+ * not_available, rate_limited, or explain_unavailable.
+ */
+export async function fetchSentenceExplanation(text, language) {
+  const headers = await supporterHeaders();
+  const fail = (code, status) => Object.assign(new Error('Sentence explanation failed'), { code, status });
+  if (!headers['x-tsukeru-supporter']) throw fail('supporter_required');
+  const response = await fetch(`${API_BASE_URL}/api/extension/explain`, {
+    method: 'POST',
+    headers: { ..._extensionHeaders(), ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      text: String(text || '').trim(),
+      locale: EXPLAIN_LANGUAGES.has(language) ? language : 'en',
+    }),
+    credentials: 'omit',
+    mode: 'cors',
+    cache: 'no-store',
+    redirect: 'error',
+  });
+  let body = {};
+  try {
+    const blob = await readBoundedResponseBlob(response, {
+      maxBytes: MAX_EXPLAIN_RESPONSE_BYTES,
+      allowedMimeTypes: ['application/json'],
+    });
+    body = JSON.parse(await blob.text());
+  } catch (_) {
+    if (response.ok) throw fail('explain_unavailable', response.status);
+  }
+  if (!response.ok || body?.ok !== true) {
+    if (response.status === 401) {
+      // The website hands over a new token on the next visit.
+      await _markExpired(Date.now());
+      _supporterPlanCache = null;
+      throw fail('supporter_required', 401);
+    }
+    const code = typeof body?.error === 'string' ? body.error : 'explain_unavailable';
+    if (code === 'supporter_required') _supporterPlanCache = null;
+    throw fail(code, response.status);
+  }
+  const explanation = cleanExplanation(body.explanation);
+  if (!explanation) throw fail('explain_unavailable', response.status);
+  const limit = Number(body.allowance?.limit);
+  return { explanation, limit: Number.isInteger(limit) && limit > 0 ? limit : null };
 }
 
 const EXAMPLE_ID_RE = /^[0-9]{5}_[A-Za-z0-9_-]{1,100}$/;
