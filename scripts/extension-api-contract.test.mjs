@@ -138,12 +138,13 @@ for (const browserName of ['chrome', 'firefox']) {
     const furiganaCall = calls.find(({ url }) => url.endsWith('/api/extension/furigana'));
     assert.equal(furiganaCall.options.headers['x-tsukeru-supporter'], undefined, 'furigana stays anonymous');
 
-    // A token the backend no longer accepts is dropped; the popup shows it as expired until the next website visit.
-    assert.equal(await api.getSupporterPlan(now + 2 * 3_600_000), 'free');
-    assert.deepEqual({ ...storage.values.tsukeruSupporter }, { plan: 'expired', checkedAt: now + 2 * 3_600_000 });
+    // A live token the backend refuses was disconnected on the website: it is
+    // dropped, and website visits leave it disconnected until the popup's Connect.
+    assert.equal(await api.getSupporterPlan(now + 2 * 3_600_000, { fresh: true }), 'free');
+    assert.deepEqual({ ...storage.values.tsukeruSupporter }, { plan: 'disconnected', checkedAt: now + 2 * 3_600_000 });
     assert.equal(await api.hasSupporterToken(now), false);
-    assert.equal(await api.supporterRefreshDue(now), true);
-    assert.deepEqual({ ...(await api.getSupporterStatus(now)) }, { state: 'expired' });
+    assert.equal(await api.supporterRefreshDue(now + 3 * 86_400_000), false);
+    assert.deepEqual({ ...(await api.getSupporterStatus(now)) }, { state: 'disconnected' });
     const reconnected = await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
     assert.equal(reconnected.changed, true, 'reconnecting is confirmed');
   });
@@ -170,9 +171,9 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(call.options.credentials, 'omit');
     assert.deepEqual(JSON.parse(call.options.body), { text: '今日はいい天気ですね。' });
 
-    // A rejected token is dropped so the website can hand over a new one.
+    // A rejected live token was disconnected; only Connect hands over a new one.
     await assert.rejects(api.fetchSentenceAudio('今日はいい天気ですね。'), { code: 'supporter_required' });
-    assert.equal(storage.values.tsukeruSupporter.plan, 'expired');
+    assert.equal(storage.values.tsukeruSupporter.plan, 'disconnected');
     assert.equal(storage.values.tsukeruSupporter.token, undefined);
   });
 
@@ -218,9 +219,52 @@ for (const browserName of ['chrome', 'firefox']) {
 
     await assert.rejects(api.fetchSentenceExplanation('今日はいい天気ですね。', 'fr'), { code: 'daily_limit', status: 429 });
     assert.equal(JSON.parse(calls.at(-1).options.body).locale, 'en', 'unknown languages ask for English');
-    // A rejected token is dropped so the website can hand over a new one.
+    // A rejected live token was disconnected; only Connect hands over a new one.
     await assert.rejects(api.fetchSentenceExplanation('今日はいい天気ですね。', 'en'), { code: 'supporter_required' });
-    assert.equal(storage.values.tsukeruSupporter.plan, 'expired');
+    assert.equal(storage.values.tsukeruSupporter.plan, 'disconnected');
+  });
+
+  test(`${browserName} notices a website disconnect from the popup and before the daily renewal`, async () => {
+    const now = Date.now();
+    const expiresAt = Math.floor(now / 1000) + 3 * 86_400;
+    const token = `v2.${'1'.repeat(32)}.0.${expiresAt}.${'2'.repeat(64)}`;
+    const storage = memoryStorage();
+    const routes = [
+      response(200, { ok: true, plan: 'supporter' }),
+      response(401, { ok: false, error: 'invalid_token' }),
+      response(200, { ok: true, plan: 'supporter' }),
+      response(401, { ok: false, error: 'invalid_token' }),
+    ];
+    const { api, calls } = loadApi(browserName, queuedRoute(routes), { storage });
+    const planCalls = () => calls.filter(({ url }) => url.endsWith('/api/extension/plan')).length;
+
+    await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
+    assert.equal(await api.getSupporterPlan(now), 'supporter');
+    assert.equal(await api.getSupporterPlan(now + 60_000), 'supporter', 'other callers reuse the hourly answer');
+    assert.equal(planCalls(), 1);
+    // The popup's account card asks again within the hour.
+    assert.equal(await api.getSupporterPlan(now + 60_000, { fresh: true }), 'free');
+    assert.deepEqual({ ...(await api.getSupporterStatus(now + 60_000)) }, { state: 'disconnected' });
+
+    // The daily renewal first checks the token, and renews only a connected browser.
+    await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
+    assert.equal(await api.supporterRefreshDue(now + 86_400_000), true);
+    assert.equal(await api.supporterRefreshDue(now + 86_400_000), false, 'a disconnected token is not renewed');
+    assert.equal(storage.values.tsukeruSupporter.plan, 'disconnected');
+    assert.equal(planCalls(), 4);
+  });
+
+  test(`${browserName} treats a token refused near its expiry as expired, renewed on the next visit`, async () => {
+    const now = Date.now();
+    const expiresAt = Math.floor(now / 1000) + 5 * 60;
+    const token = `v2.${'3'.repeat(32)}.0.${expiresAt}.${'4'.repeat(64)}`;
+    const storage = memoryStorage();
+    const { api } = loadApi(browserName, queuedRoute([response(401, { ok: false, error: 'invalid_token' })]), { storage });
+
+    await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
+    assert.equal(await api.getSupporterPlan(now, { fresh: true }), 'free');
+    assert.deepEqual({ ...(await api.getSupporterStatus(now)) }, { state: 'expired' });
+    assert.equal(await api.supporterRefreshDue(now), true);
   });
 
   test(`${browserName} records a Free answer without a token and drops expired tokens`, async () => {

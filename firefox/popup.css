@@ -530,8 +530,6 @@ a.vocab-action-btn { display: inline-flex; align-items: center; text-decoration:
 .word-ledger-open[aria-expanded="true"] .word-ledger-word { color: var(--blue-readable); }
 .word-ledger-sentence-row { display: flex; align-items: center; gap: 6px; min-width: 0; grid-area: sentence; }
 .word-ledger-sentence-play { margin: -3px 0 -3px -4px; }
-.word-ledger-supporter-tag { flex: 0 0 auto; color: var(--muted); font-family: var(--mono); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; }
-.word-ledger-supporter-tag[hidden] { display: none; }
 .word-ledger-entry { grid-area: entry; margin: 4px 0 2px; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .word-ledger-senses { margin: 0; padding-inline-start: 18px; color: var(--text); font-size: 12px; }
 .word-ledger-senses li + li { margin-top: 2px; }

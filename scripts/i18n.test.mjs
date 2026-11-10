@@ -342,7 +342,7 @@ for (const browser of ['chrome', 'firefox']) {
     assert.equal(root.pending, false);
     assert.equal(tabs.find(item => item.active).dataset.tab, 'settings');
     assert.equal(links['header-ezfurigana-link'].href, 'https://www.ezfurigana.com/ko');
-    assert.equal(links['header-supporter-link'].href, 'https://www.ezfurigana.com/ko/pricing?from=tsukeru');
+    assert.equal(links['header-supporter-link'].href, 'https://www.ezfurigana.com/ko/pricing?from=tsukeru&placement=extension_account');
     const store = browser === 'firefox' ? 'firefox' : 'chrome';
     assert.equal(links['header-review-link'].href, `${store}:ko`);
     assert.deepEqual(reviewPrompts.map(options => ({ ...options })), [{ store, language: 'ko' }]);

@@ -19,6 +19,21 @@ const plain = (value) => JSON.parse(JSON.stringify(value));
 for (const browserName of ['chrome', 'firefox']) {
   const Words = loadRules(browserName);
 
+  test(`${browserName} does not keep a sentence that is only the word`, () => {
+    for (const sentence of ['映画', '映画。', '「映画」', ' 映画！ ']) {
+      assert.equal(Words.isWordOnlySentence(sentence, '映画'), true, sentence);
+    }
+    assert.equal(Words.isWordOnlySentence('「行った」', '行った', '行く'), true);
+    assert.equal(Words.isWordOnlySentence('映画を見た。', '映画'), false);
+    assert.equal(Words.isWordOnlySentence('', '映画'), false);
+
+    const store = Words.createStore();
+    const alone = Words.captureWord(store, { word: '映画', reading: 'えいが', sentence: '映画。' }, T0);
+    assert.deepEqual(plain(alone.sentences), []);
+    const met = Words.captureWord(store, { word: '映画', reading: 'えいが', sentence: '映画を見た。' }, T0 + 10);
+    assert.deepEqual(plain(met.sentences), ['映画を見た。']);
+  });
+
   test(`${browserName} identifies words like EZFurigana: dictionary form and lookup reading, kanji only`, () => {
     // The same id format and rules as the website's word-progress identityForPair.
     assert.equal(Words.identityForPair(' 食べる ', 'たべる').id, '食べる\u0000たべる');

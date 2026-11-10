@@ -417,17 +417,8 @@
   "content_apply_failed_with_reason": {
     "message": "無法套用振假名：$1"
   },
-  "shortcut_toggle_mac_z": {
-    "message": "按 ⌘+Shift+Z 切換顯示"
-  },
-  "shortcut_toggle_win_z": {
-    "message": "按 Ctrl+Shift+Z 切換顯示"
-  },
-  "shortcut_toggle_mac_f": {
-    "message": "按 ⌘+Shift+F 切換顯示"
-  },
-  "shortcut_toggle_win_f": {
-    "message": "按 Ctrl+Shift+F 切換顯示"
+  "shortcut_toggle": {
+    "message": "按 $1 切換顯示"
   },
   "status_open_supported_page": {
     "message": "請開啟 http/https 網頁或本機 HTML/XHTML 檔案後再試一次。"
@@ -885,6 +876,9 @@
   },
   "supporter_state_expired": {
     "message": "支持者連結已過期。開啟一次 EZFurigana 即可重新連結。"
+  },
+  "supporter_state_disconnected": {
+    "message": "已解除與 EZFurigana 帳戶的連結。若要使用支持者福利，請重新連結。"
   },
   "supporter_reconnect": {
     "message": "重新連結"

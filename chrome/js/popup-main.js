@@ -9,7 +9,7 @@ Outputs:
 - Active tab-pane state changes (This page normally opens first; language changes reopen Settings) and report success/error UI feedback.
 
 Side Effects:
-- Mutates popup DOM state, sets language-specific home/pricing/store-review links, requests coalesced page-word refreshes, and sends `reportReadingError` messages.
+- Mutates popup DOM state, shows the toggle shortcut the browser has set (`commands.getAll`), sets language-specific home/pricing/store-review links, requests coalesced page-word refreshes, and sends `reportReadingError` messages.
 - Starts the occasional store-review card (`popup-review`).
 
 Failure Modes:
@@ -107,7 +107,8 @@ function getEzfuriganaHomeUrl() {
 }
 
 function getEzfuriganaPricingUrl() {
-  return TsukeruI18n.websiteUrl('/pricing?from=tsukeru');
+  // `placement` lets the pricing page count the click; the extension reports nothing.
+  return TsukeruI18n.websiteUrl('/pricing?from=tsukeru&placement=extension_account');
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -139,12 +140,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSupporterCard();
 
     const shortcutText = document.getElementById('shortcut-text');
-    if (shortcutText) {
-      const isMac = /Mac|iPhone|iPod|iPad/.test(navigator.platform);
-      shortcutText.textContent = isMac
-        ? t('shortcut_toggle_mac_z', undefined, '⌘+Shift+Z to toggle')
-        : t('shortcut_toggle_win_z', undefined, 'Ctrl+Shift+Z to toggle');
-    }
+    if (shortcutText) void showToggleShortcut(shortcutText);
 
     initSettingsForm();
     initMyWordsTab();
@@ -157,12 +153,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
+// Show the toggle key the browser has, since a reader can change it or leave
+// it unset (and Firefox for Android has no commands API); hidden without one.
+async function showToggleShortcut(element) {
+  try {
+    const commands = await chrome.commands?.getAll?.();
+    const shortcut = commands?.find((command) => command.name === 'toggle-furigana')?.shortcut || '';
+    if (!shortcut) return;
+    element.textContent = t('shortcut_toggle', [shortcut.replace(/MacCtrl/g, 'Ctrl')], '$1 to toggle');
+    element.hidden = false;
+  } catch {
+    // Leave the hint hidden.
+  }
+}
+
 // ── EZFurigana account card ───────────────────────────────────────────────────
 
 const SUPPORTER_CARD = {
   none: { text: () => t('supporter_state_none', undefined, "Connect your Supporter account to turn on sentence audio and get more dictionary translations each day."), meta: () => t('supporter_connect_hint', undefined, 'Opens ezfurigana.com. Sign in there and Tsukeru connects by itself.'), action: () => t('supporter_connect', undefined, 'Connect account'), path: '/account?tsukeru=connect' },
   free: { text: () => t('supporter_state_free', undefined, 'Connected with a Free account. Sentence audio is a Supporter feature.'), action: () => t('supporter_become', undefined, 'Become a Supporter'), pricing: true },
   supporter: { text: () => t('supporter_state_supporter', undefined, 'Connected as a Supporter'), action: () => t('supporter_manage', undefined, 'Manage account'), path: '/account' },
+  disconnected: { text: () => t('supporter_state_disconnected', undefined, 'Disconnected from your EZFurigana account. Connect again to use your Supporter benefits.'), action: () => t('supporter_connect', undefined, 'Connect account'), path: '/account?tsukeru=connect' },
   expired: { text: () => t('supporter_state_expired', undefined, 'Your Supporter connection expired. Open EZFurigana once to reconnect.'), action: () => t('supporter_reconnect', undefined, 'Reconnect'), path: '/account?tsukeru=connect' },
 };
 

@@ -273,10 +273,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // The popup's account card: check the plan first so a refused token shows as expired.
+  // The popup's account card asks the backend each time, so a disconnect shows at once.
   if (message?.action === 'getSupporterStatus') {
     if (sender.id !== chrome.runtime.id || sender.tab) return false;
-    getSupporterPlan()
+    getSupporterPlan(Date.now(), { fresh: true })
       .catch(() => null)
       .then(() => getSupporterStatus())
       .then((status) => sendResponse({ success: true, ...status }))

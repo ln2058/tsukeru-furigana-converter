@@ -417,17 +417,8 @@
   "content_apply_failed_with_reason": {
     "message": "ふりがなの適用に失敗しました: $1"
   },
-  "shortcut_toggle_mac_z": {
-    "message": "⌘+Shift+Z で切り替え"
-  },
-  "shortcut_toggle_win_z": {
-    "message": "Ctrl+Shift+Z で切り替え"
-  },
-  "shortcut_toggle_mac_f": {
-    "message": "⌘+Shift+F で切り替え"
-  },
-  "shortcut_toggle_win_f": {
-    "message": "Ctrl+Shift+F で切り替え"
+  "shortcut_toggle": {
+    "message": "$1 で切り替え"
   },
   "status_open_supported_page": {
     "message": "http/https ページまたはローカルの HTML/XHTML ファイルを開いて再試行してください。"
@@ -885,6 +876,9 @@
   },
   "supporter_state_expired": {
     "message": "サポーターの連携が切れました。EZFuriganaを一度開くと再連携されます。"
+  },
+  "supporter_state_disconnected": {
+    "message": "EZFuriganaのアカウントとの連携を解除しました。サポーター特典を使うには、もう一度連携してください。"
   },
   "supporter_reconnect": {
     "message": "再連携"

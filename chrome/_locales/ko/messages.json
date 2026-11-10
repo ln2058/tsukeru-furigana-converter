@@ -417,17 +417,8 @@
   "content_apply_failed_with_reason": {
     "message": "후리가나를 적용하지 못했습니다: $1"
   },
-  "shortcut_toggle_mac_z": {
-    "message": "⌘+Shift+Z로 표시 켜기/끄기"
-  },
-  "shortcut_toggle_win_z": {
-    "message": "Ctrl+Shift+Z로 표시 켜기/끄기"
-  },
-  "shortcut_toggle_mac_f": {
-    "message": "⌘+Shift+F로 표시 켜기/끄기"
-  },
-  "shortcut_toggle_win_f": {
-    "message": "Ctrl+Shift+F로 표시 켜기/끄기"
+  "shortcut_toggle": {
+    "message": "$1로 표시 켜기/끄기"
   },
   "status_open_supported_page": {
     "message": "http/https 페이지나 로컬 HTML/XHTML 파일을 연 뒤 다시 시도해 주세요."
@@ -885,6 +876,9 @@
   },
   "supporter_state_expired": {
     "message": "서포터 연결이 만료되었습니다. EZFurigana를 한 번 열면 다시 연결됩니다."
+  },
+  "supporter_state_disconnected": {
+    "message": "EZFurigana 계정과의 연결이 해제되었습니다. 서포터 혜택을 사용하려면 다시 연결하세요."
   },
   "supporter_reconnect": {
     "message": "다시 연결"

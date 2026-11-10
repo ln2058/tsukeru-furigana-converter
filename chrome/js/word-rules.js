@@ -18,7 +18,7 @@ Failure Modes:
 - Invalid words (no kanji, empty, or too long), states, and snapshot rows are ignored rather than stored.
 
 Security Notes:
-- Records keep only a word, its reading, its state, schedule times, a short definition, at most three short plain-text sentences with the readings their words were given (checked [start, length, kana reading, word id] spans), and at most one bounded plain-text sentence explanation a Supporter asked for; no URLs or page markup.
+- Records keep only a word, its reading, its state, schedule times, a short definition, at most three short plain-text sentences (never one that is only the word) with the readings their words were given (checked [start, length, kana reading, word id] spans), and at most one bounded plain-text sentence explanation a Supporter asked for; no URLs or page markup.
 - The rules match EZFurigana's word records so both sides agree on identity and on which change wins.
 */
 (function attachWordRules(root) {
@@ -243,9 +243,22 @@ Security Notes:
     return chars.length > MAX_DEFINITION_LENGTH ? `${chars.slice(0, MAX_DEFINITION_LENGTH - 1).join('')}…` : text;
   }
 
-  function withSentence(sentences, sentence) {
+  // Spaces, punctuation and symbols: all a word-only "sentence" has besides its word.
+  const NOT_SENTENCE_TEXT_RE = /[\s\p{P}\p{S}]/gu;
+
+  /**
+   * Whether `sentence` is only one of `words` (猫。, 「行った」): it adds nothing
+   * to the word, so it is neither kept nor offered to Play sentence or Explain.
+   * Same rule as EZFurigana's word-progress.js.
+   */
+  function isWordOnlySentence(sentence, ...words) {
+    const text = String(sentence || '').replace(NOT_SENTENCE_TEXT_RE, '');
+    return Boolean(text) && words.some((word) => word && text === String(word).replace(NOT_SENTENCE_TEXT_RE, ''));
+  }
+
+  function withSentence(sentences, sentence, word = '') {
     const list = Array.isArray(sentences) ? sentences.filter(Boolean) : [];
-    if (!sentence || list.includes(sentence)) return list.slice(0, MAX_SENTENCES);
+    if (!sentence || list.includes(sentence) || isWordOnlySentence(sentence, word)) return list.slice(0, MAX_SENTENCES);
     return [sentence, ...list].slice(0, MAX_SENTENCES);
   }
 
@@ -348,7 +361,7 @@ Security Notes:
 
   function addDetails(record, { sentence = '', readings = [], level = 0, pos = '', definition = '' }) {
     const fitted = fitSentence(sentence, record.word);
-    record.sentences = withSentence(record.sentences, fitted);
+    record.sentences = withSentence(record.sentences, fitted, record.word);
     keepSentenceReadings(record, fitted, readings);
     if (!record.level) record.level = levelOf(level);
     if (!record.pos && pos) record.pos = String(pos).split(',')[0].trim().slice(0, 40);
@@ -674,6 +687,7 @@ Security Notes:
     captureWord,
     createStore,
     fitSentence,
+    isWordOnlySentence,
     identityForPair,
     identityForWordInfo,
     importVocabulary,

@@ -8,7 +8,7 @@ Inputs:
 - UI theme from sync storage and storage changes; extension-owned surface elements.
 
 Outputs:
-- Dismissible, locally styled toast elements and structured rate-limit toast IDs.
+- Dismissible, locally styled toast elements (optionally with one EZFurigana link the extension built) and structured rate-limit toast IDs.
 - Language and light/dark theme attributes on extension-owned UI surfaces only.
 
 Side Effects:
@@ -185,6 +185,8 @@ function showToast(message, options = {}) {
     type = 'error',
     duration = 5000,
     persistent = false,
+    // { href, label }: an EZFurigana link built by the extension, never page input.
+    link = null,
   } = options;
 
   const toastId = ++_toastId;
@@ -212,6 +214,20 @@ function showToast(message, options = {}) {
   closeButton.addEventListener('click', () => dismissToast(toastId));
 
   toast.appendChild(messageNode);
+  if (link?.href && link?.label) {
+    const anchor = document.createElement('a');
+    anchor.className = 'tsukeru-toast__link';
+    anchor.href = String(link.href);
+    anchor.target = '_blank';
+    anchor.rel = 'noopener noreferrer';
+    anchor.textContent = String(link.label);
+    anchor.style.setProperty('flex', '0 0 auto', 'important');
+    anchor.style.setProperty('color', 'inherit', 'important');
+    anchor.style.setProperty('font-weight', '600', 'important');
+    anchor.style.setProperty('text-decoration', 'underline', 'important');
+    anchor.style.setProperty('white-space', 'nowrap', 'important');
+    toast.appendChild(anchor);
+  }
   toast.appendChild(closeButton);
 
   if (mount) {

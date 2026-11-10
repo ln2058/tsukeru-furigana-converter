@@ -7,6 +7,15 @@
 - **Words split by links or formatting are read as one word**: text broken only by inline tags, such as a link around 行 in 行った or bold on part of 東京, is now read together, so it gets the right reading and one dictionary entry. Both parts open the same word.
 - Rarer kanji are recognised as Japanese text: 々 and 〆, Extension A and B kanji such as 𠮟, and compatibility kanji such as 﨑.
 - A Supporter's sentence explanation is kept with the word in My Words and synced with EZFurigana, as on the website.
+- **New keyboard shortcut, the same in every browser**: `Alt+Shift+A` (`Control+Shift+A` on macOS) turns furigana on and off. The old Chrome shortcut blocked Redo (`Ctrl+Shift+Z`) in text boxes, and Firefox now uses `Ctrl+Shift+F` itself. Wikipedia leaves `Alt+Shift+A` free of its access keys. The popup shows the shortcut your browser has set; if your browser kept the old one, you can change it in the browser's extension shortcut settings.
+- **Disconnecting stays disconnected**: after you choose Disconnect on your EZFurigana account page, Tsukeru stays disconnected, even on the website, until you choose Connect account in its popup. The account card checks the connection each time the popup opens, so it shows the disconnect straight away.
+- My Words no longer shows a "Supporter" label on every sentence.
+- When Explain needs a Supporter account, its notice now links to the Supporter page.
+- When the only "sentence" around a word is the word itself (a heading or a list item with just 猫, say), the dictionary popup leaves out Play sentence and Explain, and the word is saved without it. My Words also skips sentences like that saved earlier.
+
+### Fixed
+
+- **Links with furigana can be followed**: clicking a word in a link opens its dictionary popup as before, and clicking the link again while the popup is open follows it. Ctrl/⌘-click, Shift-click and Enter on a link go straight to the link.
 
 ## 4.4.0 — 2026-11-10
 

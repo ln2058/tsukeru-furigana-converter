@@ -15,7 +15,7 @@ Side Effects:
 - Sends word requests to the background store and page messages to the active tab.
 - Coalesces page refreshes, pauses them during word saves, and skips unchanged page-list renders.
 - Sends one `playAudio` request per speaker click (none before a click) and plays the clip, or the browser's Japanese voice when it fails.
-- Sends one `playSentence` request per sentence click (Supporter audio) and shows a notice when it is refused; asks the background once per list load whether to show the Supporter tag.
+- Sends one `playSentence` request per sentence click (Supporter audio) and shows a notice when it is refused.
 - Opening a saved word sends a dictionary lookup and, for ja/ko/zh-TW, a cache-only localized lookup (never one that creates a translation).
 - Writes the Study mode setting to `chrome.storage.sync` and triggers browser downloads.
 - Export fills a bounded number of missing definitions through background lookups and stores them with the words.
@@ -111,7 +111,9 @@ function renderSentence(target, sentence, word) {
 }
 
 function cardSentence(record) {
-  const sentences = Array.isArray(record.sentences) ? record.sentences : [];
+  // Sentences saved before word-only ones were left out are not shown.
+  const sentences = (Array.isArray(record.sentences) ? record.sentences : [])
+    .filter((sentence) => !globalThis.TsukeruWords?.isWordOnlySentence(sentence, record.word));
   return sentences.find((sentence) => sentence.includes(record.word)) || sentences[0] || '';
 }
 
@@ -420,26 +422,6 @@ async function toggleEntry(row, record, button) {
   entry.replaceChildren(list);
 }
 
-// Whether this browser holds a Supporter token (null until asked). It only
-// shows or hides the "Supporter" tag; the backend decides who gets audio.
-let sentenceSupporter = null;
-
-function showSentenceSupporterTags(supporter) {
-  sentenceSupporter = supporter;
-  document.querySelectorAll('.word-ledger-supporter-tag').forEach((tag) => { tag.hidden = supporter !== false; });
-}
-
-function refreshSentenceSupporter() {
-  try {
-    chrome.runtime.sendMessage({ action: 'hasSupporterToken' }, (response) => {
-      if (chrome.runtime.lastError || !response?.success) return;
-      showSentenceSupporterTags(response.supporter === true);
-    });
-  } catch (_) {
-    // No background: leave the tags as they are.
-  }
-}
-
 /** Read a saved sentence with Supporter audio; a refusal shows a notice. */
 export function playSentence(sentence, button) {
   if (!sentence || !button) return;
@@ -454,11 +436,9 @@ export function playSentence(sentence, button) {
     if (chrome.runtime.lastError || !response?.success || !String(response.dataUrl || '').startsWith('data:audio/')) {
       finishPlayback(playback);
       const code = chrome.runtime.lastError ? '' : response?.error;
-      if (code === 'supporter_required') showSentenceSupporterTags(false);
       showNotice(TsukeruUiMessages.sentenceAudioMessage(code, t), code === 'supporter_required' ? 'info' : 'error');
       return;
     }
-    showSentenceSupporterTags(true);
     const audio = new globalThis.Audio(response.dataUrl);
     playback.audio = audio;
     audio.addEventListener('ended', () => finishPlayback(playback));
@@ -513,9 +493,7 @@ function buildLedgerRow(record) {
     holder.className = 'word-ledger-sentence-row';
     const line = textSpan('word-ledger-sentence', '', 'ja');
     renderSentence(line, sentence, record.word);
-    const tag = textSpan('word-ledger-supporter-tag', t('content_supporter_tag', undefined, 'Supporter'));
-    tag.hidden = sentenceSupporter !== false;
-    holder.append(sentenceButton(sentence, record.word), line, tag);
+    holder.append(sentenceButton(sentence, record.word), line);
     row.appendChild(holder);
   }
 
@@ -628,7 +606,6 @@ export async function loadMyWords({ keepRows = false } = {}) {
   const response = await sendWords({ action: 'wordsList' });
   wordRecords = response?.success && Array.isArray(response.records) ? response.records : [];
   wordSummary = response?.success ? response.summary : null;
-  if (sentenceSupporter === null) refreshSentenceSupporter();
   renderStrip(wordSummary);
   selectList(selectedList, { rows: keepRows ? Math.max(vocabularyRenderedCount, VOCABULARY_PAGE_SIZE) : VOCABULARY_PAGE_SIZE });
 }

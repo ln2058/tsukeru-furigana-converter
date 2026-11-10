@@ -11,7 +11,7 @@ Outputs:
 
 Side Effects:
 - Performs network fetches, tracks shared cooldown deadlines, and coalesces nonce acquisition/recovery across API requests.
-- Persists only validated cooldown metadata, the current UTC day's random ID, and the website's Supporter token answer through extension-local storage; backend quotas remain authoritative.
+- Persists only validated cooldown metadata, the current UTC day's random ID, and the website's Supporter token answer through extension-local storage; backend quotas remain authoritative. A token refused before its expiry marks this browser disconnected, and the website does not reconnect it until the popup's Connect.
 - Shares logical dictionary lookups and bounds completed in-memory dictionary results.
 - Reads/writes furigana fragments and successful localized dictionary entries through `bg-cache`.
 
@@ -374,6 +374,8 @@ const _SUPPORTER_RECHECK_MS = 24 * 60 * 60 * 1000;
 // to a Supporter account shows up at once.
 const _FREE_RECHECK_MS = 60 * 1000;
 const _SUPPORTER_PLAN_TTL_MS = 60 * 60 * 1000;
+// A token refused this long before its expiry was revoked, not expired.
+const _REVOKED_MARGIN_MS = 10 * 60 * 1000;
 let _supporterPlanCache = null;
 
 async function _readSupporter() {
@@ -393,11 +395,16 @@ function _hasLiveToken(record, now) {
 /** Whether the website page should ask for a fresh token (Supporters daily, Free each visit). */
 export async function supporterRefreshDue(now = Date.now()) {
   const record = await _readSupporter();
+  if (record?.plan === 'disconnected') return false;
   if (!Number.isFinite(record?.checkedAt)) return true;
   if (record.plan === 'supporter' && !_hasLiveToken(record, now)) return true;
   if (record.plan === 'expired') return true;
   const wait = record.plan === 'supporter' ? _SUPPORTER_RECHECK_MS : _FREE_RECHECK_MS;
-  return now - record.checkedAt >= wait;
+  if (now - record.checkedAt < wait) return false;
+  if (record.plan !== 'supporter') return true;
+  // Before the daily renewal, make sure the account has not disconnected this browser.
+  await getSupporterPlan(now, { fresh: true });
+  return (await _readSupporter())?.plan !== 'disconnected';
 }
 
 /** Store the website's answer: a Supporter token, or that the account is Free. */
@@ -422,11 +429,18 @@ export async function hasSupporterToken(now = Date.now()) {
   return _hasLiveToken(await _readSupporter(), now);
 }
 
-/** Drop a token the backend refused, remembering this browser was a Supporter. */
-async function _markExpired(now) {
+/**
+ * Drop a token the backend refused. One refused well before its expiry was
+ * revoked (Disconnect on the website), so this browser stays disconnected
+ * until the popup's Connect; one refused near its expiry has just expired.
+ */
+async function _markRefused(token, now) {
   _supporterPlanCache = null;
   try {
-    await getStorageLocal().set({ [_SUPPORTER_KEY]: { plan: 'expired', checkedAt: now } });
+    const record = await _readSupporter();
+    if (record?.token !== token) return; // A newer token arrived meanwhile.
+    const plan = _hasLiveToken(record, now + _REVOKED_MARGIN_MS) ? 'disconnected' : 'expired';
+    await getStorageLocal().set({ [_SUPPORTER_KEY]: { plan, checkedAt: now } });
   } catch (_) { /* retried next time */ }
 }
 
@@ -438,7 +452,8 @@ export async function supporterHeaders(now = Date.now()) {
 
 /**
  * How this browser is connected to EZFurigana, for the popup: 'none' (never
- * connected), 'free', 'supporter', or 'expired' (was a Supporter, token gone).
+ * connected), 'free', 'supporter', 'expired' (was a Supporter, token gone), or
+ * 'disconnected' (the account disconnected it; only Connect reconnects).
  */
 export async function getSupporterStatus(now = Date.now()) {
   const record = await _readSupporter();
@@ -450,14 +465,18 @@ export async function getSupporterStatus(now = Date.now()) {
   }
   if (record.plan === 'free') return { state: 'free', checkedAt: record.checkedAt };
   if (record.plan === 'expired') return { state: 'expired' };
+  if (record.plan === 'disconnected') return { state: 'disconnected' };
   return { state: 'none' };
 }
 
-/** The current plan ('supporter' or 'free'), confirmed with the backend at most hourly. */
-export async function getSupporterPlan(now = Date.now()) {
+/**
+ * The current plan ('supporter' or 'free'), confirmed with the backend at most
+ * hourly, or now with `fresh` (the popup's account card and the daily renewal).
+ */
+export async function getSupporterPlan(now = Date.now(), { fresh = false } = {}) {
   const headers = await supporterHeaders(now);
   if (!headers['x-tsukeru-supporter']) return 'free';
-  if (_supporterPlanCache && now < _supporterPlanCache.until) return _supporterPlanCache.plan;
+  if (!fresh && _supporterPlanCache && now < _supporterPlanCache.until) return _supporterPlanCache.plan;
   let response;
   try {
     response = await fetch(`${API_BASE_URL}/api/extension/plan`, {
@@ -471,8 +490,7 @@ export async function getSupporterPlan(now = Date.now()) {
     return 'supporter'; // Offline: keep the last answer the website gave.
   }
   if (response.status === 401) {
-    // Expired or no longer valid; the next website visit fetches a new one.
-    await _markExpired(now);
+    await _markRefused(headers['x-tsukeru-supporter'], now);
     return 'free';
   }
   if (!response.ok) return 'supporter';
@@ -1209,9 +1227,7 @@ export async function fetchSentenceExplanation(text, language) {
   }
   if (!response.ok || body?.ok !== true) {
     if (response.status === 401) {
-      // The website hands over a new token on the next visit.
-      await _markExpired(Date.now());
-      _supporterPlanCache = null;
+      await _markRefused(headers['x-tsukeru-supporter'], Date.now());
       throw fail('supporter_required', 401);
     }
     const code = typeof body?.error === 'string' ? body.error : 'explain_unavailable';
@@ -1258,8 +1274,7 @@ async function fetchSupporterAudio(path, body) {
     error.status = response.status;
     error.code = typeof body?.error === 'string' ? body.error : 'tts_unavailable';
     if (response.status === 401) {
-      // The website hands over a new token on the next visit.
-      await _markExpired(Date.now());
+      await _markRefused(headers['x-tsukeru-supporter'], Date.now());
       error.code = 'supporter_required';
     }
     if (error.code === 'supporter_required') _supporterPlanCache = null;

@@ -63,8 +63,8 @@
   "commands": {
     "toggle-furigana": {
       "suggested_key": {
-        "default": "Ctrl+Shift+Z",
-        "mac": "Command+Shift+Z"
+        "default": "Alt+Shift+A",
+        "mac": "MacCtrl+Shift+A"
       },
       "description": "__MSG_command_toggle_furigana_description__"
     }

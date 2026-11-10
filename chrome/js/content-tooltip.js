@@ -21,6 +21,7 @@ Outputs:
 
 Side Effects:
 - Creates/removes tooltip DOM on the root element, scroll/resize/Escape listeners that re-place or close it, and disclosure state.
+- A click on a word opens its popup instead of the page's own click; inside a link, a modifier click, Enter, or a second click while that link's word is open goes to the link instead.
 - Places the tooltip with the placement rules shared with EZFurigana (a bottom sheet at 600 px wide or less) and marks the clicked word with `tsukeru-active-word` while it is open.
 - Registers tooltip and report surfaces with content-ui to follow the saved UI theme.
 - Opening the dictionary on a kanji word, or revealing it in Study mode, adds it to Learning (a known word stays known).
@@ -192,6 +193,15 @@ function handleDictionaryClick(event) {
   const wordInfo = extractWordInfo(targetEl);
   if (!wordInfo.word) return;
 
+  // Links stay usable: a modifier click or Enter is left to the browser, and
+  // clicking a link again while a word in it has the popup open follows it.
+  const link = event.target.closest('a[href]');
+  if (link && (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.detail === 0)) return;
+  if (link && isTooltipOpenInside(link)) {
+    hideDefinitionTooltip();
+    return;
+  }
+
   event.preventDefault();
   event.stopPropagation();
 
@@ -200,6 +210,11 @@ function handleDictionaryClick(event) {
     return;
   }
   showDefinitionTooltip(targetEl, wordInfo, { x: event.clientX, y: event.clientY }, { trusted: event.isTrusted });
+}
+
+function isTooltipOpenInside(element) {
+  const active = dictionaryTooltip?._activeRuby;
+  return Boolean(active && dictionaryTooltip.classList.contains('show') && element.contains(active));
 }
 
 /**
@@ -1432,8 +1447,19 @@ function bindSentenceExplain(tooltip, button) {
       return;
     }
     const refuse = (code) => {
-      if (code === 'supporter_required') showSupporterTag(dictionaryTooltip, false);
-      showToast(TsukeruUiMessages.explainMessage(code, t), { type: code === 'supporter_required' ? 'info' : 'error' });
+      if (code !== 'supporter_required') {
+        showToast(TsukeruUiMessages.explainMessage(code, t), { type: 'error' });
+        return;
+      }
+      showSupporterTag(dictionaryTooltip, false);
+      showToast(TsukeruUiMessages.explainMessage(code, t), {
+        type: 'info',
+        duration: 9000,
+        link: {
+          href: TsukeruI18n.websiteUrl('/pricing?from=tsukeru&placement=extension_explain'),
+          label: t('supporter_become', undefined, 'Become a Supporter'),
+        },
+      });
     };
     // Without a Supporter token nothing is sent, so the notice is not shown either.
     const token = await askBackground({ action: 'hasSupporterToken' });
@@ -2017,9 +2043,13 @@ function wordSentenceWithReadings(element, word) {
     const found = around
       ? wordRules()?.sentenceWithReadingsAt(around.text, around.start, around.end, word, around.words)
       : null;
-    if (found?.sentence) return found;
-    const sentence = wordRules()?.fitSentence(getPlainTextFromHtml(extractSentenceContext(element)), word) || '';
-    return { sentence, readings: [] };
+    const sentence = found?.sentence
+      || wordRules()?.fitSentence(getPlainTextFromHtml(extractSentenceContext(element)), word) || '';
+    // A "sentence" that is only the word adds nothing: no Play sentence, Explain or saved sentence.
+    if (!sentence || wordRules()?.isWordOnlySentence(sentence, word, getAnalysisWordData(element).word)) {
+      return { sentence: '', readings: [] };
+    }
+    return found?.sentence ? found : { sentence, readings: [] };
   } catch (_) {
     return { sentence: '', readings: [] };
   }
@@ -2403,7 +2433,7 @@ function translationNote(text, upsell) {
   if (upsell) {
     const link = document.createElement('a');
     link.className = 'tsukeru-translation-upsell';
-    link.href = TsukeruI18n.websiteUrl('/pricing?from=tsukeru');
+    link.href = TsukeruI18n.websiteUrl('/pricing?from=tsukeru&placement=extension_translation');
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     link.textContent = t('header_title_become_supporter', undefined, 'Become a Supporter');

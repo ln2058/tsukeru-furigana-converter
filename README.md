@@ -16,7 +16,7 @@
 
 Tsukeru is a browser extension for Chrome, Microsoft Edge, and Firefox. It adds readings above kanji while preserving the layout of the page, with dictionary lookup, word lists, and Anki export.
 
-Version **4.5.0** reads words split by links or formatting as one word and keeps a Supporter's sentence explanations in My Words. Version 4.4.0 added Explain this sentence for EZFurigana Supporters, automatic furigana on sites you choose, and loading long pages around what you are reading. See the [changelog](CHANGELOG.md) for details.
+Version **4.5.0** reads words split by links or formatting as one word, keeps a Supporter's sentence explanations in My Words, lets you follow links that have furigana, moves the keyboard shortcut to `Alt+Shift+A`, and stays disconnected after you disconnect it on EZFurigana. Version 4.4.0 added Explain this sentence for EZFurigana Supporters, automatic furigana on sites you choose, and loading long pages around what you are reading. See the [changelog](CHANGELOG.md) for details.
 
 ![Furigana on a Japanese Wikipedia article](screenshots/wikipedia.png)
 
@@ -46,8 +46,9 @@ Version **4.5.0** reads words split by links or formatting as one word and keeps
 
 Open the extension and select **Apply Furigana**. You can also use the context menu or the keyboard shortcut:
 
-- Chrome and Edge: `Ctrl+Shift+Z` (`Command+Shift+Z` on macOS)
-- Firefox: `Ctrl+Shift+F` (`Command+Shift+F` on macOS)
+- `Alt+Shift+A` (`Control+Shift+A` on macOS) in Chrome, Edge, and Firefox
+
+The popup shows the shortcut your browser has set. You can change it in `chrome://extensions/shortcuts` (Chrome and Edge) or under **Manage Extension Shortcuts** in Firefox's add-ons page.
 
 On shorter pages, Tsukeru can process the available Japanese text at once. On long pages (taller than three screens, or with a lot of text), it starts with visible and nearby sections, then processes more as you scroll. This keeps the page responsive and avoids sending unseen content in the background. The **Words in this text** list grows as more sections are processed.
 

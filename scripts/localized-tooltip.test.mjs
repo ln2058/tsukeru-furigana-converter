@@ -126,7 +126,7 @@ for (const browser of ['chrome', 'firefox']) {
     assert.equal(spent.button(), null, 'nothing to click once none are left');
     assert.equal(spent.tooltip.querySelector('.tsukeru-translation-left').textContent, '0 left today');
     assert.match(spent.tooltip.textContent, /Supporters get 200 new translations a day\./);
-    assert.equal(spent.tooltip.querySelector('.tsukeru-translation-upsell').href, 'https://www.ezfurigana.com/ko/pricing?from=tsukeru');
+    assert.equal(spent.tooltip.querySelector('.tsukeru-translation-upsell').href, 'https://www.ezfurigana.com/ko/pricing?from=tsukeru&placement=extension_translation');
   });
 
   test(`${browser} a Supporter's word translates without a click, only when a click opened it`, async () => {
@@ -201,7 +201,7 @@ for (const browser of ['chrome', 'firefox']) {
       assert.equal(Boolean(link), offers, reason);
       if (offers) {
         assert.match(f.tooltip.textContent, /You've used today's free dictionary translations\. Supporters get more each day\./);
-        assert.equal(link.href, 'https://www.ezfurigana.com/ko/pricing?from=tsukeru');
+        assert.equal(link.href, 'https://www.ezfurigana.com/ko/pricing?from=tsukeru&placement=extension_translation');
         assert.equal(link.rel, 'noopener noreferrer');
         assert.equal(f.button(), null);
       } else {

@@ -417,17 +417,8 @@
   "content_apply_failed_with_reason": {
     "message": "Failed to apply furigana: $1"
   },
-  "shortcut_toggle_mac_z": {
-    "message": "⌘+Shift+Z to toggle"
-  },
-  "shortcut_toggle_win_z": {
-    "message": "Ctrl+Shift+Z to toggle"
-  },
-  "shortcut_toggle_mac_f": {
-    "message": "⌘+Shift+F to toggle"
-  },
-  "shortcut_toggle_win_f": {
-    "message": "Ctrl+Shift+F to toggle"
+  "shortcut_toggle": {
+    "message": "$1 to toggle"
   },
   "status_open_supported_page": {
     "message": "Open an http/https page or a local HTML/XHTML file and try again."
@@ -885,6 +876,9 @@
   },
   "supporter_state_expired": {
     "message": "Your Supporter connection expired. Open EZFurigana once to reconnect."
+  },
+  "supporter_state_disconnected": {
+    "message": "Disconnected from your EZFurigana account. Connect again to use your Supporter benefits."
   },
   "supporter_reconnect": {
     "message": "Reconnect"
