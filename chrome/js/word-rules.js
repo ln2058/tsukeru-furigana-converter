@@ -18,7 +18,7 @@ Failure Modes:
 - Invalid words (no kanji, empty, or too long), states, and snapshot rows are ignored rather than stored.
 
 Security Notes:
-- Records keep only a word, its reading, its state, schedule times, a short definition, and at most three short plain-text sentences with the readings their words were given (checked [start, length, kana reading, word id] spans); no URLs or page markup.
+- Records keep only a word, its reading, its state, schedule times, a short definition, at most three short plain-text sentences with the readings their words were given (checked [start, length, kana reading, word id] spans), and at most one bounded plain-text sentence explanation a Supporter asked for; no URLs or page markup.
 - The rules match EZFurigana's word records so both sides agree on identity and on which change wins.
 */
 (function attachWordRules(root) {
@@ -249,6 +249,58 @@ Security Notes:
     return [sentence, ...list].slice(0, MAX_SENTENCES);
   }
 
+  /* ---------- sentence explanations ---------- */
+
+  // The same shape and limits as EZFurigana's word-progress.js.
+  const EXPLANATION_LOCALES = new Set(['en', 'ja', 'ko', 'zh', 'zh-Hant', 'id']);
+  const MAX_EXPLANATION_POINTS = 4;
+  const MAX_EXPLANATION_TRANSLATION = 400;
+  const MAX_EXPLANATION_PIECE = 80;
+  const MAX_EXPLANATION_TEXT = 300;
+  const MAX_EXPLANATION_NOTE = 200;
+
+  function boundedText(value, limit) {
+    if (typeof value !== 'string') return '';
+    const text = value.replace(/\s+/g, ' ').trim().normalize('NFC');
+    return charLength(text) <= limit ? text : '';
+  }
+
+  /**
+   * A record's explanation in its stored and synced shape, or null: `{ at,
+   * sentence, locale, translation, points, note }`, `at` being when it was
+   * kept (ms). A removed one stays as `{ at }` with empty text, so an older
+   * copy elsewhere cannot bring it back.
+   */
+  function cleanExplanation(value) {
+    if (!value || typeof value !== 'object') return null;
+    const at = Number.isInteger(value.at) && value.at > 0 ? value.at : 0;
+    if (!at) return null;
+    if (!value.sentence && !value.translation) {
+      return { at, sentence: '', locale: '', translation: '', points: [], note: '' };
+    }
+    const sentence = typeof value.sentence === 'string' ? value.sentence.replace(/\s+/g, ' ').trim() : '';
+    const translation = boundedText(value.translation, MAX_EXPLANATION_TRANSLATION);
+    if (!sentence || charLength(sentence) > MAX_SENTENCE_LENGTH || !translation || !EXPLANATION_LOCALES.has(value.locale)) {
+      return null;
+    }
+    const points = [];
+    (Array.isArray(value.points) ? value.points : []).forEach((point) => {
+      const japanese = boundedText(point && point.japanese, MAX_EXPLANATION_PIECE);
+      const explanation = boundedText(point && point.explanation, MAX_EXPLANATION_TEXT);
+      if (japanese && explanation && points.length < MAX_EXPLANATION_POINTS) points.push({ japanese, explanation });
+    });
+    return { at, sentence, locale: value.locale, translation, points, note: boundedText(value.note, MAX_EXPLANATION_NOTE) };
+  }
+
+  /** The explanation kept (or removed) last of two copies, or null. */
+  function laterExplanation(first, second) {
+    const a = cleanExplanation(first);
+    const b = cleanExplanation(second);
+    if (!a) return b;
+    if (!b) return a;
+    return b.at > a.at ? b : a;
+  }
+
   /* ---------- the store ---------- */
 
   function createStore(records = {}, removed = {}, meta = {}) {
@@ -357,6 +409,23 @@ Security Notes:
     putRecord(store, record);
     clearRemoval(store, identity.id);
     trim(store);
+    return record;
+  }
+
+  /**
+   * Keep a sentence explanation with a tracked word (Supporters): one per
+   * word, replacing an older one; its sentence joins the word's sentences.
+   */
+  function setExplanation(store, input, explanation, at) {
+    const identity = identityForPair(input?.word, input?.reading);
+    const existing = identity ? store.records[identity.id] : null;
+    const kept = cleanExplanation({ ...(explanation || {}), at });
+    if (!existing || !kept || !kept.translation) return null;
+    const record = { ...existing, explanation: kept, updatedAt: at };
+    record.sentences = withSentence(record.sentences, kept.sentence);
+    // Drops the readings of a sentence the new one pushed out.
+    keepSentenceReadings(record, null, []);
+    putRecord(store, record);
     return record;
   }
 
@@ -479,6 +548,7 @@ Security Notes:
       count: record.count || 0,
       sentences: (record.sentences || []).slice(0, MAX_SENTENCES),
       ...(record.sentenceReadings ? { sentenceReadings: record.sentenceReadings } : {}),
+      ...(record.explanation ? { explanation: record.explanation } : {}),
     };
   }
 
@@ -510,7 +580,9 @@ Security Notes:
       .filter(Boolean)
       .slice(0, MAX_SENTENCES);
     const readings = snapshotReadings(row, sentences);
+    const explanation = cleanExplanation(row.explanation);
     return {
+      ...(explanation ? { explanation } : {}),
       ...identity,
       state: row.state,
       count: count > 0 ? Math.min(count, 100000) : 0,
@@ -527,8 +599,8 @@ Security Notes:
     };
   }
 
-  const SYNCED_FIELDS = ['state', 'count', 'sentences', 'sentenceReadings', 'step', 'dueAt', 'firstSeenAt', 'lastSeenAt',
-    'lastReviewedAt', 'knownAt', 'changedAt', 'level'];
+  const SYNCED_FIELDS = ['state', 'count', 'sentences', 'sentenceReadings', 'explanation', 'step', 'dueAt', 'firstSeenAt',
+    'lastSeenAt', 'lastReviewedAt', 'knownAt', 'changedAt', 'level'];
 
   /** The page's record with this browser's readings for sentences the page sent none for. */
   function withLocalReadings(record, local) {
@@ -542,6 +614,10 @@ Security Notes:
     const next = { ...record };
     if (Object.keys(kept).length) next.sentenceReadings = kept;
     else delete next.sentenceReadings;
+    // The explanation kept (or removed) last wins, as on the website.
+    const explanation = laterExplanation(local?.explanation, record.explanation);
+    if (explanation) next.explanation = explanation;
+    else delete next.explanation;
     return next;
   }
 
@@ -609,7 +685,9 @@ Security Notes:
     sentenceWithReadingsAt,
     removeState,
     removeWord,
+    cleanExplanation,
     setDefinition,
+    setExplanation,
     setWordState,
     statesOf,
     summarize,

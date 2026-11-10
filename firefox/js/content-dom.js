@@ -1,6 +1,6 @@
 /*
 Module: content-dom
-Purpose: Collect processable page text, structurally index long pages, resolve complete backend word units, sanitize backend HTML, and apply DOM/observer workflows.
+Purpose: Collect processable page text, structurally index long pages, send text split only by inline tags as one run, resolve complete backend word units, sanitize backend HTML, and apply DOM/observer workflows.
 
 Inputs:
 - Current document nodes, site-specific selectors, settings, and processed HTML batches.
@@ -14,6 +14,7 @@ Side Effects:
 
 Failure Modes:
 - Invalid selectors, DOM race conditions, and batch marker mismatches.
+- A run whose result does not line up with its text nodes is left without furigana rather than moved between nodes.
 - Rate-limit failures surface as visible toasts and retry via sendFuriganaWithRateLimitRetry.
 - Partial dynamic processing failures are logged and skipped.
 - Lifecycle, viewport, container, and insertion checks discard stale asynchronous work before DOM mutation.
@@ -64,6 +65,10 @@ const ANALYSIS_METADATA_ATTRIBUTES = [
   'lookup-reading', 'alt-readings', 'word'
 ];
 const SUPPORTED_READING_TYPES = new Set(['hiragana', 'katakana', 'romaji']);
+// Kana, the marks 々 and 〆, and kanji: the main block, Extension A, the
+// compatibility ideographs, and the supplementary planes (Extension B onwards).
+const JAPANESE_CHAR_RE = /[\u3040-\u309F\u30A0-\u30FF\u3005\u3006\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]|[\uD840-\uD87F][\uDC00-\uDFFF]/;
+const JAPANESE_CHAR_GLOBAL_RE = new RegExp(JAPANESE_CHAR_RE.source, 'g');
 
 function getDataAttribute(element, name) {
   if (!element) return '';
@@ -548,7 +553,7 @@ function isProcessableTextNode(node, { visibilityCache = null } = {}) {
 
   const text = node.textContent || '';
   if (!text.trim()) return false;
-  if (!/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(text)) return false;
+  if (!JAPANESE_CHAR_RE.test(text)) return false;
   if (!isNodeVisible(node, visibilityCache)) return false;
 
   return true;
@@ -583,7 +588,7 @@ function collectTextNodes(rootNode = getDocumentProcessingRoot()) {
 }
 
 function countJapaneseCharacters(text) {
-  return (String(text || '').match(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g) || []).length;
+  return (String(text || '').match(JAPANESE_CHAR_GLOBAL_RE) || []).length;
 }
 
 function isStructurallyProcessableTextNode(node) {
@@ -1068,7 +1073,7 @@ function collectCaptionTextNodes(rootNode) {
 
         const text = node.textContent || '';
         if (!text.trim()) return NodeFilter.FILTER_SKIP;
-        if (!/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(text)) return NodeFilter.FILTER_SKIP;
+        if (!JAPANESE_CHAR_RE.test(text)) return NodeFilter.FILTER_SKIP;
 
         return NodeFilter.FILTER_ACCEPT;
       },
@@ -1085,6 +1090,153 @@ function collectCaptionTextNodes(rootNode) {
 }
 
 // ── Batch building ────────────────────────────────────────────────────────────
+
+// ── Inline runs ───────────────────────────────────────────────────────────────
+// Text split only by inline tags (<a>行</a>った, 東<b>京</b>) is sent as one
+// run, without markers between its nodes, so the server reads words across
+// the tags. The result is split back onto the original text nodes.
+
+const RUN_BREAK_TAGS = new Set([
+  ...LONG_PAGE_SEMANTIC_BLOCK_TAGS, ...LONG_PAGE_FALLBACK_BLOCK_TAGS, ...EXCLUDED_TEXT_PARENT_TAGS,
+  'br', 'hr', 'img', 'picture', 'video', 'audio', 'label', 'dialog', 'template',
+]);
+const MAX_RUN_WALK_STEPS = 32;
+const RUN_READING_TAGS = new Set(['rt', 'rp']);
+const RUN_SPACE_RE = /\s/;
+
+function isRunBreak(node) {
+  return node?.nodeType === Node.ELEMENT_NODE && RUN_BREAK_TAGS.has(getElementTagNameLower(node));
+}
+
+/**
+ * Whether text node `node` directly follows text node `previous` on the same
+ * line, with only inline tags between them: no other text, not even a
+ * space, and no block, line break, image, or excluded element.
+ */
+function continuesInlineRun(previous, node) {
+  if (!previous?.parentNode || !node?.parentNode || previous === node) return false;
+  let current = previous;
+  for (let steps = 0; steps < MAX_RUN_WALK_STEPS; steps += 1) {
+    if (current !== previous && current.nodeType === Node.ELEMENT_NODE && current.firstChild) {
+      current = current.firstChild;
+    } else {
+      while (!current.nextSibling) {
+        current = current.parentNode;
+        // Leaving a block (or the document) ends the line.
+        if (!current || current.nodeType !== Node.ELEMENT_NODE || isRunBreak(current)) return false;
+      }
+      current = current.nextSibling;
+    }
+    if (current === node) return true;
+    if (current.nodeType === Node.TEXT_NODE || isRunBreak(current)) return false;
+  }
+  return false;
+}
+
+function countRunCharacters(text) {
+  let count = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    if (!RUN_SPACE_RE.test(text[index])) count += 1;
+  }
+  return count;
+}
+
+/**
+ * Split a parsed run result (`root`) into one container per source text, by
+ * counting non-space characters outside readings. A word across a node
+ * boundary becomes parts that keep its metadata, the later ones marked
+ * data-tsukeru-continued; a reading stays with the part where its ruby
+ * starts; spaces and empty elements go with the text before them. Returns
+ * null when the result's characters do not match the source's.
+ */
+function splitRunTree(root, sourceTexts, makeContainer, makeText) {
+  const ends = [];
+  let total = 0;
+  sourceTexts.forEach((text) => {
+    total += countRunCharacters(String(text || ''));
+    ends.push(total);
+  });
+  let resultCount = 0;
+  const countResult = (node) => {
+    for (const child of Array.from(node.childNodes || [])) {
+      if (child.nodeType === Node.TEXT_NODE) resultCount += countRunCharacters(child.nodeValue || '');
+      else if (child.nodeType === Node.ELEMENT_NODE && !RUN_READING_TAGS.has(getElementTagNameLower(child))) countResult(child);
+    }
+  };
+  countResult(root);
+  if (!total || resultCount !== total) return null;
+
+  const pieceAt = (position) => {
+    for (let index = 0; index < ends.length; index += 1) if (position < ends[index]) return index;
+    return ends.length - 1;
+  };
+  const pieces = sourceTexts.map(() => makeContainer());
+  let seen = 0;
+  const here = () => (seen > 0 ? pieceAt(seen - 1) : 0);
+  const ensure = (context, piece) => {
+    if (!context.element) return pieces[piece];
+    let clone = context.clones.get(piece);
+    if (!clone) {
+      clone = context.element.cloneNode(false);
+      if (context.clones.size && hasAnalysisMetadata(context.element)) clone.setAttribute('data-tsukeru-continued', '1');
+      ensure(context.parent, piece).appendChild(clone);
+      context.clones.set(piece, clone);
+    }
+    return clone;
+  };
+  const walk = (node, context) => {
+    for (const child of Array.from(node.childNodes || [])) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        const text = child.nodeValue || '';
+        let buffer = '';
+        let bufferPiece = -1;
+        for (let index = 0; index < text.length; index += 1) {
+          const space = RUN_SPACE_RE.test(text[index]);
+          const piece = space ? here() : pieceAt(seen);
+          if (!space) seen += 1;
+          if (buffer && piece !== bufferPiece) {
+            ensure(context, bufferPiece).appendChild(makeText(buffer));
+            buffer = '';
+          }
+          bufferPiece = piece;
+          buffer += text[index];
+        }
+        if (buffer) ensure(context, bufferPiece).appendChild(makeText(buffer));
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+        const tag = getElementTagNameLower(child);
+        if (RUN_READING_TAGS.has(tag)) {
+          ensure(context, context.rubyPiece ?? here()).appendChild(child.cloneNode(true));
+          continue;
+        }
+        const inner = {
+          element: child,
+          parent: context,
+          clones: new Map(),
+          rubyPiece: tag === 'ruby' ? pieceAt(seen) : context.rubyPiece,
+        };
+        walk(child, inner);
+        if (!inner.clones.size) ensure(context, here()).appendChild(child.cloneNode(true));
+      }
+    }
+  };
+  walk(root, { element: null, parent: null, clones: new Map(), rubyPiece: undefined });
+  return pieces;
+}
+
+/** splitRunTree for processed HTML: one HTML string per source text, or null. */
+function splitRunHtml(html, sourceTexts) {
+  // Parsed in an inert template; every piece is sanitized again before insertion.
+  const template = document.createElement('template');
+  template.innerHTML = String(html || '');
+  const owner = template.content.ownerDocument;
+  const pieces = splitRunTree(
+    template.content,
+    sourceTexts,
+    () => owner.createElement('div'),
+    (text) => owner.createTextNode(text)
+  );
+  return pieces ? pieces.map((piece) => piece.innerHTML) : null;
+}
 
 function buildBatches(nodes) {
   const batches = [];
@@ -1138,9 +1290,11 @@ function buildBatches(nodes) {
       flush();
     }
 
-    parts.push(marker, text);
+    const joined = currentNodes.length > 0 && continuesInlineRun(currentNodes[currentNodes.length - 1], node);
+    if (joined) parts.push(text);
+    else parts.push(marker, text);
     currentNodes.push(node);
-    currentMarkers.push(marker);
+    currentMarkers.push(joined ? '' : marker);
     byteCount += entryBytes;
 
     if (byteCount === MAX_BATCH_BYTES) flush();
@@ -1161,14 +1315,41 @@ function isBatchTargetCurrent(batch, index) {
   );
 }
 
+/**
+ * The processed HTML for each node of a batch, by node index. A node that
+ * continues an inline run has no marker ('' in `markers`); the run's result
+ * is split back onto its nodes, or left out when it does not line up.
+ */
 function extractBatchResultChunks(batch, processedHTML) {
+  const chunks = extractMarkedChunks(batch, processedHTML);
+  const markers = batch?.markers || [];
+  if (!markers.some((marker) => !marker)) return chunks;
   const results = new Map();
-  if (!batch?.markers?.length) return results;
+  for (let index = 0; index < markers.length; index += 1) {
+    if (!markers[index]) continue;
+    let end = index + 1;
+    while (end < markers.length && !markers[end]) end += 1;
+    const chunk = chunks.get(index);
+    if (chunk === undefined) continue;
+    if (end - index === 1) {
+      results.set(index, chunk);
+      continue;
+    }
+    const pieces = splitRunHtml(chunk, (batch.sourceTexts || []).slice(index, end));
+    if (pieces) pieces.forEach((piece, offset) => results.set(index + offset, piece));
+  }
+  return results;
+}
 
-  const markerPattern = batch.markers.map(escapeRegex).join('|');
+function extractMarkedChunks(batch, processedHTML) {
+  const results = new Map();
+  const markers = (batch?.markers || []).filter(Boolean);
+  if (!markers.length) return results;
+
+  const markerPattern = markers.map(escapeRegex).join('|');
   const splitRegex = new RegExp(`(${markerPattern})`, 'g');
   const chunks = String(processedHTML || '').split(splitRegex).filter(Boolean);
-  const markerToIndex = new Map(batch.markers.map((marker, index) => [marker, index]));
+  const markerToIndex = new Map(batch.markers.map((marker, index) => [marker, index]).filter(([marker]) => marker));
   let currentIndex = -1;
 
   for (const chunk of chunks) {
@@ -1778,9 +1959,11 @@ function buildNextLongPageBatch() {
         batchFull = true;
         return false;
       }
-      parts.push(marker, text);
+      const joined = nodes.length > 0 && continuesInlineRun(nodes[nodes.length - 1], node);
+      if (joined) parts.push(text);
+      else parts.push(marker, text);
       nodes.push(node);
-      markers.push(marker);
+      markers.push(joined ? '' : marker);
       sourceTexts.push(text);
       byteCount += entryBytes;
       addedFromBlock += 1;
@@ -2494,6 +2677,8 @@ function extractAllPageWords() {
   let occurrenceCounter = 0;
 
   wordElements.forEach((element) => {
+    // The later parts of a word split across inline tags are the same word.
+    if (element.getAttribute?.('data-tsukeru-continued') === '1') return;
     const wordInfo = getAnalysisWordData(element);
     const surface = wordInfo.surface || '';
     const reading = wordInfo.reading || '';

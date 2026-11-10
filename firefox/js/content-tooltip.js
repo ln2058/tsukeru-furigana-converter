@@ -25,7 +25,7 @@ Side Effects:
 - Registers tooltip and report surfaces with content-ui to follow the saved UI theme.
 - Opening the dictionary on a kanji word, or revealing it in Study mode, adds it to Learning (a known word stays known).
 - Play sentence sends the plain sentence around the open word (at most 120 characters) to the background for Supporter audio and shows a toast when it is refused.
-- Explain sends the same sentence and the display language to the background for a Supporter explanation, after a one-time notice that the sentence goes to OpenAI (remembered as `explainNoticeSeen` in local storage); a browser without a Supporter token gets a toast instead and sends nothing.
+- Explain sends the same sentence and the display language to the background for a Supporter explanation, after a one-time notice that the sentence goes to OpenAI (remembered as `explainNoticeSeen` in local storage); a browser without a Supporter token gets a toast instead and sends nothing. The explanation is kept with the word in My Words (and synced with EZFurigana), as on the website.
 - Excludes tooltip-owned metadata from word capture and word-state marks.
 
 Failure Modes:
@@ -1310,6 +1310,23 @@ const EXPLAIN_NOTICE_KEY = 'explainNoticeSeen';
 const MAX_SHOWN_EXPLANATIONS = 30;
 // Explanations shown on this page, by language and sentence, so reopening a word does not ask again.
 const shownExplanations = new Map();
+// The display language as the tag EZFurigana keeps explanations under.
+const EXPLANATION_LOCALE_TAGS = { en: 'en', ja: 'ja', ko: 'ko', 'zh-TW': 'zh-Hant' };
+
+/** Keep a Supporter's explanation with the open word in My Words; the background validates it. */
+function keepExplanation(element, sentence, explanation, language) {
+  const identity = wordIdentityOf(element);
+  const locale = EXPLANATION_LOCALE_TAGS[language];
+  if (!identity || !locale || !chrome.runtime?.id) return;
+  chrome.runtime.sendMessage({
+    action: 'wordsSetExplanation',
+    word: identity.word,
+    reading: identity.reading,
+    sentence,
+    locale,
+    explanation,
+  })?.catch?.(() => {});
+}
 
 function askBackground(message) {
   return new Promise((resolve) => {
@@ -1394,6 +1411,7 @@ function bindSentenceExplain(tooltip, button) {
   const sentence = panel.dataset.sentence || '';
   const language = TsukeruI18n.language();
   const key = `${language}\n${sentence}`;
+  const wordElement = tooltip._activeRuby || null;
   const open = (box, toggle, explanation) => {
     renderTooltipExplanation(box, explanation, language);
     toggle.setAttribute('aria-expanded', 'true');
@@ -1435,6 +1453,8 @@ function bindSentenceExplain(tooltip, button) {
       refuse(response?.error);
       return;
     }
+    // Only Supporters get explanations, and theirs are kept with the word.
+    if (wordElement) keepExplanation(wordElement, sentence, response.explanation, language);
     shownExplanations.delete(key);
     shownExplanations.set(key, response.explanation);
     while (shownExplanations.size > MAX_SHOWN_EXPLANATIONS) shownExplanations.delete(shownExplanations.keys().next().value);
@@ -2012,7 +2032,12 @@ function sentenceWordOf(node) {
   const info = getAnalysisWordData(node);
   const reading = String(info.surfaceReading || '').trim();
   if (!reading) return null;
-  return { reading, id: wordRules()?.identityForWordInfo(info)?.id || '' };
+  return {
+    reading,
+    id: wordRules()?.identityForWordInfo(info)?.id || '',
+    // A later part of a word split across inline tags (content-dom.js).
+    continued: node.getAttribute?.('data-tsukeru-continued') === '1',
+  };
 }
 
 // Elements that start a new line of text; their edges and <br> end a sentence.
@@ -2054,7 +2079,11 @@ function blockTextAround(element) {
     const unit = sentenceWordOf(node);
     const from = text.length;
     for (let child = node.firstChild; child; child = child.nextSibling) visit(child);
-    if (unit && text.length > from) words.push({ from, to: text.length, ...unit });
+    if (unit && text.length > from) {
+      const last = words[words.length - 1];
+      if (unit.continued && last && last.to === from) last.to = text.length;
+      else words.push({ from, to: text.length, reading: unit.reading, id: unit.id });
+    }
     if (node === element) end = text.length;
     if (block) text += '\n';
   };

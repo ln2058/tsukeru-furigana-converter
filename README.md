@@ -16,7 +16,7 @@
 
 Tsukeru is a browser extension for Chrome, Microsoft Edge, and Firefox. It adds readings above kanji while preserving the layout of the page, with dictionary lookup, word lists, and Anki export.
 
-Version **4.4.0** adds Explain this sentence for EZFurigana Supporters and automatic furigana on sites you choose, and loads long pages around what you are reading. Version 4.3.1 moved dictionary translations to the top of the tooltip, and 4.3.0 added sentence audio for Supporters and Anki export with audio. See the [changelog](CHANGELOG.md) for details.
+Version **4.5.0** reads words split by links or formatting as one word and keeps a Supporter's sentence explanations in My Words. Version 4.4.0 added Explain this sentence for EZFurigana Supporters, automatic furigana on sites you choose, and loading long pages around what you are reading. See the [changelog](CHANGELOG.md) for details.
 
 ![Furigana on a Japanese Wikipedia article](screenshots/wikipedia.png)
 
@@ -27,7 +27,7 @@ Version **4.4.0** adds Explain this sentence for EZFurigana Supporters and autom
 - Look up annotated words for definitions, parts of speech, JLPT level, word frequency, pitch accent, example sentences, and audio. The Kanji tab shows each character's readings, details, and stroke order. English entries prefer TKGJE data and fall back to JMdict.
 - Read definitions in easy Japanese, Korean, or Traditional Chinese, with AI translation for untranslated entries within daily limits.
 - Play the word's sentence aloud with an EZFurigana Supporter account, in the tooltip or in My Words.
-- Explain the word's sentence in your display language with an EZFurigana Supporter account.
+- Explain the word's sentence in your display language with an EZFurigana Supporter account. The explanation is kept with the word in My Words.
 - Add furigana automatically on sites you choose in Settings.
 - Browse **Words in this text** and jump back to a word on the page. Numbers with the same counter are grouped together, such as 2024年 and 1998年 under 〜年.
 - Keep **Learning** and **Known** lists in My Words, see how many words are due, and review them on EZFurigana.
@@ -81,7 +81,7 @@ For Chrome and Edge, open the extension's details page and enable **Allow access
 
 Tsukeru contains no advertising or third-party analytics code.
 
-Settings, including the sites with automatic furigana, are kept in browser sync storage and are not sent to EZFurigana. My Words uses `chrome.storage.local` for words, readings, Learning or Known states, review times, short example sentences, and details such as definitions and parts of speech. Furigana results are cached in IndexedDB, and service cooldowns use local browser storage.
+Settings, including the sites with automatic furigana, are kept in browser sync storage and are not sent to EZFurigana. My Words uses `chrome.storage.local` for words, readings, Learning or Known states, review times, short example sentences with their readings, a Supporter's sentence explanations, and details such as definitions and parts of speech. Furigana results are cached in IndexedDB, and service cooldowns use local browser storage.
 
 The extension sends data to EZFurigana when a feature requires it:
 

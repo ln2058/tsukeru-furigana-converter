@@ -174,6 +174,35 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.deepEqual(plain(Words.buildOutbox(store, 'store-a', T0 + 30).changes.map((change) => change.word)), ['宿題']);
   });
 
+  test(`${browserName} a Supporter's explanation is kept with the word and the later one wins in sync`, () => {
+    const store = Words.createStore();
+    const explanation = {
+      sentence: '今日は天気がいい。', locale: 'zh-Hant', translation: '今天天氣很好。',
+      points: [{ japanese: '天気', explanation: '天氣' }, { japanese: '', explanation: 'dropped' }], note: '',
+    };
+    assert.equal(Words.setExplanation(store, { word: '天気', reading: 'てんき' }, explanation, T0), null, 'only tracked words');
+    Words.captureWord(store, { word: '天気', reading: 'てんき' }, T0);
+    const record = Words.setExplanation(store, { word: '天気', reading: 'てんき' }, explanation, T0 + 5);
+    assert.deepEqual(plain(record.explanation), {
+      at: T0 + 5, sentence: '今日は天気がいい。', locale: 'zh-Hant', translation: '今天天氣很好。',
+      points: [{ japanese: '天気', explanation: '天氣' }], note: '',
+    });
+    assert.deepEqual(plain(record.sentences), ['今日は天気がいい。']);
+    assert.equal(Words.setExplanation(store, { word: '天気', reading: 'てんき' }, { ...explanation, locale: 'fr' }, T0 + 6), null);
+    const [sent] = Words.buildOutbox(store, 'store-a', T0 + 10).changes;
+    assert.equal(sent.explanation.translation, '今天天氣很好。');
+
+    // An older copy from the page keeps this browser's; a newer removal there wins.
+    const row = { word: '天気', reading: 'てんき', state: 'learning', sentences: ['今日は天気がいい。'] };
+    Words.mergeSnapshot(store, [{ ...row, explanation: { ...explanation, at: T0 + 1, translation: '舊的' } }],
+      { startedAt: T0 + 10, storeId: 'store-a', at: T0 + 20 });
+    assert.equal(store.records['天気\u0000てんき'].explanation.translation, '今天天氣很好。');
+    Words.mergeSnapshot(store, [{ ...row, explanation: { at: T0 + 30 } }], { startedAt: T0 + 40, storeId: 'store-a', at: T0 + 50 });
+    assert.deepEqual(plain(store.records['天気\u0000てんき'].explanation), {
+      at: T0 + 30, sentence: '', locale: '', translation: '', points: [], note: '',
+    });
+  });
+
   test(`${browserName} sentence readings travel with the word both ways and survive a page without them`, () => {
     const store = Words.createStore();
     const sentence = '今日は天気がいい。';

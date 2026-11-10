@@ -17,9 +17,30 @@ class FakeText {
   cloneNode() {
     return new FakeText(this.textContent);
   }
+
+  get nodeValue() {
+    return this.textContent;
+  }
+
+  get nextSibling() {
+    return nextSiblingOf(this);
+  }
+}
+
+function nextSiblingOf(node) {
+  const siblings = node.parentNode?.childNodes;
+  return siblings ? siblings[siblings.indexOf(node) + 1] || null : null;
 }
 
 class FakeElement {
+  get firstChild() {
+    return this.childNodes[0] || null;
+  }
+
+  get nextSibling() {
+    return nextSiblingOf(this);
+  }
+
   constructor(tagName, attributes = {}, children = []) {
     this.nodeType = 1;
     this.localName = tagName.toLowerCase();
@@ -593,5 +614,63 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(batches.length, 1);
     assert.equal(batches[0].oversizedNode, oversized);
     assert.ok(node.contains(oversized));
+  });
+
+  test(`${browserName} sends text split only by inline tags as one run`, () => {
+    const { sandbox, root } = loadBrowser(browserName);
+    const [before, link, after] = [new FakeText('学校に'), new FakeText('行'), new FakeText('った。')];
+    const next = new FakeText('次の日');
+    root.appendChild(new FakeElement('p', {}, [before, new FakeElement('a', {}, [link]), after]));
+    root.appendChild(new FakeElement('p', {}, [next]));
+    const [tokyo, osaka] = [new FakeText('東京'), new FakeText('大阪')];
+    const broken = new FakeText('京都');
+    root.appendChild(new FakeElement('div', {}, [
+      new FakeElement('span', {}, [tokyo]), new FakeText(' '), new FakeElement('span', {}, [osaka]),
+      new FakeElement('br'), broken,
+    ]));
+
+    assert.equal(sandbox.continuesInlineRun(before, link), true);
+    assert.equal(sandbox.continuesInlineRun(link, after), true);
+    assert.equal(sandbox.continuesInlineRun(after, next), false, 'a new paragraph starts a new run');
+    assert.equal(sandbox.continuesInlineRun(tokyo, osaka), false, 'text between, even a space, ends a run');
+    assert.equal(sandbox.continuesInlineRun(osaka, broken), false, 'a line break ends a run');
+
+    const [batch] = sandbox.buildBatches([before, link, after, next]);
+    assert.equal(batch.markers[1], '');
+    assert.equal(batch.markers[2], '');
+    assert.ok(batch.markers[3]);
+    assert.equal(batch.payload, `${batch.markers[0]}学校に行った。${batch.markers[3]}次の日`);
+  });
+
+  test(`${browserName} splits a run's result back onto its text nodes`, () => {
+    const { sandbox } = loadBrowser(browserName);
+    const word = (attrs, children) => new FakeElement('span', { class: 'analysis-word', ...attrs }, children);
+    const result = new FakeElement('div', {}, [
+      word({ 'data-surface': '学校', 'data-reading': 'がっこう' }, [ruby('学校', 'がっこう')]),
+      word({ 'data-surface': 'に', 'data-reading': 'に' }, [new FakeText('に')]),
+      word({ 'data-surface': '行った', 'data-reading': 'いった' }, [ruby('行', 'い'), new FakeText('った')]),
+      new FakeText('。'),
+    ]);
+    const split = (root, texts) => sandbox.splitRunTree(root, texts, () => new FakeElement('div'), (text) => new FakeText(text));
+
+    const pieces = split(result, ['学校に', '行', 'った。']);
+    assert.deepEqual(pieces.map((piece) => piece.textContent), ['学校がっこうに', '行い', 'った。']);
+    const [firstPart, laterPart] = [pieces[1].children[0], pieces[2].children[0]];
+    assert.equal(firstPart.getAttribute('data-surface'), '行った');
+    assert.equal(firstPart.hasAttribute('data-tsukeru-continued'), false);
+    assert.equal(laterPart.getAttribute('data-surface'), '行った');
+    assert.equal(laterPart.getAttribute('data-tsukeru-continued'), '1');
+
+    // A ruby across the boundary keeps its reading on the part where it starts.
+    const compound = new FakeElement('div', {}, [ruby('東京', 'とうきょう')]);
+    assert.deepEqual(split(compound, ['東', '京']).map((piece) => piece.textContent), ['東とうきょう', '京']);
+
+    assert.equal(split(result, ['学校に', '行']), null, 'a result that does not line up is not split');
+  });
+
+  test(`${browserName} counts kanji outside the main block as Japanese text`, () => {
+    const { sandbox } = loadBrowser(browserName);
+    assert.equal(sandbox.countJapaneseCharacters('々〆㐂﨑𠮟'), 5);
+    assert.equal(sandbox.countJapaneseCharacters('abc 123'), 0);
   });
 }

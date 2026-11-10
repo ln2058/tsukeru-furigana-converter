@@ -3,7 +3,7 @@ Module: bg-words
 Purpose: Own the My Words store in the background: load and persist word records, move the retired saved-word list into Learning, answer word requests from content scripts and the popup, run the EZFurigana sync exchange, and keep the toolbar badge showing how many words are due for review.
 
 Inputs:
-- Word messages from content scripts and the popup (capture, state, definition, removal, listing).
+- Word messages from content scripts and the popup (capture, state, definition, a Supporter's sentence explanation, removal, listing).
 - Sync messages from the content script on EZFurigana pages (outbox request and the page's record snapshot).
 - `chrome.storage.local` word records, removals, sync metadata, and the retired `vocabulary` list.
 
@@ -176,7 +176,7 @@ export function isEzfuriganaSender(sender) {
 }
 
 const WORD_ACTIONS = new Set([
-  'wordsGetStates', 'wordsList', 'wordsCapture', 'wordsSetState', 'wordsSetDefinition',
+  'wordsGetStates', 'wordsList', 'wordsCapture', 'wordsSetState', 'wordsSetDefinition', 'wordsSetExplanation',
   'wordsRemove', 'wordsClear', 'wordsSyncStart', 'wordsSyncFinish',
 ]);
 
@@ -209,6 +209,18 @@ export async function handleWordsMessage(message, sender) {
     case 'wordsSetDefinition': {
       await update((store, at) => Words.setDefinition(store, wordInput(message), message.definition, at));
       return { success: true };
+    }
+    case 'wordsSetExplanation': {
+      // word-rules keeps only a bounded, valid explanation for a tracked word.
+      const explanation = message.explanation && typeof message.explanation === 'object' ? {
+        sentence: text(message.sentence, 200),
+        locale: text(message.locale, 10),
+        translation: text(message.explanation.translation, 600),
+        points: Array.isArray(message.explanation.points) ? message.explanation.points.slice(0, 8) : [],
+        note: text(message.explanation.note, 400),
+      } : null;
+      const record = await update((store, at) => Words.setExplanation(store, wordInput(message), explanation, at));
+      return { success: Boolean(record) };
     }
     case 'wordsRemove': {
       const removed = await update((store, at) => Words.removeWord(store, text(message.id), at));

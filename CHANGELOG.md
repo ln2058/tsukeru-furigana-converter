@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.5.0 — 2026-11-10
+
+### Changed
+
+- **Words split by links or formatting are read as one word**: text broken only by inline tags, such as a link around 行 in 行った or bold on part of 東京, is now read together, so it gets the right reading and one dictionary entry. Both parts open the same word.
+- Rarer kanji are recognised as Japanese text: 々 and 〆, Extension A and B kanji such as 𠮟, and compatibility kanji such as 﨑.
+- A Supporter's sentence explanation is kept with the word in My Words and synced with EZFurigana, as on the website.
+
 ## 4.4.0 — 2026-11-10
 
 ### Added
