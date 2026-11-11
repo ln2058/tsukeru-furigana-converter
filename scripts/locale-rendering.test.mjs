@@ -7,7 +7,7 @@ import vm from 'node:vm';
 const read = (browser, file) => readFileSync(new URL(`../${browser}/${file}`, import.meta.url), 'utf8');
 const languageCases = [
   ['en', 'en', 'en'], ['ja', 'ja', 'ja'], ['ko-KR', 'ko', 'ko'], ['zh-TW', 'zh_TW', 'zh-TW'],
-  ['zh-CN', 'en', 'en'], ['zh-HK', 'en', 'en'], ['fr', 'en', 'en'],
+  ['zh-CN', 'zh_CN', 'zh-CN'], ['zh-HK', 'en', 'en'], ['fr', 'en', 'en'],
   ['fr', null, 'en'],
 ];
 

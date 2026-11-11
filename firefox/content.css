@@ -850,15 +850,19 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
   --tsukeru-sans: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
   --tsukeru-mono: var(--tsukeru-sans);
 }
+:is(.tsukeru-word-tooltip, .tsukeru-content-report-modal, .tsukeru-toast):lang(zh-CN) {
+  --tsukeru-sans: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+  --tsukeru-mono: var(--tsukeru-sans);
+}
 :is(.tsukeru-word-tooltip, .tsukeru-content-report-modal, .tsukeru-toast):lang(ko) {
   --tsukeru-sans: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
   --tsukeru-mono: var(--tsukeru-sans);
 }
-:is(.tsukeru-word-tooltip, .tsukeru-content-report-modal, .tsukeru-toast):is(:lang(zh-TW), :lang(ko)) * {
+:is(.tsukeru-word-tooltip, .tsukeru-content-report-modal, .tsukeru-toast):is(:lang(zh-CN), :lang(zh-TW), :lang(ko)) * {
   letter-spacing: normal !important;
   text-transform: none !important;
 }
-:is(.tsukeru-word-tooltip, .tsukeru-content-report-modal):is(:lang(zh-TW), :lang(ko)) :is(
+:is(.tsukeru-word-tooltip, .tsukeru-content-report-modal):is(:lang(zh-CN), :lang(zh-TW), :lang(ko)) :is(
   .tooltip-badge, .tsukeru-sense-pos, .tsukeru-sense-more, .tsukeru-dictionary-source,
   .tsukeru-async-unavailable, .tsukeru-crm-label, .tooltip-learning-toggle
 ) { font-size: 11px !important; }

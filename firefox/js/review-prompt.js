@@ -39,8 +39,8 @@ const STORE_REVIEW_URLS = Object.freeze({
   firefox: 'https://addons.mozilla.org/{locale}/firefox/addon/tsukeru-for-ezfurigana/',
 });
 // Store locale codes for the extension's display languages.
-const STORE_LANGUAGES = Object.freeze({ en: 'en', ja: 'ja', ko: 'ko', 'zh-TW': 'zh-TW' });
-const FIREFOX_LANGUAGES = Object.freeze({ en: 'en-US', ja: 'ja', ko: 'ko', 'zh-TW': 'zh-TW' });
+const STORE_LANGUAGES = Object.freeze({ en: 'en', ja: 'ja', ko: 'ko', 'zh-CN': 'zh-CN', 'zh-TW': 'zh-TW' });
+const FIREFOX_LANGUAGES = Object.freeze({ en: 'en-US', ja: 'ja', ko: 'ko', 'zh-CN': 'zh-CN', 'zh-TW': 'zh-TW' });
 
 export function localDay(now) {
   const date = new Date(now);

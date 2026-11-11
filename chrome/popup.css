@@ -144,6 +144,10 @@
   --sans: "IBM Plex Sans", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
   --mono: var(--sans);
 }
+:root:lang(zh-CN) {
+  --sans: "IBM Plex Sans", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+  --mono: var(--sans);
+}
 :root:lang(ko) {
   --sans: "IBM Plex Sans", "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
   --mono: var(--sans);
@@ -278,6 +282,7 @@ textarea:focus-visible {
 /* The closed select uses the chosen name's script, independent of the popup. */
 .locale-select:lang(ko) { font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif; }
 .locale-select:lang(zh-TW) { font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, sans-serif; }
+.locale-select:lang(zh-CN) { font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui, sans-serif; }
 .locale-select:lang(ja) { font-family: "BIZ UDPGothic", "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif; }
 .locale-select:lang(en) { font-family: "IBM Plex Sans", system-ui, sans-serif; }
 
@@ -624,11 +629,11 @@ a.vocab-action-btn { display: inline-flex; align-items: center; text-decoration:
 }
 
 /* CJK UI text needs readable sizing and natural spacing in the fixed-width popup. */
-:root:is(:lang(zh-TW), :lang(ko)) * {
+:root:is(:lang(zh-CN), :lang(zh-TW), :lang(ko)) * {
   letter-spacing: normal;
   text-transform: none;
 }
-:root:is(:lang(zh-TW), :lang(ko)) :is(
+:root:is(:lang(zh-CN), :lang(zh-TW), :lang(ko)) :is(
   .by-label, .section-title, .setting-hint, .level-row-label, .preview-label,
   .legend-chip, .saved-entry-tag, .vocab-action-btn, .export-disclosure summary,
   .vocab-empty-hint, .page-study-hint, .result-profile-summary, .result-profile-coverage,
@@ -638,7 +643,7 @@ a.vocab-action-btn { display: inline-flex; align-items: center; text-decoration:
 ) {
   font-size: 11px;
 }
-:root:is(:lang(zh-TW), :lang(ko)) .tab-btn { font-size: 12px; }
+:root:is(:lang(zh-CN), :lang(zh-TW), :lang(ko)) .tab-btn { font-size: 12px; }
 
 /* Explicit Japanese islands keep Japanese glyph shapes inside a translated UI. */
 body [lang="ja"] {

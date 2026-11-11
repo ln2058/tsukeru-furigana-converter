@@ -9,14 +9,20 @@ function page(browser, search = '') {
   const fetches = [];
   const toasts = [];
   let onMessage = null;
+  const listeners = { window: {}, document: {} };
+  const store = new Map();
+  const document = {
+    cookie: 'ez_csrf_token=abc', visibilityState: 'visible',
+    addEventListener(name, callback) { listeners.document[name] = callback; },
+  };
   const window = {
     location: { origin: 'https://www.ezfurigana.com', search },
     postMessage() {},
-    addEventListener(name, callback) { if (name === 'message') onMessage = callback; },
+    addEventListener(name, callback) { if (name === 'message') onMessage = callback; else listeners.window[name] = callback; },
   };
   const sandbox = {
-    window, console, URLSearchParams,
-    document: { cookie: 'ez_csrf_token=abc' },
+    window, console, URLSearchParams, crypto, TextEncoder, document,
+    sessionStorage: { getItem: key => store.get(key) ?? null, setItem: (key, value) => store.set(key, String(value)) },
     TsukeruI18n: { t: (_key, _subs, fallback) => fallback },
     showToast: (message) => toasts.push(message),
     fetch: async (url) => {
@@ -38,7 +44,8 @@ function page(browser, search = '') {
   };
   vm.runInNewContext(readFileSync(new URL(`../${browser}/js/content-sync.js`, import.meta.url), 'utf8'), sandbox);
   return {
-    runtime, fetches, toasts,
+    runtime, fetches, toasts, document,
+    focus() { listeners.window.focus(); },
     send(data, source = window) {
       onMessage({ source, origin: 'https://www.ezfurigana.com', data: { source: 'ezfurigana', protocol: 1, ...data } });
     },
@@ -48,6 +55,22 @@ function page(browser, search = '') {
 const settle = async () => { for (let index = 0; index < 10; index += 1) await new Promise(resolve => setImmediate(resolve)); };
 
 for (const browser of ['chrome', 'firefox']) {
+  test(`${browser} signing in as another account asks right away when the tab regains focus`, async () => {
+    const p = page(browser);
+    await settle();
+    assert.equal(p.fetches.length, 0);
+    p.focus();
+    await settle();
+    assert.equal(p.fetches.length, 0, 'the same account is not asked again');
+    p.document.cookie = 'ez_csrf_token=def';
+    p.focus();
+    await settle();
+    assert.equal(p.fetches.length, 1);
+    p.focus();
+    await settle();
+    assert.equal(p.fetches.length, 1, 'the new account is remembered');
+  });
+
   test(`${browser} an ordinary page waits for the recheck interval`, async () => {
     const p = page(browser);
     await settle();

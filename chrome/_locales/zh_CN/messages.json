@@ -1,0 +1,892 @@
+{
+  "ui_lang": {
+    "message": "zh-CN",
+    "description": "BCP 47 language tag for this catalog. Used for accessibility and UI fonts; keep this tag in English letters."
+  },
+  "manifest_name": {
+    "message": "日文振假名 Tsukeru",
+    "description": "Extension display name"
+  },
+  "manifest_description": {
+    "message": "为日文添加振假名，并提供词典查询、单词收藏和语音朗读。",
+    "description": "Extension short description shown in browser stores and extension pages"
+  },
+  "command_toggle_furigana_description": {
+    "message": "显示或隐藏振假名",
+    "description": "Description for keyboard command that toggles furigana"
+  },
+  "theme_switch_to_light": {
+    "message": "切换为浅色模式"
+  },
+  "theme_switch_to_dark": {
+    "message": "切换为深色模式"
+  },
+  "header_by_label": {
+    "message": "由 EZFurigana 提供"
+  },
+  "header_support_text": {
+    "message": "支持新功能开发！♥"
+  },
+  "header_title_view_source": {
+    "message": "在 GitHub 上查看源代码"
+  },
+  "utility_source": {
+    "message": "源代码"
+  },
+  "utility_review": {
+    "message": "评价"
+  },
+  "utility_support": {
+    "message": "支持开发"
+  },
+  "header_title_become_supporter": {
+    "message": "成为支持者"
+  },
+  "header_title_supporter_active": {
+    "message": "你是支持者"
+  },
+  "header_title_review_chrome": {
+    "message": "在 Chrome 网上应用店评价"
+  },
+  "header_title_review_firefox": {
+    "message": "在 Firefox 附加组件商店评价"
+  },
+  "header_title_review_edge": {
+    "message": "在 Edge 附加组件商店评价"
+  },
+  "header_title_open_ezfurigana": {
+    "message": "打开 EZFurigana"
+  },
+  "tab_settings": {
+    "message": "设置"
+  },
+  "settings_section_furigana_appearance": {
+    "message": "振假名外观"
+  },
+  "settings_section_reading": {
+    "message": "读音"
+  },
+  "settings_section_appearance": {
+    "message": "外观"
+  },
+  "settings_section_page_behavior": {
+    "message": "网页行为"
+  },
+  "settings_preview_label": {
+    "message": "预览"
+  },
+  "settings_label_size": {
+    "message": "大小"
+  },
+  "settings_label_color": {
+    "message": "颜色"
+  },
+  "settings_option_weight_bold": {
+    "message": "粗体"
+  },
+  "settings_section_furigana_options": {
+    "message": "振假名选项"
+  },
+  "settings_watch_dynamic": {
+    "message": "为新加载的页面内容添加振假名"
+  },
+  "settings_watch_dynamic_hint": {
+    "message": "YouTube、X 等网站加载新动态、评论或聊天内容时，自动为其添加振假名。"
+  },
+  "settings_auto_site": {
+    "message": "在此网站上自动添加振假名"
+  },
+  "settings_auto_sites_list": {
+    "message": "自动添加振假名的网站"
+  },
+  "settings_auto_site_remove": {
+    "message": "移除 $1"
+  },
+  "settings_auto_site_failed": {
+    "message": "无法保存此网站，请再试一次。"
+  },
+  "settings_custom_styling": {
+    "message": "自定义振假名样式"
+  },
+  "settings_custom_styling_hint": {
+    "message": "关闭后，振假名将采用网站的默认样式，并隐藏 JLPT 和词性的颜色标记。"
+  },
+  "settings_size_smaller": {
+    "message": "缩小振假名"
+  },
+  "settings_size_larger": {
+    "message": "放大振假名"
+  },
+  "settings_reset_style": {
+    "message": "重置外观"
+  },
+  "settings_label_reading_type": {
+    "message": "读音显示方式"
+  },
+  "settings_label_level": {
+    "message": "振假名范围"
+  },
+  "settings_level_all": {
+    "message": "所有汉字"
+  },
+  "settings_level_beyond_n1": {
+    "message": "超出 N1 范围"
+  },
+  "settings_level_grade": {
+    "message": "日本学校年级"
+  },
+  "settings_level_grade_n": {
+    "message": "$1 年级"
+  },
+  "settings_level_junior_high": {
+    "message": "初中"
+  },
+  "settings_level_non_joyo": {
+    "message": "仅限常用汉字表以外"
+  },
+  "settings_level_desc_all": {
+    "message": "为所有含汉字的单词标注振假名。"
+  },
+  "settings_level_desc_jlpt": {
+    "message": "为 $1 级和 JLPT 词表以外的单词标注振假名。"
+  },
+  "settings_level_desc_beyond_n1": {
+    "message": "仅为 JLPT 词表以外的单词标注振假名。"
+  },
+  "settings_level_desc_grade": {
+    "message": "为从 $1 年级起学习的汉字、特殊读音以及有多种读音的单词标注振假名。"
+  },
+  "settings_level_desc_non_joyo": {
+    "message": "仅为常用汉字以外的汉字、特殊读音以及有多种读音的单词标注振假名。"
+  },
+  "settings_option_reading_hiragana": {
+    "message": "平假名"
+  },
+  "settings_option_reading_katakana": {
+    "message": "片假名"
+  },
+  "settings_option_reading_romaji": {
+    "message": "罗马字"
+  },
+  "settings_label_highlight_mode": {
+    "message": "高亮显示"
+  },
+  "settings_highlight_off": {
+    "message": "关闭"
+  },
+  "settings_highlight_pos": {
+    "message": "词性"
+  },
+  "settings_highlight_jlpt": {
+    "message": "JLPT"
+  },
+  "settings_color_slate": {
+    "message": "灰蓝色"
+  },
+  "settings_color_red": {
+    "message": "红色"
+  },
+  "settings_color_blue": {
+    "message": "蓝色"
+  },
+  "settings_color_green": {
+    "message": "绿色"
+  },
+  "settings_color_amber": {
+    "message": "琥珀色"
+  },
+  "settings_color_purple": {
+    "message": "紫色"
+  },
+  "settings_color_white": {
+    "message": "白色"
+  },
+  "settings_pos_noun": {
+    "message": "名词"
+  },
+  "settings_pos_verb": {
+    "message": "动词"
+  },
+  "settings_pos_adj": {
+    "message": "形容词"
+  },
+  "settings_pos_adv": {
+    "message": "副词"
+  },
+  "settings_pos_particle": {
+    "message": "助词"
+  },
+  "settings_pos_other": {
+    "message": "其他"
+  },
+  "vocab_export_anki": {
+    "message": "导出至 Anki"
+  },
+  "vocab_export_csv": {
+    "message": "下载清单（CSV）"
+  },
+  "vocab_export_other": {
+    "message": "其他格式"
+  },
+  "vocab_export_menu": {
+    "message": "导出"
+  },
+  "vocab_show_more": {
+    "message": "显示更多"
+  },
+  "vocab_no_items_to_export": {
+    "message": "没有可导出的单词"
+  },
+  "vocab_export_failed_short": {
+    "message": "无法导出单词，请重试。"
+  },
+  "vocab_export_failed_with_reason": {
+    "message": "导出失败：$1"
+  },
+  "actions_apply": {
+    "message": "添加振假名"
+  },
+  "actions_clear": {
+    "message": "清除振假名"
+  },
+  "actions_applying": {
+    "message": "添加中…"
+  },
+  "actions_applied": {
+    "message": "已添加"
+  },
+  "actions_apply_again": {
+    "message": "使用当前的设置重新添加"
+  },
+  "notice_label_error": {
+    "message": "错误"
+  },
+  "notice_label_limit": {
+    "message": "限制"
+  },
+  "report_modal_title": {
+    "message": "反馈读音错误"
+  },
+  "report_label_word": {
+    "message": "单词"
+  },
+  "report_label_current_reading_wrong": {
+    "message": "错误读音"
+  },
+  "report_label_context": {
+    "message": "上下文"
+  },
+  "report_label_correct_reading_optional": {
+    "message": "正确读音（选填）"
+  },
+  "report_correct_placeholder": {
+    "message": "请输入正确的读音…"
+  },
+  "report_submit_button": {
+    "message": "提交反馈"
+  },
+  "report_submitting": {
+    "message": "提交中…"
+  },
+  "report_submit_success": {
+    "message": "感谢反馈！我们已收到你的报告。"
+  },
+  "report_submit_failed": {
+    "message": "无法提交反馈，请重试。"
+  },
+  "content_close": {
+    "message": "关闭"
+  },
+  "content_loading": {
+    "message": "加载中…"
+  },
+  "content_error_loading_definition": {
+    "message": "无法加载释义"
+  },
+  "content_dictionary_unavailable": {
+    "message": "词典当前无法使用"
+  },
+  "content_no_definition_found": {
+    "message": "未找到释义"
+  },
+  "content_alt_readings_count": {
+    "message": "其他读音（$1）"
+  },
+  "content_more_count": {
+    "message": "另有 $1 项"
+  },
+  "content_example_sentence_count": {
+    "message": "例句（$1）"
+  },
+  "content_example_section": {
+    "message": "例句"
+  },
+  "content_section_unavailable": {
+    "message": "当前无法使用"
+  },
+  "content_play_pronunciation": {
+    "message": "播放发音"
+  },
+  "content_play_example": {
+    "message": "播放例句"
+  },
+  "content_supporter_tag": {
+    "message": "支持者"
+  },
+  "content_play_sentence": {
+    "message": "朗读句子"
+  },
+  "content_show_meaning": {
+    "message": "显示释义"
+  },
+  "content_sentence_audio_supporter": {
+    "message": "句子朗读是支持者专享功能。以支持者身份登录 ezfurigana.com 即可使用。"
+  },
+  "content_explain": {
+    "message": "解析"
+  },
+  "content_explain_sentence": {
+    "message": "解析这句话"
+  },
+  "content_explain_working": {
+    "message": "正在解析…"
+  },
+  "content_explain_continue": {
+    "message": "继续"
+  },
+  "content_explain_notice": {
+    "message": "为了生成解析，这句话会发送给 OpenAI，OpenAI 可能会用它来改进模型。"
+  },
+  "content_explain_ai_note": {
+    "message": "由 AI 生成，可能有错误。"
+  },
+  "content_explain_supporter": {
+    "message": "句子解析是支持者专享功能。请以支持者身份登录 ezfurigana.com 后使用。"
+  },
+  "content_explain_limit": {
+    "message": "今天的句子解析次数已用完，明天会重置。"
+  },
+  "content_explain_not_available": {
+    "message": "此账号无法使用句子解析。"
+  },
+  "content_explain_failed": {
+    "message": "暂时无法使用句子解析，请稍后重试。"
+  },
+  "content_sentence_audio_limit": {
+    "message": "本月的句子朗读额度已用完，将于下个月初重置。"
+  },
+  "content_sentence_audio_failed": {
+    "message": "当前无法使用句子朗读，请稍后再试。"
+  },
+  "content_report_wrong_reading": {
+    "message": "反馈读音错误"
+  },
+  "content_report_title": {
+    "message": "反馈读音错误"
+  },
+  "content_report_label_word": {
+    "message": "单词："
+  },
+  "content_report_label_wrong_reading": {
+    "message": "错误读音："
+  },
+  "content_report_label_context": {
+    "message": "上下文："
+  },
+  "content_report_label_correction_optional": {
+    "message": "正确读音（选填）："
+  },
+  "content_report_submit": {
+    "message": "提交反馈"
+  },
+  "content_report_submitting": {
+    "message": "提交中…"
+  },
+  "content_report_success": {
+    "message": "感谢你的反馈！"
+  },
+  "content_report_failed": {
+    "message": "无法提交反馈，请重试。"
+  },
+  "content_error_no_text_found": {
+    "message": "未找到日文内容。"
+  },
+  "content_error_backend_empty": {
+    "message": "服务器返回了空响应"
+  },
+  "content_apply_failed_with_reason": {
+    "message": "无法添加振假名：$1"
+  },
+  "shortcut_toggle": {
+    "message": "按 $1 切换显示"
+  },
+  "status_open_supported_page": {
+    "message": "请打开 http/https 网页或本地 HTML/XHTML 文件，然后重试。"
+  },
+  "status_enable_file_access": {
+    "message": "要在本地文件中使用 Tsukeru，请前往扩展程序详情页，启用“允许访问文件网址”。"
+  },
+  "status_local_files_not_supported": {
+    "message": "要处理本地 HTML 文件，请在 Chrome 或 Edge 中启用“允许访问文件网址”。"
+  },
+  "status_furigana_applied": {
+    "message": "已添加振假名"
+  },
+  "status_waiting_for_content": {
+    "message": "正在等待网页内容…"
+  },
+  "status_furigana_cleared": {
+    "message": "已清除振假名"
+  },
+  "status_reload_and_retry": {
+    "message": "无法连接到当前页面，请重新加载后重试。"
+  },
+  "status_could_not_reach_page": {
+    "message": "无法连接到页面"
+  },
+  "status_failed_with_reason": {
+    "message": "失败：$1"
+  },
+  "rate_limit_wait": {
+    "message": "已暂停添加振假名，请在 $1后再试一次。"
+  },
+  "rate_limit_ready": {
+    "message": "可以重试了。"
+  },
+  "rate_limit_countdown_suffix": {
+    "message": "请在 $1后再试一次。"
+  },
+  "rate_limit_service_unavailable": {
+    "message": "服务暂时无法使用，请稍后再试。"
+  },
+  "contextMenuApplyFurigana": {
+    "message": "为当前网页添加振假名"
+  },
+  "contextMenuClearFurigana": {
+    "message": "清除当前网页的振假名"
+  },
+  "errorRateLimitShort": {
+    "message": "已达到使用上限，请在一小时后再试。"
+  },
+  "errorNetworkShort": {
+    "message": "网络发生错误，请稍后再试。"
+  },
+  "errorUnexpectedShort": {
+    "message": "发生意外错误，请重试。"
+  },
+  "rate_limit_toast_request_count": {
+    "message": "已暂停处理，将在 $1后自动重试。",
+    "description": "Toast shown when request-count rate limit is hit"
+  },
+  "rate_limit_toast_char_rate": {
+    "message": "已暂停处理，将在 $1后自动重试。",
+    "description": "Toast shown when char burst rate limit is hit"
+  },
+  "rate_limit_toast_hourly": {
+    "message": "最近处理的文字较多，请稍后再试。",
+    "description": "Toast shown when hourly char budget is exhausted"
+  },
+  "rate_limit_toast_daily": {
+    "message": "已达到每日文本处理上限，请明天再试。",
+    "description": "Toast shown when daily char budget is exhausted"
+  },
+  "rate_limit_toast_nonce": {
+    "message": "Tsukeru 连接发生问题，请稍后再试。",
+    "description": "Toast shown when extension connection protection is temporarily unavailable"
+  },
+  "rate_limit_toast_retry_exhausted": {
+    "message": "Tsukeru 仍在忙碌中，请稍后再试。",
+    "description": "Toast shown after automatic retry attempts are exhausted"
+  },
+  "content_toast_connection_error": {
+    "message": "Tsukeru 连接发生问题，请稍后再试。",
+    "description": "Toast shown when an auth or connection-protection error prevents applying furigana"
+  },
+  "content_toast_generic_error": {
+    "message": "无法添加振假名，请再试一次。",
+    "description": "Toast shown when applying furigana fails without a clearer user-facing reason"
+  },
+  "csv_header_word": {
+    "message": "单词"
+  },
+  "csv_header_reading": {
+    "message": "读音"
+  },
+  "csv_header_definition": {
+    "message": "释义"
+  },
+  "csv_header_sentence_plain_text": {
+    "message": "例句（纯文本）"
+  },
+  "csv_header_jlpt": {
+    "message": "JLPT"
+  },
+  "csv_header_pos": {
+    "message": "词性"
+  },
+  "csv_header_date": {
+    "message": "日期"
+  },
+  "content_word_state_for": {
+    "message": "$1 的学习状态"
+  },
+  "content_state_learning": {
+    "message": "学习中"
+  },
+  "content_state_known": {
+    "message": "已掌握"
+  },
+  "tab_this_page": {
+    "message": "本页"
+  },
+  "tab_my_words": {
+    "message": "我的单词"
+  },
+  "study_mode_label": {
+    "message": "学习模式"
+  },
+  "study_mode_hint": {
+    "message": "隐藏读音。点击单词显示读音，再点击查看释义。"
+  },
+  "page_words_title": {
+    "message": "本页单词"
+  },
+  "page_words_hint": {
+    "message": "将单词标记为“学习中”或“已掌握”。“学习中”的单词可在 EZFurigana 上复习。“已掌握”的单词会隐藏振假名；你可以在设置中关闭此功能。"
+  },
+  "page_words_empty_text": {
+    "message": "本页还没有单词"
+  },
+  "page_words_empty_hint": {
+    "message": "添加振假名后即可查看本页单词"
+  },
+  "review_nothing_yet": {
+    "message": "还没有需要复习的单词"
+  },
+  "review_now": {
+    "message": "立即复习"
+  },
+  "review_due_one": {
+    "message": "有 1 个单词待复习"
+  },
+  "review_due_many": {
+    "message": "有 $1 个单词待复习"
+  },
+  "review_caught_up": {
+    "message": "已完成所有复习"
+  },
+  "review_next_due": {
+    "message": "下次复习：$1"
+  },
+  "level_beyond_n1": {
+    "message": "超出 N1 范围"
+  },
+  "state_learning": {
+    "message": "学习中"
+  },
+  "state_known": {
+    "message": "已掌握"
+  },
+  "known_list_helper": {
+    "message": "这些单词的振假名已隐藏。你可以在设置中更改此选项。"
+  },
+  "clear_list": {
+    "message": "清空清单"
+  },
+  "learning_empty_text": {
+    "message": "学习列表中还没有单词"
+  },
+  "learning_empty_hint": {
+    "message": "点击带有振假名的单词，或在学习模式中显示读音，即可将其添加到这里。"
+  },
+  "known_empty_text": {
+    "message": "还没有已掌握的单词"
+  },
+  "known_empty_hint": {
+    "message": "在词典弹窗或“本页单词”中将单词标记为“已掌握”。"
+  },
+  "settings_hide_known_furigana": {
+    "message": "隐藏已掌握单词的振假名"
+  },
+  "profile_learning": {
+    "message": "学习中 $1 个"
+  },
+  "profile_known": {
+    "message": "已掌握 $1 个"
+  },
+  "profile_words_one": {
+    "message": "1 个单词"
+  },
+  "profile_words_many": {
+    "message": "$1 个单词"
+  },
+  "profile_new": {
+    "message": "新单词 $1 个"
+  },
+  "profile_coverage": {
+    "message": "已掌握 $1%"
+  },
+  "known_readings_hidden": {
+    "message": "已隐藏 $1 个已掌握单词的振假名"
+  },
+  "show_all_words": {
+    "message": "显示全部 $1 个单词"
+  },
+  "word_state_for": {
+    "message": "$1 的学习状态"
+  },
+  "learn_again_word": {
+    "message": "重新学习 $1"
+  },
+  "mark_known_word": {
+    "message": "将 $1 标记为已掌握"
+  },
+  "remove_listed_word": {
+    "message": "从清单移除 $1"
+  },
+  "clear_learning_confirm": {
+    "message": "确定删除所有“学习中”的单词吗？EZFurigana 上的这些单词也会一并删除。"
+  },
+  "clear_known_confirm": {
+    "message": "确定删除所有“已掌握”的单词吗？根据你的设置，扩展程序和 EZFurigana 上可能会重新显示这些单词的振假名。"
+  },
+  "sync_last": {
+    "message": "上次同步：$1"
+  },
+  "sync_never": {
+    "message": "打开一次 EZFurigana 即可同步单词。"
+  },
+  "duration_seconds": {
+    "message": "$1秒"
+  },
+  "duration_minutes_seconds": {
+    "message": "$1分$2秒"
+  },
+  "duration_hours_minutes": {
+    "message": "$1小时$2分"
+  },
+  "error_rate_limited_wait": {
+    "message": "请求次数过多，请在 $1后再试一次。"
+  },
+  "error_rate_limited": {
+    "message": "请求次数过多，请稍后再试。"
+  },
+  "error_network": {
+    "message": "无法连接。请检查网络连接后重试。"
+  },
+  "error_timeout": {
+    "message": "请求超时，请重试。"
+  },
+  "settings_section_language": {
+    "message": "语言",
+    "description": "Settings section heading above the display-language selector."
+  },
+  "settings_label_display_language": {
+    "message": "显示语言",
+    "description": "Label beside the display-language selector."
+  },
+  "settings_option_language_auto": {
+    "message": "自动（$1）",
+    "description": "Automatic display-language option; $1 is the resolved language name in its own script."
+  },
+  "settings_language_hint": {
+    "message": "扩展名称和键盘快捷键说明会跟随浏览器语言。",
+    "description": "Hint: extension manifest name and keyboard-shortcut description use native browser localization."
+  },
+  "settings_language_save_error": {
+    "message": "无法保存显示语言，请再试一次。",
+    "description": "Error shown when saving the display-language preference fails."
+  },
+  "dictionary_translate": {
+    "message": "查看中文释义"
+  },
+  "dictionary_ai_translation": {
+    "message": "AI 翻译"
+  },
+  "dictionary_translation_loading": {
+    "message": "翻译中…"
+  },
+  "dictionary_translation_limit": {
+    "message": "今天的词典翻译次数已用完，明天再来查看中文释义吧。"
+  },
+  "dictionary_translation_supporter": {
+    "message": "今天的免费词典翻译次数已用完。支持者每天可翻译更多单词。"
+  },
+  "dictionary_translation_pending": {
+    "message": "翻译正在准备中，暂时显示英文释义。"
+  },
+  "dictionary_translation_unavailable": {
+    "message": "当前无法提供翻译，暂时显示英文释义。"
+  },
+  "dictionary_english_option": {
+    "message": "英文"
+  },
+  "dictionary_translations_left": {
+    "message": "今天还剩 $1 次"
+  },
+  "dictionary_translation_supporter_daily": {
+    "message": "支持者每天可获得 $1 条新翻译。"
+  },
+  "review_prompt_title": {
+    "message": "Tsukeru 对你有帮助吗？"
+  },
+  "review_prompt_text": {
+    "message": "留下简短评论，能帮助其他日语学习者找到 Tsukeru。"
+  },
+  "review_prompt_rate": {
+    "message": "撰写评论"
+  },
+  "review_prompt_later": {
+    "message": "稍后再说"
+  },
+  "review_prompt_never": {
+    "message": "不再询问"
+  },
+  "settings_label_popup_size": {
+    "message": "词典弹出窗口大小"
+  },
+  "settings_popup_size_small": {
+    "message": "小"
+  },
+  "settings_popup_size_medium": {
+    "message": "中"
+  },
+  "settings_popup_size_large": {
+    "message": "大"
+  },
+  "content_form_label": {
+    "message": "原形"
+  },
+  "content_tab_meaning": {
+    "message": "释义"
+  },
+  "content_tab_kanji": {
+    "message": "汉字"
+  },
+  "content_loading_kanji": {
+    "message": "正在加载汉字..."
+  },
+  "content_kanji_unavailable": {
+    "message": "暂时无法显示汉字详情。"
+  },
+  "content_kanji_grade": {
+    "message": "小学 $1 年级"
+  },
+  "content_kanji_junior_high": {
+    "message": "初中"
+  },
+  "content_kanji_strokes": {
+    "message": "$1画"
+  },
+  "content_inflection_polite": {
+    "message": "敬体"
+  },
+  "content_inflection_negative": {
+    "message": "否定"
+  },
+  "content_inflection_past": {
+    "message": "过去"
+  },
+  "content_inflection_te": {
+    "message": "て形"
+  },
+  "content_inflection_want": {
+    "message": "想要（〜たい）"
+  },
+  "content_inflection_causative": {
+    "message": "使役"
+  },
+  "content_inflection_passive": {
+    "message": "被动"
+  },
+  "content_inflection_potential": {
+    "message": "可能"
+  },
+  "content_inflection_passive_potential": {
+    "message": "被动／可能"
+  },
+  "content_inflection_volitional": {
+    "message": "意向"
+  },
+  "content_inflection_conditional": {
+    "message": "条件形"
+  },
+  "content_inflection_imperative": {
+    "message": "命令"
+  },
+  "content_inflection_adverbial": {
+    "message": "副词形"
+  },
+  "content_frequency_common": {
+    "message": "常用"
+  },
+  "content_frequency_uncommon": {
+    "message": "较少使用"
+  },
+  "content_frequency_rare": {
+    "message": "罕用"
+  },
+  "content_frequency_title": {
+    "message": "该词在日常日语中的使用频率"
+  },
+  "content_stroke_order_of": {
+    "message": "$1的笔顺"
+  },
+  "content_play_strokes": {
+    "message": "播放笔顺"
+  },
+  "content_pause_strokes": {
+    "message": "暂停"
+  },
+  "content_next_stroke": {
+    "message": "下一笔"
+  },
+  "content_stroke_order_data": {
+    "message": "笔顺数据："
+  },
+  "content_pitch_accent_title": {
+    "message": "重音 $1"
+  },
+  "supporter_card_title": {
+    "message": "EZFurigana 账号"
+  },
+  "supporter_state_none": {
+    "message": "连接 EZFurigana 支持者账号后，即可使用句子朗读，每天还能获得更多词典翻译次数。"
+  },
+  "supporter_connect": {
+    "message": "连接账号"
+  },
+  "supporter_connect_hint": {
+    "message": "打开 ezfurigana.com 并登录，Tsukeru 会自动连接账号。"
+  },
+  "supporter_state_supporter": {
+    "message": "支持者账号已连接"
+  },
+  "supporter_checked": {
+    "message": "$1已确认"
+  },
+  "supporter_manage": {
+    "message": "管理账号"
+  },
+  "supporter_state_free": {
+    "message": "已连接免费账号。句子朗读是支持者专享功能。"
+  },
+  "supporter_become": {
+    "message": "成为支持者"
+  },
+  "supporter_state_expired": {
+    "message": "支持者账号连接已过期。打开一次 EZFurigana 即可重新连接。"
+  },
+  "supporter_state_disconnected": {
+    "message": "已断开与 EZFurigana 账号的连接。重新连接即可继续使用支持者权益。"
+  },
+  "supporter_reconnect": {
+    "message": "重新连接"
+  },
+  "supporter_connected_toast": {
+    "message": "Tsukeru 已连接到你的支持者账号，现在可以使用句子朗读。"
+  },
+  "supporter_connected_free_toast": {
+    "message": "Tsukeru 已连接到此免费账号，因此无法使用句子朗读。"
+  }
+}

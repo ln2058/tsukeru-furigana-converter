@@ -35,7 +35,7 @@ for (const browser of ['chrome', 'firefox']) {
     }
   });
 
-  for (const locale of ['en', 'ja', 'ko', 'zh_TW']) {
+  for (const locale of ['en', 'ja', 'ko', 'zh_CN', 'zh_TW']) {
     test(`${browser}/${locale} countdowns round up and keep automatic and manual retry wording distinct`, () => {
       const { sandbox, t } = loadMessages(browser, locale);
       const duration = (ms) => sandbox.TsukeruUiMessages.formatDuration(ms, t);
@@ -43,6 +43,7 @@ for (const browser of ['chrome', 'firefox']) {
         en: ['0s', '1s', '59s', '1m 0s', '1m 30s', '1h 0m', '1h 5m'],
         ja: ['0秒', '1秒', '59秒', '1分0秒', '1分30秒', '1時間0分', '1時間5分'],
         ko: ['0초', '1초', '59초', '1분 0초', '1분 30초', '1시간 0분', '1시간 5분'],
+        zh_CN: ['0秒', '1秒', '59秒', '1分0秒', '1分30秒', '1小时0分', '1小时5分'],
         zh_TW: ['0 秒', '1 秒', '59 秒', '1 分 0 秒', '1 分 30 秒', '1 小時 0 分', '1 小時 5 分'],
       }[locale];
       [-1, 1, 59000, 59001, 90000, 3599999, 3900000].forEach((ms, index) => {
@@ -54,11 +55,11 @@ for (const browser of ['chrome', 'firefox']) {
       const manual = sandbox.TsukeruUiMessages.errorMessage({ status: 429, retryAfter: 90 }, 'apply', t);
       assert.match(automatic, {
         en: /Retrying in 1m 30s/, ja: /1分30秒後に再試行します/,
-        ko: /1분 30초 후에 자동으로 다시 시도합니다/, zh_TW: /將在 1 分 30 秒後自動重試/,
+        ko: /1분 30초 후에 자동으로 다시 시도합니다/, zh_CN: /将在 1分30秒后自动重试/, zh_TW: /將在 1 分 30 秒後自動重試/,
       }[locale]);
       assert.match(manual, {
         en: /Try again in 1m 30s/, ja: /1分30秒後にもう一度お試しください/,
-        ko: /1분 30초 후에 다시 시도해 주세요/, zh_TW: /請在 1 分 30 秒後再試一次/,
+        ko: /1분 30초 후에 다시 시도해 주세요/, zh_CN: /请在 1分30秒后再试一次/, zh_TW: /請在 1 分 30 秒後再試一次/,
       }[locale]);
     });
 

@@ -1175,7 +1175,7 @@ export async function fetchSentenceAudio(text) {
 }
 
 const MAX_EXPLAIN_RESPONSE_BYTES = 32 * 1024;
-const EXPLAIN_LANGUAGES = new Set(['en', 'ja', 'ko', 'zh-TW']);
+const EXPLAIN_LANGUAGES = new Set(['en', 'ja', 'ko', 'zh-CN', 'zh-TW']);
 
 function explainText(value, maxLength) {
   return typeof value === 'string' ? Array.from(value.trim()).slice(0, maxLength).join('') : '';
@@ -1353,7 +1353,7 @@ export async function handleReportReadingError(payload = {}, source) {
 }
 
 // Locale is fixed here; callers cannot select an endpoint or upstream host.
-const LOCALIZED_DICTIONARY_LOCALES = Object.freeze({ ja: 'ja', ko: 'ko', zh_TW: 'zh-Hant', 'zh-TW': 'zh-Hant' });
+const LOCALIZED_DICTIONARY_LOCALES = Object.freeze({ ja: 'ja', ko: 'ko', zh_CN: 'zh', 'zh-CN': 'zh', zh_TW: 'zh-Hant', 'zh-TW': 'zh-Hant' });
 const localizedDefinitionInFlight = new Map();
 
 export function getLocalizedDefinitionCacheKey(word, reading, locale) {

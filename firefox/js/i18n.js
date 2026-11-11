@@ -26,6 +26,7 @@ Security Notes:
     en: Object.freeze({ lang: 'en', name: 'English', home: '' }),
     ja: Object.freeze({ lang: 'ja', name: '日本語', home: '/jp' }),
     ko: Object.freeze({ lang: 'ko', name: '한국어', home: '/ko' }),
+    zh_CN: Object.freeze({ lang: 'zh-CN', name: '简体中文', home: '/zh' }),
     zh_TW: Object.freeze({ lang: 'zh-TW', name: '繁體中文', home: '/zh-hant' }),
   });
   const api = globalThis.chrome || globalThis.browser;

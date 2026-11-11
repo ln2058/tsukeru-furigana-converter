@@ -195,12 +195,13 @@ for (const browser of ['chrome', 'firefox']) {
       let listeners = 0;
       const sandbox = {
         window: { location: { origin }, postMessage(message, target) { posts.push({ message, target }); }, addEventListener() { listeners++; } },
+        document: { cookie: '', addEventListener() { listeners++; } },
         chrome: { storage: { onChanged: { addListener() { listeners++; } } } },
       };
       vm.runInNewContext(read(browser, 'js/content-sync.js'), sandbox);
       const allowed = origin === 'https://www.ezfurigana.com';
       assert.equal(posts.length, allowed ? 1 : 0, origin);
-      assert.equal(listeners, allowed ? 2 : 0, origin);
+      assert.equal(listeners, allowed ? 4 : 0, origin); // message, focus, visibility, storage
       if (allowed) assert.equal(posts[0].target, origin);
     }
   });

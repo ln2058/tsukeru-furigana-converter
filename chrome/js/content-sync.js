@@ -14,16 +14,18 @@ Outputs:
 
 Side Effects:
 - Adds one window message listener and one storage change listener on EZFurigana pages only.
-- While signed in, POSTs to the website's own /api/extension/supporter-token (daily for Supporters, at most once a minute otherwise) with its CSRF cookie (the only request this script makes). A `?tsukeru=connect` address or the page's supporter message asks right away, at most once per page for the message.
+- While signed in, POSTs to the website's own /api/extension/supporter-token (daily for Supporters, at most once a minute otherwise) with its CSRF cookie (the only request this script makes). A `?tsukeru=connect` address, the page's supporter message, or a changed sign-in cookie (seen on load, focus, or when the tab becomes visible) asks right away, at most once every few seconds.
 
 Failure Modes:
 - Without an answer from the page, an exchange gives up after a timeout and nothing is merged.
 - Messages from other windows, origins, sources, or protocol versions are ignored.
 - A failed or refused Supporter request changes nothing; the next visit tries again.
+- If the sign-in cookie cannot be hashed or tab storage is blocked, account-change detection is skipped and the usual visit-time check still runs.
 
 Security Notes:
 - Runs only on https://www.ezfurigana.com pages (manifest match) and posts only to that origin.
 - Word sync carries only words, readings, states, schedule times, and short sentences from the reader's lists; nothing is sent to a server.
+- Only a SHA-256 digest of the CSRF cookie is kept (tab session storage) to notice an account change; the cookie itself is never stored or posted.
 - The Supporter token goes straight to the background and is never posted to the page window.
 */
 (function startWordSync() {
@@ -107,10 +109,9 @@ Security Notes:
       schedule();
     } else if (data.type === 'snapshot') {
       finishExchange(data);
-    } else if (data.type === 'supporter' && !checkoutRefreshed) {
-      // The checkout success page saw Supporter activate after this page loaded.
-      checkoutRefreshed = true;
-      refreshSupporterToken({ now: true }).catch((error) => console.warn('Tsukeru: Supporter check failed', error?.message));
+    } else if (data.type === 'supporter') {
+      // The page saw Supporter activate (checkout) or the account change after this page loaded.
+      askNow();
     }
   });
 
@@ -120,8 +121,49 @@ Security Notes:
     if (Object.keys(changes).some((key) => key.startsWith('w:') || key.startsWith('wr:'))) schedule();
   });
 
+  const FORCED_REFRESH_GAP_MS = 5000;
+  const FINGERPRINT_KEY = 'tsukeru:account';
+  let lastForcedAt = 0;
+  let refreshing = false;
+
   // Signed-in pages carry the CSRF cookie; without it there is no account to ask about.
-  let checkoutRefreshed = false;
+  function csrfCookie() {
+    const cookie = document.cookie.split('; ').find((part) => part.startsWith('ez_csrf_token='));
+    return cookie ? decodeURIComponent(cookie.slice('ez_csrf_token='.length)) : '';
+  }
+
+  // A digest of the sign-in cookie, so a different account is noticed without keeping the cookie.
+  async function accountFingerprint() {
+    const value = csrfCookie();
+    if (!value) return '';
+    try {
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+      return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+    } catch (_) { return ''; }
+  }
+
+  function readFingerprint() {
+    try { return sessionStorage.getItem(FINGERPRINT_KEY) || ''; } catch (_) { return ''; }
+  }
+
+  function writeFingerprint(value) {
+    try { sessionStorage.setItem(FINGERPRINT_KEY, value); } catch (_) { /* detection is skipped */ }
+  }
+
+  // Skip the recheck wait, but not more than once every few seconds.
+  function askNow() {
+    const now = Date.now();
+    if (refreshing || now - lastForcedAt < FORCED_REFRESH_GAP_MS) return;
+    lastForcedAt = now;
+    refreshSupporterToken({ now: true }).catch((error) => console.warn('Tsukeru: Supporter check failed', error?.message));
+  }
+
+  // Signing in as another account changes the cookie; ask again when the tab is back in view.
+  async function checkAccountChanged() {
+    const fingerprint = await accountFingerprint();
+    const known = readFingerprint();
+    if (fingerprint && known && fingerprint !== known) askNow();
+  }
 
   // Asked to connect (the popup's Connect button or a finished checkout): skip the recheck wait.
   function connectAsked() {
@@ -129,11 +171,27 @@ Security Notes:
   }
 
   async function refreshSupporterToken({ now = connectAsked() } = {}) {
-    const cookie = document.cookie.split('; ').find((part) => part.startsWith('ez_csrf_token='));
-    if (!cookie || !chrome.runtime?.id) return;
+    const csrf = csrfCookie();
+    if (!csrf || !chrome.runtime?.id || refreshing) return;
+    refreshing = true;
+    try {
+      await requestSupporterToken(csrf, now);
+    } finally {
+      refreshing = false;
+    }
+  }
+
+  async function requestSupporterToken(csrf, now) {
+    const fingerprint = await accountFingerprint();
+    // A different sign-in cookie since this tab last asked means another account.
+    const known = readFingerprint();
+    if (fingerprint && known && fingerprint !== known) now = true;
     if (!now) {
       const due = await chrome.runtime.sendMessage({ action: 'supporterRefreshDue' });
-      if (!due?.success || !due.due) return;
+      if (!due?.success || !due.due) {
+        if (fingerprint) writeFingerprint(fingerprint);
+        return;
+      }
     }
     // Chrome content-script fetches run as the page, so they carry the site's cookies.
     const pageFetch = fetch;
@@ -141,7 +199,7 @@ Security Notes:
       method: 'POST',
       credentials: 'same-origin',
       cache: 'no-store',
-      headers: { 'X-CSRF-Token': decodeURIComponent(cookie.slice('ez_csrf_token='.length)) },
+      headers: { 'X-CSRF-Token': csrf },
     });
     if (!response.ok) return;
     const body = await response.json();
@@ -151,6 +209,7 @@ Security Notes:
       token: body?.token,
       expiresAt: body?.expires_at,
     });
+    if (fingerprint) writeFingerprint(fingerprint);
     confirmConnection(stored, now);
   }
 
@@ -162,6 +221,11 @@ Security Notes:
       : TsukeruI18n.t('supporter_connected_free_toast', undefined, 'Tsukeru is connected. This account is on the Free plan, so sentence audio stays off.');
     showToast(message, { type: 'info', duration: 7000 });
   }
+
+  window.addEventListener('focus', () => { checkAccountChanged(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkAccountChanged();
+  });
 
   post({ type: 'hello' });
   refreshSupporterToken().catch((error) => console.warn('Tsukeru: Supporter check failed', error?.message));

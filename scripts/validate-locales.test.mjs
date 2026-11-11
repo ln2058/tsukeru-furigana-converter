@@ -12,9 +12,9 @@ function validate(mutate = () => {}, mutateFiles = () => {}) {
   const root = mkdtempSync(path.join(tmpdir(), 'tsukeru-locales-'));
   try {
     for (const browser of ['chrome', 'firefox']) {
-      for (const locale of ['en', 'ja', 'ko', 'zh_TW']) {
+      for (const locale of ['en', 'ja', 'ko', 'zh_CN', 'zh_TW']) {
         const catalog = {
-          ui_lang: { message: locale === 'zh_TW' ? 'zh-TW' : locale },
+          ui_lang: { message: locale === 'zh_CN' ? 'zh-CN' : locale === 'zh_TW' ? 'zh-TW' : locale },
           manifest_name: { message: 'Tsukeru' },
           manifest_description: { message: 'Furigana' },
           duration: { message: locale === 'en' ? '$1 min $2 sec' : '$2 seconds, $1 minutes' },
@@ -28,7 +28,7 @@ function validate(mutate = () => {}, mutateFiles = () => {}) {
       }
     }
     for (const browser of ['chrome', 'firefox']) {
-      const options = ['en', 'ja', 'ko', 'zh_TW'].map(code => `<option value="${code}" lang="${code.replace('_', '-')}">${code}</option>`).join('');
+      const options = ['en', 'ja', 'ko', 'zh_CN', 'zh_TW'].map(code => `<option value="${code}" lang="${code.replace('_', '-')}">${code}</option>`).join('');
       writeFileSync(path.join(root, browser, 'popup.html'), `<button data-i18n-aria-label="duration"></button><select id="uiLocale"><option value="">Auto</option>${options}</select>`);
       mkdirSync(path.join(root, browser, 'js'));
       writeFileSync(path.join(root, browser, 'js', 'i18n.js'), readFileSync(new URL(`../${browser}/js/i18n.js`, import.meta.url)));

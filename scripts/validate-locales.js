@@ -27,10 +27,12 @@ const LOCALE_FILES = [
   CANONICAL_LOCALE_FILE,
   path.join('chrome', '_locales', 'ja', 'messages.json'),
   path.join('chrome', '_locales', 'ko', 'messages.json'),
+  path.join('chrome', '_locales', 'zh_CN', 'messages.json'),
   path.join('chrome', '_locales', 'zh_TW', 'messages.json'),
   path.join('firefox', '_locales', 'en', 'messages.json'),
   path.join('firefox', '_locales', 'ja', 'messages.json'),
   path.join('firefox', '_locales', 'ko', 'messages.json'),
+  path.join('firefox', '_locales', 'zh_CN', 'messages.json'),
   path.join('firefox', '_locales', 'zh_TW', 'messages.json')
 ];
 // File-access instructions differ because browser runtime permissions differ.
@@ -286,7 +288,7 @@ function main() {
   for (const [filePath, { json }] of localeData) {
     if (!filePath.startsWith(`chrome${path.sep}`)) continue;
     // Enforce shared wording for new catalogs; leave the existing en/ja copy untouched.
-    if (!['ko', 'zh_TW'].includes(path.basename(path.dirname(filePath)))) continue;
+    if (!['ko', 'zh_CN', 'zh_TW'].includes(path.basename(path.dirname(filePath)))) continue;
     const firefoxPath = filePath.replace(/^chrome/, 'firefox');
     const firefox = localeData.get(firefoxPath);
     if (!firefox) continue;

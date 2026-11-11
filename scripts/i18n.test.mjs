@@ -12,7 +12,7 @@ const plain = value => JSON.parse(JSON.stringify(value));
 function extension(browser, { preference = '', auto = 'en', fetchCatalog, get } = {}) {
   const listeners = new Set();
   const requests = [];
-  const catalogs = Object.fromEntries(['en', 'ja', 'ko', 'zh_TW'].map(code =>
+  const catalogs = Object.fromEntries(['en', 'ja', 'ko', 'zh_CN', 'zh_TW'].map(code =>
     [code, JSON.parse(read(browser, `_locales/${code}/messages.json`))]));
   const sandbox = {
     console: { warn() {} }, setTimeout, clearTimeout,

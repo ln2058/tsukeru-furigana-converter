@@ -353,7 +353,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       && !/[\u0000-\u001f\u007f]/.test(value) && !/https?:\/\//i.test(value);
     if (sender.id !== chrome.runtime.id || !validText(message.word) || !message.word.trim()
         || !validText(message.reading) || !['', 'hiragana', 'katakana', 'romaji'].includes(message.readingType)
-        || !['en', 'ja', 'ko', 'zh_TW', 'zh-TW'].includes(message.uiLocale)
+        || !['en', 'ja', 'ko', 'zh-CN', 'zh_CN', 'zh_TW', 'zh-TW'].includes(message.uiLocale)
         || typeof message.cacheOnly !== 'boolean') {
       sendResponse({ success: false, error: 'Invalid localized lookup' });
       return false;

@@ -14,7 +14,7 @@ Outputs:
 - The card layout shared with the EZFurigana website: frequency badge, pitch-marked reading, form line with conjugation labels, Meaning / Kanji tabs, and a Kanji tab that loads on first open with stroke-order diagrams and KanjiVG attribution.
 - A "Play sentence" line showing the sentence around the clicked word (Supporter audio), tagged "Supporter" when this browser holds no Supporter token, with "Explain" to its right: the sentence explained in the display language (Supporters), opened below the line.
 - A play button, like the word's, at the end of each TKGJE example with a recorded reading (Supporter audio, refused the same way as Play sentence).
-- In ja/ko/zh-TW, translation controls at the top of the Meaning tab: View translation with the new translations a guest has left today, an AI translation / English switch once translated, and a Supporter line when none are left. Supporters' translations start without a click.
+- In ja/ko/zh-CN/zh-TW, translation controls at the top of the Meaning tab: View translation with the new translations a guest has left today, an AI translation / English switch once translated, and a Supporter line when none are left. Supporters' translations start without a click.
 - `tsukeru-learning`, `tsukeru-known`, and `tsukeru-revealed` classes and Study/known-reading attributes on the page.
 - `openTooltipForWord` opens the tooltip on a word named by the extension popup's Words in this text (`openWordTooltip`).
 - A `pageWordsChanged` runtime notice once furigana insertions pause (at most every few seconds while they continue), so an open popup re-lists the page's words.
@@ -888,7 +888,7 @@ function normalizeTkgjeExamples(examples, senses, definitionLang = 'en') {
 
 function normalizeDefinitionData(data) {
   const localized = ['je_localized_cache', 'je_localized_generated'].includes(data?.source);
-  const definitionLang = localized ? ({ ja: 'ja', ko: 'ko', 'zh-Hant': 'zh-TW' }[data.locale] || 'en') : 'en';
+  const definitionLang = localized ? ({ ja: 'ja', ko: 'ko', zh: 'zh-CN', 'zh-Hant': 'zh-TW' }[data.locale] || 'en') : 'en';
   const richEntry = (data?.source === 'je_dict' || localized) && data.entry && typeof data.entry === 'object'
     ? data.entry
     : null;
@@ -1325,7 +1325,7 @@ const MAX_SHOWN_EXPLANATIONS = 30;
 // Explanations shown on this page, by language and sentence, so reopening a word does not ask again.
 const shownExplanations = new Map();
 // The display language as the tag EZFurigana keeps explanations under.
-const EXPLANATION_LOCALE_TAGS = { en: 'en', ja: 'ja', ko: 'ko', 'zh-TW': 'zh-Hant' };
+const EXPLANATION_LOCALE_TAGS = { en: 'en', ja: 'ja', ko: 'ko', 'zh-CN': 'zh', 'zh-TW': 'zh-Hant' };
 
 /** Keep a Supporter's explanation with the open word in My Words; the background validates it. */
 function keepExplanation(element, sentence, explanation, language) {
@@ -2553,7 +2553,7 @@ async function requestTooltipTranslation(state, cacheOnly) {
   state.busy = false;
   state.checking = false;
   if (result && ['je_localized_cache', 'je_localized_generated'].includes(result.source)
-      && result.locale === ({ ja: 'ja', ko: 'ko', 'zh-TW': 'zh-Hant' }[state.locale])
+      && result.locale === ({ ja: 'ja', ko: 'ko', 'zh-CN': 'zh', 'zh-TW': 'zh-Hant' }[state.locale])
       && result.entry && typeof result.entry === 'object') {
     state.translated = result;
     state.showingTranslation = true;
@@ -2606,7 +2606,7 @@ function handleTranslationClick(event, state) {
  */
 function startLocalizedTooltip(tooltip, wordInfo, english, recordPromise, token, { trusted = false } = {}) {
   const locale = TsukeruI18n.language();
-  if (!['ja', 'ko', 'zh-TW'].includes(locale) || english?.source !== 'je_dict' || !english.entry) return;
+  if (!['ja', 'ko', 'zh-CN', 'zh-TW'].includes(locale) || english?.source !== 'je_dict' || !english.entry) return;
   const state = { tooltip, wordInfo, english, recordPromise, token, locale, trusted: trusted === true,
     translated: null, showingTranslation: false, busy: true, checking: true, reason: '',
     supporter: false, remaining: null, supporterDaily: 0 };

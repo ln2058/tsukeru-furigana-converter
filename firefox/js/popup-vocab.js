@@ -16,7 +16,7 @@ Side Effects:
 - Coalesces page refreshes, pauses them during word saves, and skips unchanged page-list renders.
 - Sends one `playAudio` request per speaker click (none before a click) and plays the clip, or the browser's Japanese voice when it fails.
 - Sends one `playSentence` request per sentence click (Supporter audio) and shows a notice when it is refused.
-- Opening a saved word sends a dictionary lookup and, for ja/ko/zh-TW, a cache-only localized lookup (never one that creates a translation).
+- Opening a saved word sends a dictionary lookup and, for ja/ko/zh-CN/zh-TW, a cache-only localized lookup (never one that creates a translation).
 - Writes the Study mode setting to `chrome.storage.sync` and triggers browser downloads.
 - Export fills a bounded number of missing definitions through background lookups and stores them with the words.
 
@@ -234,7 +234,7 @@ const ICONS = {
 // Meanings a saved word shows when opened.
 const ENTRY_SENSES = 3;
 // The extension's display languages with dictionary translations.
-const LOCALIZED_LANGUAGES = new Set(['ja', 'ko', 'zh-TW']);
+const LOCALIZED_LANGUAGES = new Set(['ja', 'ko', 'zh-CN', 'zh-TW']);
 
 let wordRecords = [];
 let wordSummary = null;
