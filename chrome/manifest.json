@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_manifest_name__",
-  "version": "4.5.0",
+  "version": "4.5.1",
   "description": "__MSG_manifest_description__",
   "default_locale": "en",
   "permissions": [
@@ -63,8 +63,8 @@
   "commands": {
     "toggle-furigana": {
       "suggested_key": {
-        "default": "Alt+Shift+A",
-        "mac": "MacCtrl+Shift+A"
+        "default": "Ctrl+Shift+F",
+        "mac": "MacCtrl+Shift+F"
       },
       "description": "__MSG_command_toggle_furigana_description__"
     }

@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 
 // The website page this script runs on, with a Supporter check that is not yet due.
-function page(browser, search = '') {
+function page(browser, search = '', changed = false, disconnected = false) {
   const runtime = [];
   const fetches = [];
   const toasts = [];
@@ -35,8 +35,8 @@ function page(browser, search = '') {
         id: 'extension-id',
         async sendMessage(message) {
           runtime.push(message.action);
-          if (message.action === 'supporterRefreshDue') return { success: true, due: false };
-          if (message.action === 'supporterHandoff') return { success: true, plan: 'supporter', changed: false };
+          if (message.action === 'supporterRefreshDue') return { success: true, due: message.forced === true && !disconnected };
+          if (message.action === 'supporterHandoff') return { success: true, plan: 'supporter', changed };
           return { success: true };
         },
       },
@@ -52,7 +52,7 @@ function page(browser, search = '') {
   };
 }
 
-const settle = async () => { for (let index = 0; index < 10; index += 1) await new Promise(resolve => setImmediate(resolve)); };
+const settle = async () => { for (let index = 0; index < 10; index += 1) await new Promise(resolve => setTimeout(resolve, 5)); };
 
 for (const browser of ['chrome', 'firefox']) {
   test(`${browser} signing in as another account asks right away when the tab regains focus`, async () => {
@@ -71,6 +71,30 @@ for (const browser of ['chrome', 'firefox']) {
     assert.equal(p.fetches.length, 1, 'the new account is remembered');
   });
 
+  test(`${browser} rechecks that change nothing stay quiet`, async () => {
+    const p = page(browser);
+    await settle();
+    p.send({ type: 'supporter' });
+    p.document.cookie = 'ez_csrf_token=def';
+    p.focus();
+    await settle();
+    assert.ok(p.fetches.length >= 1);
+    assert.equal(p.toasts.length, 0);
+  });
+
+  test(`${browser} a disconnected browser is not reconnected by rechecks, only by Connect`, async () => {
+    const p = page(browser, '', true, true);
+    await settle();
+    p.send({ type: 'supporter' });
+    p.document.cookie = 'ez_csrf_token=def';
+    p.focus();
+    await settle();
+    assert.equal(p.fetches.length, 0);
+    const c = page(browser, '?tsukeru=connect', true, true);
+    await settle();
+    assert.equal(c.fetches.length, 1);
+  });
+
   test(`${browser} an ordinary page waits for the recheck interval`, async () => {
     const p = page(browser);
     await settle();
@@ -87,7 +111,7 @@ for (const browser of ['chrome', 'firefox']) {
   });
 
   test(`${browser} the checkout page's supporter message asks right away, once`, async () => {
-    const p = page(browser);
+    const p = page(browser, '', true);
     await settle();
     p.send({ type: 'supporter' });
     p.send({ type: 'supporter' });

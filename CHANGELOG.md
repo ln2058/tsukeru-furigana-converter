@@ -1,5 +1,20 @@
 # Changelog
 
+## 4.5.1 — 2026-11-12
+
+### Added
+
+- **Simplified Chinese**: the popup, dictionary tooltip, notices, and settings are available in 简体中文, alongside English, Japanese, Korean, and Traditional Chinese. A browser set to Simplified Chinese uses it automatically, and dictionary translations and Explain this sentence work in it too.
+
+### Changed
+
+- **Chrome and Edge shortcut is `Ctrl+Shift+F` again** (`Control+Shift+F` on macOS). Chrome and Edge keep `Alt+Shift+A` for their own use and never assigned it to Tsukeru. Firefox keeps `Alt+Shift+A`. If the shortcut does not work or shows as not set, another extension may be using it: check your browser's extension shortcut settings and choose a different key.
+
+### Fixed
+
+- **Disconnected stays disconnected**: when you disconnect on your EZFurigana account page, Tsukeru no longer reconnects by itself when you switch tabs, reload, or the page rechecks. Only Connect account in the popup reconnects.
+- **Fewer connection messages on EZFurigana**: "Tsukeru is connected" now appears only when the connection really changes, such as switching between Free and Supporter, or after you choose Connect. It no longer reappears when the tab regains focus or the page reloads.
+
 ## 4.5.0 — 2026-11-10
 
 ### Changed

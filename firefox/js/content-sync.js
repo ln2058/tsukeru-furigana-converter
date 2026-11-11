@@ -166,11 +166,22 @@ Security Notes:
   }
 
   // Asked to connect (the popup's Connect button or a finished checkout): skip the recheck wait.
+  // The address is cleaned once read, so a reload or later visit does not repeat the confirmation.
   function connectAsked() {
-    return new URLSearchParams(window.location.search).get('tsukeru') === 'connect';
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('tsukeru') !== 'connect') return false;
+      try {
+        params.delete('tsukeru');
+        const query = params.toString();
+        history.replaceState(history.state, '', window.location.pathname + (query ? `?${query}` : '') + window.location.hash);
+      } catch (_) { /* the confirmation may repeat on reload */ }
+      return true;
+    } catch (_) { return false; }
   }
+  let connectRequested = false;
 
-  async function refreshSupporterToken({ now = connectAsked() } = {}) {
+  async function refreshSupporterToken({ now = false } = {}) {
     const csrf = csrfCookie();
     if (!csrf || !chrome.runtime?.id || refreshing) return;
     refreshing = true;
@@ -186,8 +197,10 @@ Security Notes:
     // A different sign-in cookie since this tab last asked means another account.
     const known = readFingerprint();
     if (fingerprint && known && fingerprint !== known) now = true;
-    if (!now) {
-      const due = await chrome.runtime.sendMessage({ action: 'supporterRefreshDue' });
+    // Everything but the user's own Connect asks the extension first; a disconnected browser stays so.
+    const explicit = connectRequested;
+    if (!explicit) {
+      const due = await chrome.runtime.sendMessage({ action: 'supporterRefreshDue', forced: now });
       if (!due?.success || !due.due) {
         if (fingerprint) writeFingerprint(fingerprint);
         return;
@@ -211,9 +224,14 @@ Security Notes:
       plan: body?.plan,
       token: body?.token,
       expiresAt: body?.expires_at,
+      connect: explicit,
     });
     if (fingerprint) writeFingerprint(fingerprint);
-    confirmConnection(stored, now);
+    // Only a real change of connection, or the user's own Connect click, is worth a message.
+    // Rechecks after focus or a cookie rotation stay quiet when nothing changed.
+    const asked = connectRequested;
+    connectRequested = false;
+    confirmConnection(stored, asked);
   }
 
   // A new connection (or the popup's Connect button) gets a short confirmation.
@@ -231,5 +249,6 @@ Security Notes:
   });
 
   post({ type: 'hello' });
-  refreshSupporterToken().catch((error) => console.warn('Tsukeru: Supporter check failed', error?.message));
+  connectRequested = connectAsked();
+  refreshSupporterToken({ now: connectRequested }).catch((error) => console.warn('Tsukeru: Supporter check failed', error?.message));
 })();

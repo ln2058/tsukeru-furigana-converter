@@ -16,7 +16,7 @@
 
 Tsukeru is a browser extension for Chrome, Microsoft Edge, and Firefox. It adds readings above kanji while preserving the layout of the page, with dictionary lookup, word lists, and Anki export.
 
-Version **4.5.0** reads words split by links or formatting as one word, keeps a Supporter's sentence explanations in My Words, lets you follow links that have furigana, moves the keyboard shortcut to `Alt+Shift+A`, and stays disconnected after you disconnect it on EZFurigana. Version 4.4.0 added Explain this sentence for EZFurigana Supporters, automatic furigana on sites you choose, and loading long pages around what you are reading. See the [changelog](CHANGELOG.md) for details.
+Version **4.5.1** adds Simplified Chinese, returns the Chrome and Edge shortcut to `Ctrl+Shift+F`, keeps a disconnected account disconnected, and shows fewer connection messages on EZFurigana. Version 4.5.0 reads words split by links or formatting as one word, keeps a Supporter's sentence explanations in My Words, lets you follow links that have furigana, moves the keyboard shortcut, and stays disconnected after you disconnect it on EZFurigana. Version 4.4.0 added Explain this sentence for EZFurigana Supporters, automatic furigana on sites you choose, and loading long pages around what you are reading. See the [changelog](CHANGELOG.md) for details.
 
 ![Furigana on a Japanese Wikipedia article](screenshots/wikipedia.png)
 
@@ -36,7 +36,7 @@ Version **4.5.0** reads words split by links or formatting as one word, keeps a 
 - Export to Anki through EZFurigana, or download a list as a CSV file.
 - Highlight words by JLPT level or part of speech, and choose a light or dark theme.
 - Handle changing content on sites such as YouTube and X when dynamic-page processing is enabled.
-- Use the extension in English, Japanese, Korean, or Traditional Chinese.
+- Use the extension in English, Japanese, Korean, Simplified Chinese, or Traditional Chinese.
 
 ![Furigana on YouTube subtitles](screenshots/youtubesubtitles.png)
 ![Furigana on YouTube comments](screenshots/youtubecomments.png)
@@ -46,7 +46,8 @@ Version **4.5.0** reads words split by links or formatting as one word, keeps a 
 
 Open the extension and select **Apply Furigana**. You can also use the context menu or the keyboard shortcut:
 
-- `Alt+Shift+A` (`Control+Shift+A` on macOS) in Chrome, Edge, and Firefox
+- `Ctrl+Shift+F` (`Control+Shift+F` on macOS) in Chrome and Edge
+- `Alt+Shift+A` (`Control+Shift+A` on macOS) in Firefox
 
 The popup shows the shortcut your browser has set. You can change it in `chrome://extensions/shortcuts` (Chrome and Edge) or under **Manage Extension Shortcuts** in Firefox's add-ons page.
 

@@ -242,8 +242,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true;
     }
     const work = message.action === 'supporterRefreshDue'
-      ? supporterRefreshDue().then((due) => ({ success: true, due }))
-      : storeSupporterHandoff({ plan: message.plan, token: message.token, expiresAt: message.expiresAt })
+      ? supporterRefreshDue(Date.now(), { forced: message.forced === true }).then((due) => ({ success: true, due }))
+      : storeSupporterHandoff({ plan: message.plan, token: message.token, expiresAt: message.expiresAt }, Date.now(), { connect: message.connect === true })
         .then(({ plan, changed }) => ({ success: true, plan, changed }));
     work.then(sendResponse).catch(() => sendResponse({ success: false, error: 'Supporter handoff failed' }));
     return true;

@@ -393,9 +393,11 @@ function _hasLiveToken(record, now) {
 }
 
 /** Whether the website page should ask for a fresh token (Supporters daily, Free each visit). */
-export async function supporterRefreshDue(now = Date.now()) {
+export async function supporterRefreshDue(now = Date.now(), { forced = false } = {}) {
   const record = await _readSupporter();
+  // Only the popup's Connect reconnects a disconnected browser, even for a forced recheck.
   if (record?.plan === 'disconnected') return false;
+  if (forced) return true;
   if (!Number.isFinite(record?.checkedAt)) return true;
   if (record.plan === 'supporter' && !_hasLiveToken(record, now)) return true;
   if (record.plan === 'expired') return true;
@@ -408,11 +410,13 @@ export async function supporterRefreshDue(now = Date.now()) {
 }
 
 /** Store the website's answer: a Supporter token, or that the account is Free. */
-export async function storeSupporterHandoff(answer, now = Date.now()) {
+export async function storeSupporterHandoff(answer, now = Date.now(), { connect = false } = {}) {
   const storage = getStorageLocal();
   _supporterPlanCache = null;
   // `changed` tells the website page to confirm a new connection once.
   const before = (await getSupporterStatus(now)).state;
+  // A disconnected browser stays so until the user's own Connect (never an automatic recheck).
+  if (before === 'disconnected' && !connect) return { plan: 'disconnected', changed: false };
   if (answer?.plan === 'supporter' && _hasLiveToken(answer, now)) {
     await storage.set({ [_SUPPORTER_KEY]: { plan: 'supporter', token: answer.token, expiresAt: answer.expiresAt, checkedAt: now } });
     return { plan: 'supporter', changed: before !== 'supporter' };

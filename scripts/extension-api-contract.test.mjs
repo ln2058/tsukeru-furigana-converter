@@ -145,7 +145,10 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(await api.hasSupporterToken(now), false);
     assert.equal(await api.supporterRefreshDue(now + 3 * 86_400_000), false);
     assert.deepEqual({ ...(await api.getSupporterStatus(now)) }, { state: 'disconnected' });
-    const reconnected = await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
+    const ignored = await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
+    assert.equal(ignored.changed, false, 'an automatic recheck cannot reconnect');
+    assert.equal((await api.getSupporterStatus(now)).state, 'disconnected');
+    const reconnected = await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now, { connect: true });
     assert.equal(reconnected.changed, true, 'reconnecting is confirmed');
   });
 
@@ -247,7 +250,7 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.deepEqual({ ...(await api.getSupporterStatus(now + 60_000)) }, { state: 'disconnected' });
 
     // The daily renewal first checks the token, and renews only a connected browser.
-    await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
+    await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now, { connect: true });
     assert.equal(await api.supporterRefreshDue(now + 86_400_000), true);
     assert.equal(await api.supporterRefreshDue(now + 86_400_000), false, 'a disconnected token is not renewed');
     assert.equal(storage.values.tsukeruSupporter.plan, 'disconnected');
