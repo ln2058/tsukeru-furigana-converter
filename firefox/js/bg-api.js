@@ -11,7 +11,7 @@ Outputs:
 
 Side Effects:
 - Performs network fetches, tracks shared cooldown deadlines, and coalesces nonce acquisition/recovery across API requests.
-- Persists only validated cooldown metadata, the current UTC day's random ID, and the website's Supporter token answer through extension-local storage; backend quotas remain authoritative. A token refused before its expiry marks this browser disconnected, and the website does not reconnect it until the popup's Connect.
+- Persists only validated cooldown metadata, the current UTC day's and ISO week's random IDs, and the website's Supporter token answer through extension-local storage; backend quotas remain authoritative. A token refused before its expiry marks this browser disconnected, and the website does not reconnect it until the popup's Connect.
 - Shares logical dictionary lookups and bounds completed in-memory dictionary results.
 - Reads/writes furigana fragments and successful localized dictionary entries through `bg-cache`.
 
@@ -23,7 +23,7 @@ Failure Modes:
 Security Notes:
 - Treat all backend responses as untrusted until sanitized by content scripts.
 - Redacts non-web tab URLs before sending backend metadata.
-- Sends only the per-worker session ID and the manifest version as identifying headers, plus a random day ID on furigana requests that is replaced each UTC day; no stable install ID.
+- Sends only the per-worker session ID and the manifest version as identifying headers, plus, on furigana requests, a random day ID replaced each UTC day, a random week ID replaced each ISO week (UTC), and the browser UI language's primary subtag; no stable install ID.
 - Sends the Supporter token only to Supporter endpoints (the plan check, sentence audio, sentence explanations, and localized dictionary lookups that may create a new entry, which count against the Supporter's allowance), never with furigana, English dictionary, or cache-only requests.
 - Sentence audio sends one plain sentence of at most 120 characters, only after the reader clicks Play sentence; responses are bounded audio/mpeg.
 - Sentence explanations send one plain sentence of at most 120 characters and the display language, only after the reader clicks Explain; responses are bounded JSON, reduced to bounded plain-text fields.
@@ -318,46 +318,77 @@ const _EXT_VERSION = (() => {
   }
 })();
 
-// Random ID for counting daily users. A new one replaces it at each UTC day,
-// so it cannot serve as an install ID; the backend also salts it by date.
-const _EXT_DAY_ID_KEY = 'tsukeruDayId';
-const _EXT_DAY_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-let _extDayId = null;
-let _extDayIdPromise = null;
+// Random IDs for counting daily and weekly users. A new one replaces each at
+// the next UTC day or ISO week, so neither can serve as an install ID; the
+// backend also salts them by date or week.
+const _EXT_PERIOD_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-function _isCurrentDayId(record, day) {
-  return record?.day === day && typeof record.id === 'string' && _EXT_DAY_ID_RE.test(record.id);
+function _utcDay(now) {
+  return new Date(now).toISOString().slice(0, 10);
 }
 
-async function _loadExtensionDayId(day) {
-  const storage = getStorageLocal();
+// ISO 8601 week in UTC, such as 2026-W46. Weeks start on Monday and belong to
+// the year of their Thursday.
+function _isoWeek(now) {
+  const date = new Date(now);
+  const weekday = (date.getUTCDay() + 6) % 7;
+  const thursday = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - weekday + 3);
+  const year = new Date(thursday).getUTCFullYear();
+  const week = 1 + Math.floor((thursday - Date.UTC(year, 0, 1)) / 604_800_000);
+  return `${year}-W${String(week).padStart(2, '0')}`;
+}
+
+function _periodIdSource(storageKey, periodField, periodOf) {
+  let current = null;
+  let pending = null;
+  const isCurrent = (record, period) =>
+    record?.[periodField] === period && typeof record.id === 'string' && _EXT_PERIOD_ID_RE.test(record.id);
+
+  async function load(period) {
+    const storage = getStorageLocal();
+    try {
+      const stored = (await storage?.get?.(storageKey))?.[storageKey];
+      if (isCurrent(stored, period)) return stored;
+    } catch (_) {
+      // Fall through to a fresh ID; counting must never block furigana.
+    }
+    const id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : '';
+    if (!_EXT_PERIOD_ID_RE.test(id)) return null;
+    const record = { [periodField]: period, id };
+    try {
+      await storage?.set?.({ [storageKey]: record });
+    } catch (_) {
+      // The in-memory ID still counts this worker's requests for the period.
+    }
+    return record;
+  }
+
+  return async function periodId(now = Date.now()) {
+    const period = periodOf(now);
+    if (isCurrent(current, period)) return current.id;
+    if (!pending) {
+      pending = load(period).finally(() => { pending = null; });
+    }
+    const record = await pending;
+    if (isCurrent(record, period)) current = record;
+    return isCurrent(record, period) ? record.id : '';
+  };
+}
+
+const _getExtensionDayId = _periodIdSource('tsukeruDayId', 'day', _utcDay);
+const _getExtensionWeekId = _periodIdSource('tsukeruWeekId', 'week', _isoWeek);
+
+// The browser's UI language as a bare primary subtag ("en", "ja"), so the
+// backend can count which languages extension users read in.
+const _EXT_UI_LANGUAGE = (() => {
   try {
-    const stored = (await storage?.get?.(_EXT_DAY_ID_KEY))?.[_EXT_DAY_ID_KEY];
-    if (_isCurrentDayId(stored, day)) return stored;
-  } catch (_) {
-    // Fall through to a fresh ID; counting must never block furigana.
+    const tag = chrome?.i18n?.getUILanguage?.();
+    const primary = typeof tag === 'string' ? tag.split(/[-_]/, 1)[0].toLowerCase() : '';
+    return /^[a-z]{2,3}$/.test(primary) ? primary : '';
+  } catch {
+    return '';
   }
-  const id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : '';
-  if (!_EXT_DAY_ID_RE.test(id)) return null;
-  const record = { day, id };
-  try {
-    await storage?.set?.({ [_EXT_DAY_ID_KEY]: record });
-  } catch (_) {
-    // The in-memory ID still counts this worker's requests for today.
-  }
-  return record;
-}
-
-async function _getExtensionDayId(now = Date.now()) {
-  const day = new Date(now).toISOString().slice(0, 10);
-  if (_isCurrentDayId(_extDayId, day)) return _extDayId.id;
-  if (!_extDayIdPromise) {
-    _extDayIdPromise = _loadExtensionDayId(day).finally(() => { _extDayIdPromise = null; });
-  }
-  const record = await _extDayIdPromise;
-  if (_isCurrentDayId(record, day)) _extDayId = record;
-  return _isCurrentDayId(record, day) ? record.id : '';
-}
+})();
 
 function _extensionHeaders() {
   return _EXT_VERSION
@@ -599,9 +630,12 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
   let nonceResult = await _getExtNonceForFurigana();
   let nonce = nonceResult.nonce;
   const dayId = await _getExtensionDayId();
+  const weekId = await _getExtensionWeekId();
   const furiganaHeaders = () => ({
     ..._extensionHeaders(),
     ...(dayId && { 'x-extension-day-id': dayId }),
+    ...(weekId && { 'x-extension-week-id': weekId }),
+    ...(_EXT_UI_LANGUAGE && { 'x-extension-ui-language': _EXT_UI_LANGUAGE }),
   });
   let nonceRateLimit = nonceResult.rateLimit;
   let nonceRetryUsed = false;

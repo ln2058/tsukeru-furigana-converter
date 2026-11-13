@@ -18,7 +18,7 @@ function response(status, body, headers = {}) {
   };
 }
 
-function loadApi(browserName, route, { cacheLimit = 200, storage = null, manifestVersion = null, randomUUID = null } = {}) {
+function loadApi(browserName, route, { cacheLimit = 200, storage = null, manifestVersion = null, randomUUID = null, uiLanguage = null } = {}) {
   const apiUrl = new URL(`../${browserName}/js/bg-api.js`, import.meta.url);
   let source = readFileSync(apiUrl, 'utf8')
     .replace(/import\s+\{[\s\S]*?\}\s+from\s+'\.\/bg-cache\.js';\s*/m, '')
@@ -53,6 +53,8 @@ function loadApi(browserName, route, { cacheLimit = 200, storage = null, manifes
       handleReportReadingError,
       fetchFromAPI,
       getExtensionDayId: _getExtensionDayId,
+      getExtensionWeekId: _getExtensionWeekId,
+      isoWeek: _isoWeek,
       storeSupporterHandoff,
       supporterHeaders,
       hasSupporterToken,
@@ -74,10 +76,11 @@ function loadApi(browserName, route, { cacheLimit = 200, storage = null, manifes
       calls.push({ url: String(url), options });
       return Promise.resolve(route(new URL(String(url)), options));
     },
-    chrome: storage || manifestVersion
+    chrome: storage || manifestVersion || uiLanguage
       ? {
         ...(storage && { storage: { local: storage } }),
         ...(manifestVersion && { runtime: { getManifest: () => ({ version: manifestVersion }) } }),
+        ...(uiLanguage && { i18n: { getUILanguage: () => uiLanguage } }),
       }
       : undefined,
   };
@@ -294,8 +297,14 @@ for (const browserName of ['chrome', 'firefox']) {
   });
 
   test(`${browserName} furigana requests carry a day ID that is replaced each UTC day`, async () => {
-    // The first value becomes the per-worker session ID when the module loads.
-    const ids = [`${browserName}-session`, '3f2b8c1e-9d4a-4b6f-8e2c-7a1d5b9c0e34', '9a6e2d10-5c3b-4f7a-a1e8-2b4c6d8e0f12'];
+    // The first value becomes the per-worker session ID when the module loads;
+    // the second is the day ID and the third the week ID.
+    const ids = [
+      `${browserName}-session`,
+      '3f2b8c1e-9d4a-4b6f-8e2c-7a1d5b9c0e34',
+      '5d1c7e3a-2b4f-4a6e-9c8d-1e3f5a7b9c0d',
+      '9a6e2d10-5c3b-4f7a-a1e8-2b4c6d8e0f12',
+    ];
     const storage = memoryStorage();
     const furigana = () => response(200, { html: '<ruby>猫</ruby>' }, { 'content-type': 'application/json' });
     const { api, calls } = loadApi(browserName, queuedRoute([furigana(), furigana()]), {
@@ -312,6 +321,7 @@ for (const browserName of ['chrome', 'firefox']) {
     }
     const nonceCall = calls.find(({ url }) => url.endsWith('/api/extension/nonce'));
     assert.equal(nonceCall.options.headers['x-extension-day-id'], undefined, 'only furigana requests carry it');
+    assert.equal(nonceCall.options.headers['x-extension-week-id'], undefined, 'only furigana requests carry it');
 
     const tomorrow = Date.now() + 86_400_000;
     assert.equal(await api.getExtensionDayId(tomorrow), '9a6e2d10-5c3b-4f7a-a1e8-2b4c6d8e0f12');
@@ -326,6 +336,55 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(result.processedHTML, '<ruby>猫</ruby>');
     const call = calls.find(({ url }) => url.endsWith('/api/extension/furigana'));
     assert.equal(call.options.headers['x-extension-day-id'], undefined);
+    assert.equal(call.options.headers['x-extension-week-id'], undefined);
+    assert.equal(call.options.headers['x-extension-ui-language'], undefined);
+  });
+
+  test(`${browserName} furigana requests carry a week ID that is replaced each ISO week`, async () => {
+    const ids = [
+      `${browserName}-session`,
+      '3f2b8c1e-9d4a-4b6f-8e2c-7a1d5b9c0e34',
+      '5d1c7e3a-2b4f-4a6e-9c8d-1e3f5a7b9c0d',
+      '9a6e2d10-5c3b-4f7a-a1e8-2b4c6d8e0f12',
+      '0b2d4f6a-8c1e-4a3b-8d5f-7e9a1c3b5d7f',
+    ];
+    const storage = memoryStorage();
+    const furigana = response(200, { html: '<ruby>猫</ruby>' }, { 'content-type': 'application/json' });
+    const { api, calls } = loadApi(browserName, queuedRoute([furigana]), {
+      storage,
+      randomUUID: () => ids.shift() || 'not-a-uuid',
+    });
+
+    await api.fetchFromAPI('猫', {}, '');
+    const call = calls.find(({ url }) => url.endsWith('/api/extension/furigana'));
+    const weekId = '5d1c7e3a-2b4f-4a6e-9c8d-1e3f5a7b9c0d';
+    assert.equal(call.options.headers['x-extension-week-id'], weekId);
+    assert.equal(storage.values.tsukeruWeekId.id, weekId);
+
+    // Sunday and Monday fall in different ISO weeks; days inside one week share it.
+    const sunday = Date.parse('2026-11-15T23:00:00Z');
+    const monday = Date.parse('2026-11-16T01:00:00Z');
+    assert.equal(api.isoWeek(Date.parse('2026-11-09T00:00:00Z')), '2026-W46');
+    assert.equal(api.isoWeek(sunday), '2026-W46');
+    assert.equal(api.isoWeek(monday), '2026-W47');
+    assert.equal(api.isoWeek(Date.parse('2021-01-03T12:00:00Z')), '2020-W53');
+    assert.equal(api.isoWeek(Date.parse('2024-12-30T12:00:00Z')), '2025-W01');
+    const thisWeek = storage.values.tsukeruWeekId.week;
+    const nextWeek = Date.now() + 7 * 86_400_000;
+    assert.equal(await api.getExtensionWeekId(nextWeek), '9a6e2d10-5c3b-4f7a-a1e8-2b4c6d8e0f12');
+    assert.notEqual(storage.values.tsukeruWeekId.week, thisWeek);
+  });
+
+  test(`${browserName} furigana requests send only the primary subtag of the browser language`, async () => {
+    for (const [uiLanguage, expected] of [['pt-BR', 'pt'], ['zh_TW', 'zh'], ['ja', 'ja'], ['not a language', undefined]]) {
+      const furigana = response(200, { html: '<ruby>猫</ruby>' }, { 'content-type': 'application/json' });
+      const { api, calls } = loadApi(browserName, queuedRoute([furigana]), { uiLanguage });
+      await api.fetchFromAPI('猫', {}, '');
+      const call = calls.find(({ url }) => url.endsWith('/api/extension/furigana'));
+      assert.equal(call.options.headers['x-extension-ui-language'], expected, uiLanguage);
+      const nonceCall = calls.find(({ url }) => url.endsWith('/api/extension/nonce'));
+      assert.equal(nonceCall.options.headers['x-extension-ui-language'], undefined);
+    }
   });
 }
 

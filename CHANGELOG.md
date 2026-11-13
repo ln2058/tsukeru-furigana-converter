@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.5.2 — Unreleased
+
+### Changed
+
+- **Weekly user count**: furigana requests also carry a random ID that changes every week (Monday, UTC), next to the daily one, so EZFurigana can count weekly users. Like the daily ID, it is not an install ID.
+- Furigana requests also send your browser's language as a bare language code, such as `en` or `ja`, so EZFurigana can see which languages readers use. Nothing else about your browser or settings is sent.
+
 ## 4.5.1 — 2026-11-12
 
 ### Added

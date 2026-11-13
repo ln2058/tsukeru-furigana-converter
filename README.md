@@ -87,7 +87,7 @@ Settings, including the sites with automatic furigana, are kept in browser sync 
 
 The extension sends data to EZFurigana when a feature requires it:
 
-- Japanese text and the current HTTP(S) page URL when you apply furigana. Local-file URLs are excluded. These requests include a random ID that changes every UTC day, so EZFurigana can count daily users; there is no lasting install ID.
+- Japanese text and the current HTTP(S) page URL when you apply furigana. Local-file URLs are excluded. These requests include a random ID that changes every UTC day and another that changes every week, so EZFurigana can count daily and weekly users, and your browser's language (just the language, such as `en`), so it can see which languages readers use; there is no lasting install ID.
 - A word and its reading for dictionary, example, kanji, or audio requests.
 - The sentence you choose to play, with your Supporter token, for sentence audio.
 - The sentence you choose to explain and your display language, with your Supporter token. EZFurigana sends that sentence to OpenAI to write the explanation.
