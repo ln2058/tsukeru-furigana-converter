@@ -120,6 +120,18 @@ for (const browser of ['chrome', 'firefox']) {
     assert.deepEqual(fixture.requests.sort(), ['en', 'ko']);
   });
 
+  test(`${browser} popup account links keep the display language`, async () => {
+    // Connect, Manage and Reconnect opened the English /account from every language.
+    const fixture = extension(browser, { preference: 'zh_CN' });
+    await fixture.i18n.ready();
+    assert.equal(fixture.i18n.websiteUrl('/account?tsukeru=connect'), 'https://www.ezfurigana.com/zh/account?tsukeru=connect');
+    assert.equal(fixture.i18n.websiteUrl('/account'), 'https://www.ezfurigana.com/zh/account');
+    const popup = read(browser, 'js/popup-main.js');
+    assert.doesNotMatch(popup, /new URL\([^)]*websiteUrl\(\)/, 'a root-relative path on websiteUrl() drops the language prefix');
+    assert.match(popup, /websiteUrl\('\/account'\)/);
+    assert.match(popup, /websiteUrl\(copy\.path\)/);
+  });
+
   test(`${browser} invalid preferences use native Auto resolution and load failures use English`, async () => {
     for (const preference of ['', 'fr', 'zh-Hant', '../ja', null, ['ko'], { toString: () => 'ko' }]) {
       const fixture = extension(browser, { preference, auto: 'zh-TW' });

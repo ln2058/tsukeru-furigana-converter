@@ -186,7 +186,8 @@ function renderSupporterCard(status) {
   if (supporterLink) {
     const supporter = state === 'supporter';
     supporterLink.classList.toggle('is-supporter', supporter);
-    supporterLink.href = supporter ? new URL('/account', TsukeruI18n.websiteUrl()).href : getEzfuriganaPricingUrl();
+    // websiteUrl keeps the display language's prefix (/zh/account); new URL('/account', …) would drop it.
+    supporterLink.href = supporter ? TsukeruI18n.websiteUrl('/account') : getEzfuriganaPricingUrl();
     supporterLink.title = supporter
       ? t('header_title_supporter_active', undefined, "You're a Supporter")
       : t('header_title_become_supporter', undefined, 'Become a Supporter');
@@ -205,7 +206,7 @@ function renderSupporterCard(status) {
   meta.hidden = !meta.textContent;
   const action = document.getElementById('supporterCardAction');
   action.textContent = copy.action();
-  action.href = copy.pricing ? getEzfuriganaPricingUrl() : new URL(copy.path, TsukeruI18n.websiteUrl()).href;
+  action.href = copy.pricing ? getEzfuriganaPricingUrl() : TsukeruI18n.websiteUrl(copy.path);
   action.hidden = false;
 }
 
