@@ -16,9 +16,9 @@
 
 Tsukeru is a browser extension for Chrome, Microsoft Edge, and Firefox. It adds readings above kanji while preserving the layout of the page, with dictionary lookup, word lists, and Anki export.
 
-Version **4.5.1** adds Simplified Chinese, returns the Chrome and Edge shortcut to `Ctrl+Shift+F`, keeps a disconnected account disconnected, and shows fewer connection messages on EZFurigana. Version 4.5.0 reads words split by links or formatting as one word, keeps a Supporter's sentence explanations in My Words, lets you follow links that have furigana, moves the keyboard shortcut, and stays disconnected after you disconnect it on EZFurigana. Version 4.4.0 added Explain this sentence for EZFurigana Supporters, automatic furigana on sites you choose, and loading long pages around what you are reading. See the [changelog](CHANGELOG.md) for details.
+Version **4.5.2** opens account links in the popup's language and counts weekly users with a random ID that changes every week. Version 4.5.1 added Simplified Chinese, returned the Chrome and Edge shortcut to `Ctrl+Shift+F`, kept a disconnected account disconnected, and showed fewer connection messages on EZFurigana. Version 4.5.0 reads words split by links or formatting as one word, keeps a Supporter's sentence explanations in My Words, lets you follow links that have furigana, moves the keyboard shortcut, and stays disconnected after you disconnect it on EZFurigana. See the [changelog](CHANGELOG.md) for details.
 
-![Furigana on a Japanese Wikipedia article](screenshots/wikipedia.png)
+![Tsukeru adding furigana to a Japanese Wikipedia article, with its popup open](.github/images/furigana-on-any-website.webp)
 
 ## Features
 
@@ -38,9 +38,9 @@ Version **4.5.1** adds Simplified Chinese, returns the Chrome and Edge shortcut 
 - Handle changing content on sites such as YouTube and X when dynamic-page processing is enabled.
 - Use the extension in English, Japanese, Korean, Simplified Chinese, or Traditional Chinese.
 
-![Furigana on YouTube subtitles](screenshots/youtubesubtitles.png)
-![Furigana on YouTube comments](screenshots/youtubecomments.png)
-![Furigana on X](screenshots/twitter.png)
+![The dictionary popup for 地方, with its JLPT level, pitch accent, audio, sentence tools and meanings](.github/images/dictionary.webp)
+![Furigana on YouTube and X](.github/images/youtube-and-x.webp)
+![Saving words in My Words and reviewing them on EZFurigana](.github/images/save-and-review.webp)
 
 ## Using Tsukeru
 
