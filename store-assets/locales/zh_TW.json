@@ -1,0 +1,27 @@
+{
+  "brand_tag": "專為日文學習者打造的瀏覽器擴充功能",
+  "promo_tag": "任何網站，一鍵加上振假名",
+  "promo_tag_long": "任何網站都能加上振假名，點一下就查字典",
+
+  "s1_headline": "讀懂道地的日文。",
+  "s1_subline": "任何網站，一鍵加上振假名。",
+
+  "s2_headline": "任何單字，點一下就查。",
+  "s2_callout_1": "JLPT 級別與常用程度",
+  "s2_callout_2": "重音與發音",
+  "s2_callout_3": "句子朗讀與解說",
+  "s2_callout_4": "意思與例句",
+  "supporter": "支持者",
+
+  "s3_headline": "YouTube 和 X 也能用。",
+
+  "s4_headline": "聽得到，看得懂。",
+  "s4_word": "單字發音",
+  "s4_sentence": "句子朗讀",
+  "s4_explain": "用簡單日文解說",
+  "s4_explain_lang": "也支援中文解說",
+
+  "s5_headline": "隨手收藏，隨時複習。",
+  "s5_step_save": "邊讀邊收藏單字",
+  "s5_step_review": "在 EZFurigana 上複習"
+}

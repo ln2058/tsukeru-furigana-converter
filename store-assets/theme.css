@@ -1,0 +1,143 @@
+/* Store screenshot theme: Tsukeru's brand blue and ink as bold fields, with
+   real captures shown inside a drawn browser window. */
+@font-face { font-family: "IBM Plex Sans"; font-weight: 400; src: url("../chrome/fonts/ibm-plex-sans-latin-400.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-weight: 600; src: url("../chrome/fonts/ibm-plex-sans-latin-600.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-weight: 700; src: url("../chrome/fonts/ibm-plex-sans-latin-700.woff2") format("woff2"); }
+
+:root {
+  --blue-field: #126edc;
+  --ink-field: #1f3e52;
+  --paper: #f3f2ee;
+  --ink: #24485e;
+  --text: #222522;
+  --muted: #6b6d69;
+  --blue: #1a7ffc;
+  --star: #e7b440;
+  --sans: "IBM Plex Sans", "BIZ UDPGothic", "Yu Gothic UI", "Malgun Gothic", "Microsoft YaHei UI", system-ui, sans-serif;
+  --ui: "Segoe UI", system-ui, sans-serif;
+  --margin: 64px;
+}
+
+/* Per-language fonts: IBM Plex Sans covers Latin; each script gets its native face so Chinese
+   never borrows Japanese glyph shapes. Japanese passages inside any slide keep a Japanese face. */
+html:lang(ja) { --sans: "IBM Plex Sans", "BIZ UDPGothic", "Yu Gothic UI", "Yu Gothic", sans-serif; }
+html:lang(ko) { --sans: "IBM Plex Sans", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
+html:lang(zh-CN) { --sans: "IBM Plex Sans", "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", sans-serif; }
+html:lang(zh-TW) { --sans: "IBM Plex Sans", "Microsoft JhengHei UI", "Microsoft JhengHei", "PingFang TC", sans-serif; }
+.slide [lang="ja"] { font-family: "IBM Plex Sans", "BIZ UDPGothic", "Yu Gothic UI", "Yu Gothic", sans-serif; }
+
+html, body { margin: 0; padding: 0; }
+body { width: 1280px; height: 800px; overflow: hidden; }
+
+.slide {
+  position: relative;
+  width: 1280px;
+  height: 800px;
+  overflow: hidden;
+  box-sizing: border-box;
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+.slide.blue { background: var(--blue-field); color: #fff; }
+.slide.ink { background: var(--ink-field); color: #fff; }
+.slide.paper { background: var(--paper) url("../chrome/paper-texture.svg"); color: var(--ink); }
+
+.headline {
+  margin: 0;
+  font-size: 76px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -.02em;
+  white-space: pre-line;
+}
+.subline {
+  margin: 16px 0 0;
+  font-size: 24px;
+  line-height: 1.4;
+  opacity: .88;
+  white-space: pre-line;
+}
+
+/* CJK characters are about twice as wide as Latin letters, so CJK headlines run a little smaller
+   and without negative tracking. */
+html:lang(ja) .slide > .headline, html:lang(ja) .slide .copy .headline,
+html:lang(ko) .slide > .headline, html:lang(ko) .slide .copy .headline,
+html:lang(zh) .slide > .headline, html:lang(zh) .slide .copy .headline { font-size: 62px; letter-spacing: 0; line-height: 1.15; }
+
+/* Signature: the key words get Tsukeru's "clicked word" highlight. Written [[like this]] in locale strings. */
+.hl { padding: 0 .12em; border-radius: 6px; background: rgba(255, 255, 255, .2); color: inherit; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.paper .hl { background: rgba(26, 127, 252, .16); }
+.ink .hl { background: rgba(90, 166, 255, .3); }
+
+/* Logo lockup. */
+.lockup { display: flex; align-items: center; gap: 16px; }
+.lockup img { width: 68px; height: 68px; border-radius: 14px; box-shadow: 0 0 0 3px rgba(255, 255, 255, .9); }
+.lockup-name { font-size: 40px; font-weight: 700; line-height: 1; letter-spacing: -.01em; }
+.lockup-tag { margin-top: 6px; font-size: 16px; font-weight: 600; opacity: .85; }
+.lockup.small img { width: 40px; height: 40px; border-radius: 9px; box-shadow: 0 0 0 2px rgba(255, 255, 255, .85); }
+.lockup.small .lockup-name { font-size: 24px; }
+
+/* A drawn browser window. Its content is a real capture placed with .crop. */
+.browser {
+  position: absolute;
+  overflow: hidden;
+  border-radius: 12px 12px 0 0;
+  background: #fff;
+  box-shadow: 0 24px 60px rgba(8, 24, 40, .35), 0 0 0 1px rgba(8, 24, 40, .12);
+  font-family: var(--ui);
+}
+.browser-tabs { display: flex; align-items: flex-end; gap: 10px; height: 40px; padding: 0 0 0 16px; background: #dfe4ea; }
+/* Active tab with Chrome's curved feet, a favicon, a truncated title and a close button. */
+.browser-tab {
+  position: relative; display: flex; align-items: center; gap: 8px;
+  width: 230px; height: 32px; padding: 0 12px; box-sizing: border-box;
+  border-radius: 9px 9px 0 0; background: #fff;
+  color: #2b2f33; font-size: 12.5px;
+}
+.browser-tab::before, .browser-tab::after { content: ""; position: absolute; bottom: 0; width: 9px; height: 9px; }
+.browser-tab::before { left: -9px; background: radial-gradient(circle at 0 0, transparent 8.5px, #fff 9px); }
+.browser-tab::after { right: -9px; background: radial-gradient(circle at 100% 0, transparent 8.5px, #fff 9px); }
+.tab-title { flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tab-close, .fav-svg { flex: 0 0 auto; }
+.tab-new { flex: 0 0 auto; margin: 0 0 9px 4px; }
+.browser-tab .fav { flex: 0 0 auto; width: 16px; height: 16px; border-radius: 3px; background: #fff; color: #111; font: 700 13px/16px Georgia, serif; text-align: center; }
+/* Windows caption buttons: minimise, maximise, close. */
+.window-controls { display: flex; align-self: flex-start; margin-left: auto; }
+.window-controls svg { width: 10px; height: 10px; padding: 11px 17px; fill: none; stroke: #3c4043; stroke-width: 1; }
+.browser-toolbar { display: flex; align-items: center; gap: 14px; height: 44px; padding: 0 14px; border-bottom: 1px solid #e3e6ea; background: #fff; }
+.browser-toolbar svg { flex: 0 0 auto; }
+.address {
+  flex: 1 1 auto; display: flex; align-items: center; gap: 8px; min-width: 0;
+  height: 30px; padding: 0 10px 0 14px; border-radius: 15px; background: #f0f2f5;
+  color: #3c4043; font-size: 14px; white-space: nowrap;
+}
+.address .url { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.address .host { color: #1f2328; }
+.address .path { color: #80868b; }
+/* The pinned Tsukeru button, pressed while its popup is open. */
+.ext-btn { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; background: #d8e8fd; }
+.ext-btn img { width: 22px; height: 22px; border-radius: 4px; }
+
+/* Crop a capture: --iw source width, --x/--y/--w/--h crop box in source px, --s scale. */
+.crop { position: relative; overflow: hidden; width: calc(var(--w) * var(--s) * 1px); height: calc(var(--h) * var(--s) * 1px); }
+.crop > img { position: absolute; left: calc(var(--x) * var(--s) * -1px); top: calc(var(--y) * var(--s) * -1px); width: calc(var(--iw) * var(--s) * 1px); max-width: none; }
+
+/* An extension popup: the real capture with a window edge and shadow. */
+.popup-shot { position: absolute; border-radius: 8px; overflow: hidden; box-shadow: 0 18px 48px rgba(8, 24, 40, .38), 0 0 0 1px rgba(8, 24, 40, .18); }
+
+/* Hand pointer (hover state), drawn: captures never include the cursor. Fingertip at 37% / 9%. */
+.cursor { position: absolute; width: 34px; height: 34px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); }
+
+/* Callouts: a label with a leader line ending in a dot on the feature. The line and
+   dot are near-black with a white edge, so they read on the light capture and the dark field. */
+.callout { position: absolute; display: flex; align-items: center; font-size: 21px; font-weight: 600; line-height: 1.25; }
+.callout::before { content: ""; flex: 0 0 auto; width: var(--line, 56px); height: 2.5px; margin-right: 14px; background: #0b1720; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .95); }
+.callout::after { content: ""; position: absolute; left: -6px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: #0b1720; box-shadow: 0 0 0 2px #fff; }
+
+.supporter {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-left: 10px; padding: 2px 9px 2px 7px;
+  border-radius: 999px; background: var(--star); color: #2a2205;
+  font-size: 13px; font-weight: 700; letter-spacing: .02em; white-space: nowrap;
+}
+.supporter::before { content: "★"; font-size: 12px; }

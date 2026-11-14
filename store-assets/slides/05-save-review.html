@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>05 Save words, review later</title>
+<link rel="stylesheet" href="../theme.css">
+<style>
+  .slide > .headline { position: absolute; left: var(--margin); top: 58px; font-size: 60px; }
+  .slide .lockup { position: absolute; right: var(--margin); top: 60px; }
+
+  /* Step labels above each window. */
+  .step { position: absolute; top: 160px; display: flex; align-items: center; gap: 10px; margin: 0; font-size: 21px; font-weight: 600; }
+  .step-num { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #fff; color: var(--blue-field); font-size: 16px; font-weight: 700; }
+  .step.save { left: var(--margin); }
+  .step.review { left: 701px; }
+
+  /* Left: the real toolbar popup on My Words (captures/popup-mywords.png, 751×978). */
+  .popup-shot { left: var(--margin); top: 204px; }
+  .popup-crop { --iw: 751; --x: 0; --y: 0; --w: 736; --h: 978; --s: .62; } /* stops before the popup's scrollbar */
+  /* Other languages: My Words in that language (captures/<lang>/popup-mywords.png, trimmed before the scrollbar). */
+  html:is(:lang(ja), :lang(ko), :lang(zh)) .popup-crop { --iw: 740; --w: 740; --h: 968; }
+  .cursor { left: 465px; top: 383px; } /* lower-right of Review now, so its label stays readable in every language */
+
+  /* Right: the review dialog cut from the EZFurigana page (captures/ezf-review.png, 2400×1600). */
+  .review-shot { left: 701px; top: 202px; border-radius: 8px; }
+  /* Flashcard deck: the dialog says 1 / 3, so two plain cards fan out behind it. */
+  .deck { position: absolute; left: 701px; top: 202px; width: 495px; height: 597px; border-radius: 8px; transform-origin: 0 100%;
+    box-shadow: 0 18px 48px rgba(8, 24, 40, .3), 0 0 0 1px rgba(8, 24, 40, .14); }
+  /* Other languages: the review dialog in that language (captures/<lang>/review.png, trimmed to the dialog).
+     Matching pairs for ja, ko and zh_CN; type the reading for zh_TW. The deck follows the dialog's height. */
+  html:is(:lang(ja), :lang(ko), :lang(zh-CN)) .review-crop { --iw: 938; --x: 0; --y: 0; --w: 938; --h: 748; --s: .5277; }
+  html:is(:lang(ja), :lang(ko), :lang(zh-CN)) .deck { height: 395px; }
+  html:lang(zh-TW) .review-crop { --iw: 938; --x: 0; --y: 0; --w: 938; --h: 830; --s: .5277; }
+  html:lang(zh-TW) .deck { height: 438px; }
+  .deck.d2 { background: #e4e3de; transform: rotate(5deg); }
+  .deck.d1 { background: #ebeae5; transform: rotate(2.5deg); }
+  .review-crop { --iw: 2400; --x: 741; --y: 247; --w: 917; --h: 1105; --s: .54; }
+
+  /* A solid curved arrow from Review now to the review dialog. */
+  .arrow { position: absolute; left: 0; top: 0; width: 1280px; height: 800px; overflow: visible; pointer-events: none; filter: drop-shadow(0 4px 8px rgba(4, 30, 70, .35)); }
+</style>
+<script src="../i18n.js" defer></script>
+</head>
+<body>
+<main class="slide blue">
+  <h1 class="headline" data-i18n="s5_headline" data-fit="s5_headline">Save words. Review later.</h1>
+  <div class="lockup">
+    <img src="../../chrome/icons/icon128.png" alt="">
+    <div>
+      <div class="lockup-name">Tsukeru</div>
+      <div class="lockup-tag" data-i18n="brand_tag">Browser extension for Japanese learners</div>
+    </div>
+  </div>
+
+  <h2 class="step save"><span class="step-num">1</span><span data-i18n="s5_step_save">Save words as you read</span></h2>
+  <h2 class="step review"><span class="step-num">2</span><span data-i18n="s5_step_review">Review them on EZFurigana</span></h2>
+
+  <div class="popup-shot"><div class="crop popup-crop"><img src="../captures/popup-mywords.png" data-src-ja="../captures/ja/popup-mywords.png" data-src-ko="../captures/ko/popup-mywords.png" data-src-zh-cn="../captures/zh_CN/popup-mywords.png" data-src-zh-tw="../captures/zh_TW/popup-mywords.png" alt=""></div></div>
+  <div class="deck d2"></div>
+  <div class="deck d1"></div>
+  <div class="popup-shot review-shot"><div class="crop review-crop"><img src="../captures/ezf-review.png" data-src-ja="../captures/ja/review.png" data-src-ko="../captures/ko/review.png" data-src-zh-cn="../captures/zh_CN/review.png" data-src-zh-tw="../captures/zh_TW/review.png" alt=""></div></div>
+
+  <svg class="arrow" viewBox="0 0 1280 800">
+    <defs><marker id="head" viewBox="0 0 12 12" refX="7" refY="6" markerWidth="22" markerHeight="22" markerUnits="userSpaceOnUse" orient="auto"><path d="M1.5 1.5L10.5 6L1.5 10.5z" fill="#fff" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></marker></defs>
+    <path d="M540 352C582 284 636 274 682 320" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" marker-end="url(#head)"/>
+  </svg>
+
+  <svg class="cursor" viewBox="0 0 32 32"><path d="M9.5 5.5a2.5 2.5 0 0 1 5 0V13a2.3 2.3 0 0 1 4.5.6 2.3 2.3 0 0 1 4.5.9 2.2 2.2 0 0 1 4.3 1V22c0 4.5-3 7.5-7 7.5h-5.3c-2.2 0-3.5-1-4.8-2.8l-5.3-7.2a2 2 0 0 1 3-2.6l1.1 1.3z" fill="#fff" stroke="#111" stroke-width="1.3" stroke-linejoin="round"/><path d="M14.5 13v5M19 13.6v4.4M23.5 14.5v3.8" stroke="#111" stroke-width="1.1" stroke-linecap="round"/></svg>
+</main>
+</body>
+</html>

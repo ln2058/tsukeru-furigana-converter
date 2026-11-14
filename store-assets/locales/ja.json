@@ -1,0 +1,27 @@
+{
+  "brand_tag": "日本語を学ぶ人のためのブラウザ拡張機能",
+  "promo_tag": "どのサイトにも、ふりがなを",
+  "promo_tag_long": "どのサイトにも、ふりがなと辞書を",
+
+  "s1_headline": "漢字に、ふりがなを。",
+  "s1_subline": "どのサイトでも、ワンクリックで。",
+
+  "s2_headline": "クリックで、すぐ辞書。",
+  "s2_callout_1": "JLPTレベルと使用頻度",
+  "s2_callout_2": "アクセントと発音",
+  "s2_callout_3": "文の読み上げと解説",
+  "s2_callout_4": "意味と例文",
+  "supporter": "サポーター",
+
+  "s3_headline": "YouTubeやXでも。",
+
+  "s4_headline": "聞いて、わかる。",
+  "s4_word": "単語の発音",
+  "s4_sentence": "文の読み上げ",
+  "s4_explain": "やさしい日本語で解説",
+  "s4_explain_lang": "",
+
+  "s5_headline": "保存して、あとで復習。",
+  "s5_step_save": "読みながら単語を保存",
+  "s5_step_review": "EZFuriganaで復習"
+}

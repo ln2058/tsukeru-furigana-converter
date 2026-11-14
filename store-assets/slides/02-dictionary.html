@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>02 Dictionary: click any word</title>
+<link rel="stylesheet" href="../theme.css">
+<style>
+  .browser { left: var(--margin); top: 170px; width: 780px; bottom: 0; }
+  .ext-btn.idle { background: transparent; }
+  /* Capture: 2x Wikipedia with the tooltip open on 地方. */
+  .page-shot { --iw: 2400; --x: 130; --y: 120; --w: 1040; --h: 800; --s: .75; }
+  .cursor { left: 561px; top: 337px; }
+  /* Other languages: the word box in that language (captures/<lang>/wordbox.png, 175% scale, trimmed). */
+  html:is(:lang(ja), :lang(ko), :lang(zh)) .page-shot { --iw: 1040; --x: 0; --y: 40; --w: 1040; --h: 728; --s: .75; }
+  .leaders.cjk { display: none; }
+  html:is(:lang(ja), :lang(ko), :lang(zh)) .leaders.en { display: none; }
+  html:is(:lang(ja), :lang(ko), :lang(zh)) .leaders.cjk { display: block; }
+  html:is(:lang(ja), :lang(ko), :lang(zh)) .cursor { left: 497px; top: 287px; }
+  html:is(:lang(ja), :lang(ko), :lang(zh)) .c1 { top: 333px; }
+  html:is(:lang(ja), :lang(ko), :lang(zh)) .c2 { top: 479px; }
+  html:is(:lang(ja), :lang(ko), :lang(zh)) .c3 { top: 608px; }
+  html:lang(ja) .c4 { top: 745px; }
+  html:is(:lang(ko), :lang(zh)) .c4 { top: 739px; }
+  /* The first meaning ends at a different point in each language. */
+  .leaders .m { display: none; }
+  html:lang(ja) .leaders .m-ja, html:lang(ko) .leaders .m-ko,
+  html:lang(zh-CN) .leaders .m-zh-cn, html:lang(zh-TW) .leaders .m-zh-tw { display: inline; }
+
+  .slide > .headline { position: absolute; left: var(--margin); top: 52px; }
+  .slide .lockup { position: absolute; right: var(--margin); top: 60px; }
+  /* Labels sit right of the word box. Their leader lines (svg.leaders) run through the gaps between
+     rows and end on each feature: slide = (64 + (src x - 130) * .75, 254 + (src y - 120) * .75). */
+  .callout { left: 892px; transform: translateY(-50%); max-width: 330px; font-size: 20px; }
+  .callout::before, .callout::after { display: none; }
+  .c1 { top: 390px; } .c2 { top: 526px; } .c3 { top: 655px; } .c4 { top: 723px; }
+  .leaders { position: absolute; left: 0; top: 0; width: 1280px; height: 800px; overflow: visible; }
+  .leaders .edge { fill: none; stroke: #fff; stroke-width: 5.5; stroke-linejoin: round; stroke-linecap: round; }
+  .leaders .line { fill: none; stroke: #0b1720; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+  .leaders circle { fill: #0b1720; stroke: #fff; stroke-width: 2; }
+  .c3 > span { display: flex; flex-direction: column; align-items: flex-start; }
+  .callout .supporter { margin: 6px 0 0; }
+</style>
+<script src="../i18n.js" defer></script>
+</head>
+<body>
+<main class="slide ink">
+  <div class="browser">
+    <div class="browser-tabs">
+      <div class="browser-tab"><span class="fav">W</span><span class="tab-title">Wikipedia</span><svg class="tab-close" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#5f6368" stroke-width="1.4" stroke-linecap="round"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg></div>
+      <svg class="tab-new" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#3c4043" stroke-width="1.6" stroke-linecap="round"><path d="M7 1.5v11M1.5 7h11"/></svg>
+      <div class="window-controls"><svg viewBox="0 0 10 10"><path d="M0 5.5h10"/></svg><svg viewBox="0 0 10 10"><rect x=".5" y=".5" width="9" height="9"/></svg><svg viewBox="0 0 10 10"><path d="M.5.5l9 9M9.5.5l-9 9"/></svg></div>
+    </div>
+    <div class="browser-toolbar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".45"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+      <div class="address">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        <span class="url"><span class="host">ja.wikipedia.org</span><span class="path">/wiki/メインページ</span></span>
+        <svg class="star" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"/></svg>
+      </div>
+      <div class="ext-btn idle"><img src="../../chrome/icons/icon48.png" alt=""></div>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#5f6368"><path d="M10.5 4.5c.28 0 .5.22.5.5v2h6v6h2c.28 0 .5.22.5.5s-.22.5-.5.5h-2v6h-2.12c-.68-1.75-2.39-3-4.38-3s-3.7 1.25-4.38 3H4v-2.12c1.75-.68 3-2.39 3-4.38 0-1.99-1.24-3.7-2.99-4.38L4 7h6V5c0-.28.22-.5.5-.5m0-2C9.12 2.5 8 3.62 8 5H4c-1.1 0-1.99.9-1.99 2v3.8h.29c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-.3c0-1.49 1.21-2.7 2.7-2.7s2.7 1.21 2.7 2.7v.3H17c1.1 0 2-.9 2-2v-4c1.38 0 2.5-1.12 2.5-2.5S20.38 11 19 11V7c0-1.1-.9-2-2-2h-4c0-1.38-1.12-2.5-2.5-2.5z"/></svg>
+      <svg class="avatar" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#c2d4ea"/><circle cx="12" cy="9.5" r="4" fill="#5b7896"/><path d="M4.5 19.5a8.5 8.5 0 0 1 15 0A11.9 11.9 0 0 1 12 24a11.9 11.9 0 0 1-7.5-4.5z" fill="#5b7896"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="#5f6368"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+    </div>
+    <div class="crop page-shot"><img src="../captures/wikipedia-tooltip.png" data-src-ja="../captures/ja/wordbox.png" data-src-ko="../captures/ko/wordbox.png" data-src-zh-cn="../captures/zh_CN/wordbox.png" data-src-zh-tw="../captures/zh_TW/wordbox.png" alt=""></div>
+  </div>
+  <svg class="cursor" viewBox="0 0 32 32"><path d="M9.5 5.5a2.5 2.5 0 0 1 5 0V13a2.3 2.3 0 0 1 4.5.6 2.3 2.3 0 0 1 4.5.9 2.2 2.2 0 0 1 4.3 1V22c0 4.5-3 7.5-7 7.5h-5.3c-2.2 0-3.5-1-4.8-2.8l-5.3-7.2a2 2 0 0 1 3-2.6l1.1 1.3z" fill="#fff" stroke="#111" stroke-width="1.3" stroke-linejoin="round"/><path d="M14.5 13v5M19 13.6v4.4M23.5 14.5v3.8" stroke="#111" stroke-width="1.1" stroke-linecap="round"/></svg>
+
+  <h1 class="headline" data-i18n="s2_headline" data-fit="s2_headline">Click any word.</h1>
+  <div class="lockup">
+    <img src="../../chrome/icons/icon128.png" alt="">
+    <div>
+      <div class="lockup-name">Tsukeru</div>
+      <div class="lockup-tag" data-i18n="brand_tag">Browser extension for Japanese learners</div>
+    </div>
+  </div>
+
+  <svg class="leaders en" viewBox="0 0 1280 800">
+    <path class="edge" d="M880 390H432V398M494 390V398"/>
+    <path class="edge" d="M880 526H383V512M739 526V507"/>
+    <path class="edge" d="M880 641H371V590M752 641V634"/>
+    <path class="edge" d="M880 723H544"/>
+    <path class="line" d="M880 390H432V398M494 390V398"/>
+    <path class="line" d="M880 526H383V512M739 526V507"/>
+    <path class="line" d="M880 641H371V590M752 641V634"/>
+    <path class="line" d="M880 723H544"/>
+    <circle cx="432" cy="402" r="6"/>
+    <circle cx="494" cy="402" r="6"/>
+    <circle cx="383" cy="508" r="6"/>
+    <circle cx="739" cy="503" r="6"/>
+    <circle cx="371" cy="586" r="6"/>
+    <circle cx="752" cy="630" r="6"/>
+    <circle cx="540" cy="723" r="6"/>
+  </svg>
+  <svg class="leaders cjk" viewBox="0 0 1280 800">
+    <path class="edge" d="M880 333H357V348M412 333V348"/>
+    <path class="edge" d="M880 479H307V464M656 479V459"/>
+    <path class="edge" d="M880 594H295V544M688 594V585"/>
+    <path class="edge m m-ja" d="M880 745H438"/>
+    <path class="edge m m-ko" d="M880 739H392"/>
+    <path class="edge m m-zh-cn" d="M880 739H398"/>
+    <path class="edge m m-zh-tw" d="M880 739H396"/>
+    <path class="line" d="M880 333H357V348M412 333V348"/>
+    <path class="line" d="M880 479H307V464M656 479V459"/>
+    <path class="line" d="M880 594H295V544M688 594V585"/>
+    <path class="line m m-ja" d="M880 745H438"/>
+    <path class="line m m-ko" d="M880 739H392"/>
+    <path class="line m m-zh-cn" d="M880 739H398"/>
+    <path class="line m m-zh-tw" d="M880 739H396"/>
+    <circle cx="357" cy="351" r="6"/>
+    <circle cx="412" cy="351" r="6"/>
+    <circle cx="307" cy="460" r="6"/>
+    <circle cx="656" cy="455" r="6"/>
+    <circle cx="295" cy="539" r="6"/>
+    <circle cx="688" cy="581" r="6"/>
+    <circle class="m m-ja" cx="432" cy="745" r="6"/>
+    <circle class="m m-ko" cx="386" cy="739" r="6"/>
+    <circle class="m m-zh-cn" cx="392" cy="739" r="6"/>
+    <circle class="m m-zh-tw" cx="390" cy="739" r="6"/>
+  </svg>
+  <div class="callout c1"><span data-i18n="s2_callout_1">JLPT level and how common</span></div>
+  <div class="callout c2"><span data-i18n="s2_callout_2">Pitch accent and audio</span></div>
+  <div class="callout c3"><span><span data-i18n="s2_callout_3">Hear or explain the sentence</span><span class="supporter" data-i18n="supporter">Supporter</span></span></div>
+  <div class="callout c4"><span data-i18n="s2_callout_4">Meanings with examples</span></div>
+
+</main>
+</body>
+</html>

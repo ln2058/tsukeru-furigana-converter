@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>04 Hear it, understand it</title>
+<link rel="stylesheet" href="../theme.css">
+<style>
+  .slide > .headline { position: absolute; left: var(--margin); top: 56px; font-size: 64px; }
+  .slide .lockup { position: absolute; right: var(--margin); top: 60px; }
+
+  /* Feature cards cut from one real word-box capture (captures/explain.png, 1403×652).
+     The cards use the word box's own paper colour so the cut-outs blend in. */
+  .card {
+    position: absolute; box-sizing: border-box; padding: 24px 28px;
+    border-radius: 18px; background: #f0efeb; color: var(--ink-field);
+    box-shadow: 0 24px 60px rgba(4, 14, 24, .4);
+  }
+  .card-label { display: flex; align-items: center; margin: 0; font-size: 25px; font-weight: 700; line-height: 1.2; }
+  .card .supporter { font-size: 14px; }
+  .card .crop { position: absolute; }
+
+  .word { left: var(--margin); top: 176px; width: 560px; height: 212px; }
+  /* Header and speaker from the sharper 2x capture (captures/ebook-wordbox.png, 2400×1600): Common badge and pitch accent. */
+  .word .head { left: 28px; top: 82px; --iw: 2400; --x: 1450; --y: 362; --w: 445; --h: 138; --s: .74; }
+  /* The real speaker button, enlarged, with sound rings. */
+  .speaker { position: absolute; left: 404px; top: 80px; width: 104px; height: 104px; border-radius: 50%; background: #f0efeb; box-shadow: 0 0 0 3px #fff, 0 0 0 16px rgba(26, 127, 252, .16), 0 0 0 30px rgba(26, 127, 252, .08), 0 6px 18px rgba(4, 14, 24, .18); }
+  .speaker .crop { left: 18px; top: 18px; --iw: 2400; --x: 2216; --y: 454; --w: 46; --h: 46; --s: 1.48; }
+  .cursor { left: 525px; top: 326px; }
+
+  .sentence { left: 656px; top: 176px; width: 560px; height: 212px; }
+  /* Left part of the sentence row, faded where it continues. */
+  .sentence .row { left: 28px; top: 100px; --iw: 1403; --x: 34; --y: 158; --w: 580; --h: 72; --s: .87;
+    -webkit-mask-image: linear-gradient(to right, #000 82%, transparent); mask-image: linear-gradient(to right, #000 82%, transparent); }
+
+  .explain { left: var(--margin); right: var(--margin); top: 412px; bottom: -24px; }
+  .explain .button { right: 28px; top: 16px; --iw: 1403; --x: 1247; --y: 158; --w: 133; --h: 71; --s: .8; }
+  .explain .body { left: 28px; top: 186px; --iw: 1403; --x: 30; --y: 236; --w: 1360; --h: 280; --s: .75;
+    -webkit-mask-image: linear-gradient(to right, #000 98%, transparent); mask-image: linear-gradient(to right, #000 98%, transparent); }
+  /* The sentence being explained, in full: a bubble pointing into the explanation.
+     The clicked word is bold blue as in the word box; the explained phrases are underlined. */
+  .quote {
+    position: absolute; z-index: 1; left: 28px; right: 28px; top: 76px; margin: 0; padding: 14px 22px;
+    border-radius: 12px; background: #fff; box-shadow: 0 0 0 1px rgba(31, 62, 82, .12), 0 8px 22px rgba(31, 62, 82, .12);
+    color: #222522; font-size: 21px; line-height: 1.65; font-weight: 400;
+  }
+  .quote::after { content: ""; position: absolute; left: 22px; bottom: -9px; width: 18px; height: 18px; background: #fff; transform: rotate(45deg); box-shadow: 1px 1px 0 rgba(31, 62, 82, .12); }
+  .quote b { color: #1a7ffc; font-weight: 700; }
+  /* Each bubble underlines the phrases its explanation covers; Japanese explanations split them differently. */
+  .quote.ja-ui { display: none; }
+  html:is(:lang(ja), :lang(ko), :lang(zh)) .quote.ja-ui { display: block; }
+  html:is(:lang(ja), :lang(ko), :lang(zh)) .quote.en-ui { display: none; }
+
+  /* Every language but English: the word box, sentence row and explanation in Japanese (captures/ja/: ebook-wordbox.png 2x,
+     wordbox.png and explain.png 175%, trimmed). The Japanese explanation is in easy Japanese. */
+  html:is(:lang(ja), :lang(ko), :lang(zh)) .word .head { --x: 622; --y: 588; --w: 442; --h: 124; }
+  html:is(:lang(ja), :lang(ko), :lang(zh)) .speaker .crop { --x: 1476; --y: 670; }
+  html:is(:lang(ja), :lang(ko), :lang(zh)) .sentence .row { top: 88px; --iw: 2400; --x: 640; --y: 738; --w: 840; --h: 116; --s: .6; }
+  html:is(:lang(ja), :lang(ko), :lang(zh)) .explain .button { top: 12px; --iw: 1040; --x: 780; --y: 358; --w: 104; --h: 118; --s: .75; }
+  html:is(:lang(ja), :lang(ko), :lang(zh)) .quote { right: 128px; }
+  html:is(:lang(ja), :lang(ko), :lang(zh)) .explain .body { --iw: 900; --x: 40; --y: 90; --w: 840; --h: 390; --s: .9; -webkit-mask-image: none; mask-image: none; }
+
+  /* Korean and Chinese: the explanation shown is Japanese, so a chip says explanations come in this language too.
+     A globe rather than flags: flags stand for countries, not languages. */
+  .lang-chip {
+    position: absolute; right: 122px; top: 27px; display: flex; align-items: center; gap: 8px;
+    padding: 6px 14px 6px 10px; border-radius: 999px; background: #fff; color: #1a6fd8;
+    box-shadow: 0 0 0 1.5px rgba(26, 127, 252, .35); font-size: 17px; font-weight: 700;
+  }
+  .lang-chip:has(span:empty) { display: none; }
+  .quote u { margin: 0 2px; text-decoration: none; background: linear-gradient(#1a7ffc, #1a7ffc) left bottom / 100% 2.5px no-repeat; padding-bottom: 2px; }
+</style>
+<script src="../i18n.js" defer></script>
+</head>
+<body>
+<main class="slide ink">
+  <h1 class="headline" data-i18n="s4_headline" data-fit="s4_headline">Hear it. Understand it.</h1>
+  <div class="lockup">
+    <img src="../../chrome/icons/icon128.png" alt="">
+    <div>
+      <div class="lockup-name">Tsukeru</div>
+      <div class="lockup-tag" data-i18n="brand_tag">Browser extension for Japanese learners</div>
+    </div>
+  </div>
+
+  <section class="card word">
+    <h2 class="card-label" data-i18n="s4_word">Hear any word</h2>
+    <div class="crop head"><img src="../captures/ebook-wordbox.png" data-src-ja="../captures/ja/ebook-wordbox.png" data-src-ko="../captures/ja/ebook-wordbox.png" data-src-zh-cn="../captures/ja/ebook-wordbox.png" data-src-zh-tw="../captures/ja/ebook-wordbox.png" alt=""></div>
+    <div class="speaker"><div class="crop"><img src="../captures/ebook-wordbox.png" data-src-ja="../captures/ja/ebook-wordbox.png" data-src-ko="../captures/ja/ebook-wordbox.png" data-src-zh-cn="../captures/ja/ebook-wordbox.png" data-src-zh-tw="../captures/ja/ebook-wordbox.png" alt=""></div></div>
+  </section>
+
+  <section class="card sentence">
+    <h2 class="card-label"><span data-i18n="s4_sentence">Hear the sentence</span><span class="supporter" data-i18n="supporter">Supporter</span></h2>
+    <div class="crop row"><img src="../captures/explain.png" data-src-ja="../captures/ja/ebook-wordbox.png" data-src-ko="../captures/ja/ebook-wordbox.png" data-src-zh-cn="../captures/ja/ebook-wordbox.png" data-src-zh-tw="../captures/ja/ebook-wordbox.png" alt=""></div>
+  </section>
+
+  <section class="card explain">
+    <h2 class="card-label"><span data-i18n="s4_explain">Explain the sentence</span><span class="supporter" data-i18n="supporter">Supporter</span></h2>
+    <div class="lang-chip"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5c2.6 2.6 3.9 5.8 3.9 9.5s-1.3 6.9-3.9 9.5c-2.6-2.6-3.9-5.8-3.9-9.5S9.4 5.1 12 2.5z"/></svg><span data-i18n="s4_explain_lang"></span></div>
+    <div class="crop button"><img src="../captures/explain.png" data-src-ja="../captures/ja/wordbox.png" data-src-ko="../captures/ja/wordbox.png" data-src-zh-cn="../captures/ja/wordbox.png" data-src-zh-tw="../captures/ja/wordbox.png" alt=""></div>
+    <p class="quote ja-ui" lang="ja">そうして、その<u>仕方がない事</u>を、よく知っていたこの女は、<br><u><b>自分</b>のする事</u>を<u>許してくれるのにちがいない</u>と思う<u>からである</u>。</p>
+    <p class="quote en-ui" lang="ja">そうして、その<u>仕方がない事</u>を、よく知っていたこの女は、<br><u><b>自分</b>のする事</u>を<u>許してくれる</u><u>のにちがいないと思うからである</u>。</p>
+    <div class="crop body"><img src="../captures/explain.png" data-src-ja="../captures/ja/explain.png" data-src-ko="../captures/ja/explain.png" data-src-zh-cn="../captures/ja/explain.png" data-src-zh-tw="../captures/ja/explain.png" alt=""></div>
+  </section>
+
+  <svg class="cursor" viewBox="0 0 32 32"><path d="M9.5 5.5a2.5 2.5 0 0 1 5 0V13a2.3 2.3 0 0 1 4.5.6 2.3 2.3 0 0 1 4.5.9 2.2 2.2 0 0 1 4.3 1V22c0 4.5-3 7.5-7 7.5h-5.3c-2.2 0-3.5-1-4.8-2.8l-5.3-7.2a2 2 0 0 1 3-2.6l1.1 1.3z" fill="#fff" stroke="#111" stroke-width="1.3" stroke-linejoin="round"/><path d="M14.5 13v5M19 13.6v4.4M23.5 14.5v3.8" stroke="#111" stroke-width="1.1" stroke-linecap="round"/></svg>
+</main>
+</body>
+</html>

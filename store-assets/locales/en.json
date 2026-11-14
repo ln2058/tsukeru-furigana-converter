@@ -1,0 +1,27 @@
+{
+  "brand_tag": "Browser extension for Japanese learners",
+  "promo_tag": "Furigana for any website",
+  "promo_tag_long": "Furigana and a dictionary for any website",
+
+  "s1_headline": "Read real Japanese.",
+  "s1_subline": "Furigana on any website, in one click.",
+
+  "s2_headline": "Click any word.",
+  "s2_callout_1": "JLPT level and how common",
+  "s2_callout_2": "Pitch accent and audio",
+  "s2_callout_3": "Hear or explain the sentence",
+  "s2_callout_4": "Meanings with examples",
+  "supporter": "Supporter",
+
+  "s3_headline": "YouTube and X, too.",
+
+  "s4_headline": "Hear it. Understand it.",
+  "s4_word": "Hear any word",
+  "s4_sentence": "Hear the sentence",
+  "s4_explain": "Explain the sentence",
+  "s4_explain_lang": "",
+
+  "s5_headline": "Save words. Review later.",
+  "s5_step_save": "Save words as you read",
+  "s5_step_review": "Review them on EZFurigana"
+}

@@ -1,0 +1,27 @@
+{
+  "brand_tag": "일본어 학습자를 위한 브라우저 확장 프로그램",
+  "promo_tag": "모든 웹사이트에 후리가나를",
+  "promo_tag_long": "모든 웹사이트에 후리가나와 사전을",
+
+  "s1_headline": "진짜 일본어를 읽어요.",
+  "s1_subline": "클릭 한 번으로 모든 웹사이트에 후리가나를.",
+
+  "s2_headline": "모르는 단어는 클릭 한 번.",
+  "s2_callout_1": "JLPT 급수와 사용 빈도",
+  "s2_callout_2": "악센트와 발음",
+  "s2_callout_3": "문장 읽기와 설명",
+  "s2_callout_4": "뜻과 예문",
+  "supporter": "서포터",
+
+  "s3_headline": "YouTube와 X에서도.",
+
+  "s4_headline": "듣고, 이해하고.",
+  "s4_word": "단어 발음 듣기",
+  "s4_sentence": "문장 읽기",
+  "s4_explain": "쉬운 일본어로 설명",
+  "s4_explain_lang": "한국어로도 설명해요",
+
+  "s5_headline": "저장하고, 나중에 복습.",
+  "s5_step_save": "읽으면서 단어 저장",
+  "s5_step_review": "EZFurigana에서 복습"
+}

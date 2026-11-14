@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>01 Hero: read real Japanese</title>
+<link rel="stylesheet" href="../theme.css">
+<style>
+  .copy { position: absolute; left: var(--margin); top: 54px; }
+  .slide .lockup { position: absolute; right: var(--margin); top: 60px; }
+  .browser { left: var(--margin); right: var(--margin); top: 226px; bottom: 0; }
+  .page-shot { --iw: 2400; --x: 120; --y: 60; --w: 1734; --h: 760; --s: .6644; }
+  /* The popup drops from the pinned icon, which sits left of the puzzle, profile and menu. */
+  .popup-shot { right: 84px; top: 90px; }
+  .popup-crop { --iw: 1920; --x: 535; --y: 128; --w: 993; --h: 834; --s: .5; }
+  /* Other languages: the popup in that language (captures/<lang>/popup.png, 175% scale, trimmed to the popup). */
+  html:is(:lang(ja), :lang(ko), :lang(zh)) .popup-crop { --iw: 868; --x: 0; --y: 0; --w: 868; --h: 790; --s: .5714; }
+  .cursor { left: 1077px; top: 291px; }
+</style>
+<script src="../i18n.js" defer></script>
+</head>
+<body>
+<main class="slide blue">
+  <div class="copy">
+    <h1 class="headline" data-i18n="s1_headline" data-fit="s1_headline">Read real Japanese.</h1>
+    <p class="subline" data-i18n="s1_subline" data-fit="s1_subline">Furigana on any website, in one click.</p>
+  </div>
+  <div class="lockup">
+    <img src="../../chrome/icons/icon128.png" alt="">
+    <div>
+      <div class="lockup-name">Tsukeru</div>
+      <div class="lockup-tag" data-i18n="brand_tag">Browser extension for Japanese learners</div>
+    </div>
+  </div>
+
+  <div class="browser">
+    <div class="browser-tabs">
+      <div class="browser-tab"><span class="fav">W</span><span class="tab-title">Wikipedia</span><svg class="tab-close" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#5f6368" stroke-width="1.4" stroke-linecap="round"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg></div>
+      <svg class="tab-new" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#3c4043" stroke-width="1.6" stroke-linecap="round"><path d="M7 1.5v11M1.5 7h11"/></svg>
+      <div class="window-controls"><svg viewBox="0 0 10 10"><path d="M0 5.5h10"/></svg><svg viewBox="0 0 10 10"><rect x=".5" y=".5" width="9" height="9"/></svg><svg viewBox="0 0 10 10"><path d="M.5.5l9 9M9.5.5l-9 9"/></svg></div>
+    </div>
+    <div class="browser-toolbar">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".45"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+      <div class="address">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        <span class="url"><span class="host">ja.wikipedia.org</span><span class="path">/wiki/メインページ</span></span>
+        <svg class="star" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"/></svg>
+      </div>
+      <div class="ext-btn"><img src="../../chrome/icons/icon48.png" alt=""></div>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#5f6368"><path d="M10.5 4.5c.28 0 .5.22.5.5v2h6v6h2c.28 0 .5.22.5.5s-.22.5-.5.5h-2v6h-2.12c-.68-1.75-2.39-3-4.38-3s-3.7 1.25-4.38 3H4v-2.12c1.75-.68 3-2.39 3-4.38 0-1.99-1.24-3.7-2.99-4.38L4 7h6V5c0-.28.22-.5.5-.5m0-2C9.12 2.5 8 3.62 8 5H4c-1.1 0-1.99.9-1.99 2v3.8h.29c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-.3c0-1.49 1.21-2.7 2.7-2.7s2.7 1.21 2.7 2.7v.3H17c1.1 0 2-.9 2-2v-4c1.38 0 2.5-1.12 2.5-2.5S20.38 11 19 11V7c0-1.1-.9-2-2-2h-4c0-1.38-1.12-2.5-2.5-2.5z"/></svg>
+      <svg class="avatar" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#c2d4ea"/><circle cx="12" cy="9.5" r="4" fill="#5b7896"/><path d="M4.5 19.5a8.5 8.5 0 0 1 15 0A11.9 11.9 0 0 1 12 24a11.9 11.9 0 0 1-7.5-4.5z" fill="#5b7896"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="#5f6368"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+    </div>
+    <div class="crop page-shot"><img src="../captures/hero-page.png" alt=""></div>
+    <div class="popup-shot"><div class="crop popup-crop"><img src="../captures/popup-raw.png" data-src-ja="../captures/ja/popup.png" data-src-ko="../captures/ko/popup.png" data-src-zh-cn="../captures/zh_CN/popup.png" data-src-zh-tw="../captures/zh_TW/popup.png" alt=""></div></div>
+  </div>
+
+  <svg class="cursor" viewBox="0 0 32 32"><path d="M9.5 5.5a2.5 2.5 0 0 1 5 0V13a2.3 2.3 0 0 1 4.5.6 2.3 2.3 0 0 1 4.5.9 2.2 2.2 0 0 1 4.3 1V22c0 4.5-3 7.5-7 7.5h-5.3c-2.2 0-3.5-1-4.8-2.8l-5.3-7.2a2 2 0 0 1 3-2.6l1.1 1.3z" fill="#fff" stroke="#111" stroke-width="1.3" stroke-linejoin="round"/><path d="M14.5 13v5M19 13.6v4.4M23.5 14.5v3.8" stroke="#111" stroke-width="1.1" stroke-linecap="round"/></svg>
+</main>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="store-size" content="440x280">
+<title>Promo tile, small (440×280)</title>
+<link rel="stylesheet" href="../theme.css">
+<style>
+  body, .slide { width: 440px; height: 280px; }
+  .slide { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+
+  /* The idea: the name wears its own furigana, one kana over each syllable. */
+  .mark { display: flex; align-items: center; gap: 18px; }
+  .mark img { width: 72px; height: 72px; border-radius: 16px; box-shadow: 0 0 0 3px rgba(255, 255, 255, .9), 0 10px 24px rgba(4, 30, 70, .3); }
+  .name { margin: 0; font-size: 60px; font-weight: 700; line-height: 1; letter-spacing: -.02em; ruby-position: over; }
+  .name rt { font-family: "BIZ UDPGothic", "Yu Gothic UI", sans-serif; font-size: 19px; font-weight: 700; color: #bfe0ff; ruby-align: center; padding-bottom: 6px; }
+  .tag { margin: 0; font-size: 17px; font-weight: 600; opacity: .9; }
+</style>
+<script src="../i18n.js" defer></script>
+</head>
+<body>
+<main class="slide blue">
+  <div class="mark">
+    <img src="../../chrome/icons/icon128.png" alt="">
+    <h1 class="name"><ruby lang="en">Tsu<rt lang="ja">つ</rt>ke<rt lang="ja">け</rt>ru<rt lang="ja">る</rt></ruby></h1>
+  </div>
+  <p class="tag" data-i18n="promo_tag" data-fit="promo_tag">Furigana for any website</p>
+</main>
+</body>
+</html>
