@@ -659,20 +659,32 @@
   "difficulty_hard": {
     "message": "어려움"
   },
-  "probable_one": {
-    "message": "이 중 1개는 아마 아는 단어입니다."
-  },
   "probable_many": {
     "message": "이 중 $1개는 아마 아는 단어입니다."
   },
+  "sort_title": {
+    "message": "아마 아는 단어 $1개"
+  },
+  "sort_hint": {
+    "message": "아는 단어를 누르세요."
+  },
+  "select_all": {
+    "message": "모두 선택"
+  },
+  "sort_done": {
+    "message": "$1개를 아는 단어로 표시"
+  },
+  "sort_done_none": {
+    "message": "아는 단어로 표시"
+  },
+  "sorted_known": {
+    "message": "$1개를 아는 단어로 표시했습니다"
+  },
+  "cancel": {
+    "message": "취소"
+  },
   "probable_sort": {
     "message": "분류하기"
-  },
-  "show_all_words_short": {
-    "message": "모든 단어 보기"
-  },
-  "mark_all_known": {
-    "message": "모두 아는 단어로 표시"
   },
   "known_readings_hidden": {
     "message": "아는 단어 $1개의 후리가나가 숨겨집니다"

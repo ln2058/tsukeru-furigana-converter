@@ -659,20 +659,32 @@
   "difficulty_hard": {
     "message": "Hard"
   },
-  "probable_one": {
-    "message": "You probably know 1 of these words."
-  },
   "probable_many": {
     "message": "You probably know $1 of these words."
   },
+  "sort_title": {
+    "message": "You probably know these $1 words"
+  },
+  "sort_hint": {
+    "message": "Tap the ones you know."
+  },
+  "select_all": {
+    "message": "Select all"
+  },
+  "sort_done": {
+    "message": "Mark $1 as known"
+  },
+  "sort_done_none": {
+    "message": "Mark as known"
+  },
+  "sorted_known": {
+    "message": "$1 marked as known"
+  },
+  "cancel": {
+    "message": "Cancel"
+  },
   "probable_sort": {
     "message": "Sort them"
-  },
-  "show_all_words_short": {
-    "message": "Show all words"
-  },
-  "mark_all_known": {
-    "message": "Mark all as known"
   },
   "known_readings_hidden": {
     "message": "Furigana hidden for $1 known words"

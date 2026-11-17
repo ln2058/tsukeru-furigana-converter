@@ -725,7 +725,14 @@ let pageStates = {};
 // Every counted word on the page, kana words too, for the share the reader knows.
 let pageCoverageWords = [];
 let pageEstimate = null;
+// Sorting: the probably-known words as chips to tap; nothing changes until
+// the tapped ones are marked Known together (untapped ones stay unmarked).
 let pageSorting = false;
+let pageSortList = [];
+let pagePicked = new Set();
+let pageChips = [];
+// How many the last sort marked Known, said until the next sort.
+let pageSortedCount = 0;
 // Show the note only after the stored display setting has been read.
 let hideKnownFurigana = false;
 let pageShowAll = false;
@@ -1050,34 +1057,104 @@ function renderProbable() {
   const target = document.getElementById('pageWordsProbable');
   if (!target) return;
   const words = probablyKnownWords(pageWords, pageStates, pageEstimate);
-  if (pageSorting && !words.length) pageSorting = false;
-  const show = words.length >= PROBABLE_MIN || pageSorting;
-  target.hidden = !show;
-  if (!show) return;
+  const offer = words.length >= PROBABLE_MIN;
+  target.hidden = pageSorting || (!offer && !pageSortedCount);
+  const sort = document.getElementById('pageWordsSort');
+  if (sort) sort.hidden = !offer;
   const text = document.getElementById('pageWordsProbableText');
   if (text) {
-    text.textContent = words.length === 1
-      ? t('probable_one', undefined, 'You probably know 1 of these words.')
-      : t('probable_many', [String(words.length)], `You probably know ${words.length} of these words.`);
+    const parts = [];
+    if (pageSortedCount) parts.push(t('sorted_known', [String(pageSortedCount)], `${pageSortedCount} marked as known`));
+    if (offer) parts.push(t('probable_many', [String(words.length)], `You probably know ${words.length} of these words.`));
+    text.textContent = parts.join(' · ');
   }
-  const sort = document.getElementById('pageWordsSort');
-  if (sort) {
-    sort.textContent = pageSorting
-      ? t('show_all_words_short', undefined, 'Show all words')
-      : t('probable_sort', undefined, 'Sort them');
-  }
-  const markAll = document.getElementById('pageWordsMarkAll');
-  if (markAll) markAll.hidden = !pageSorting;
 }
 
-/** Mark every probably-known word on the page Known, one save at a time. */
-async function markProbableKnown() {
-  const words = probablyKnownWords(pageWords, pageStates, pageEstimate);
+function updateSorterActions() {
+  const done = document.getElementById('pageWordsSortDone');
+  if (done) {
+    done.disabled = pagePicked.size === 0;
+    done.textContent = pagePicked.size
+      ? t('sort_done', [String(pagePicked.size)], `Mark ${pagePicked.size} as known`)
+      : t('sort_done_none', undefined, 'Mark as known');
+  }
+  const all = document.getElementById('pageWordsSelectAll');
+  if (all) all.hidden = pagePicked.size === pageSortList.length;
+}
+
+function sortChip(word) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'page-sort-word';
+  button.setAttribute('aria-pressed', pagePicked.has(word.id) ? 'true' : 'false');
+  const term = textSpan('page-sort-word-term', word.word);
+  term.lang = 'ja';
+  const reading = textSpan('page-sort-word-reading', word.reading);
+  reading.lang = 'ja';
+  button.append(term, reading);
+  button.addEventListener('click', () => {
+    const on = !pagePicked.has(word.id);
+    if (on) pagePicked.add(word.id);
+    else pagePicked.delete(word.id);
+    button.setAttribute('aria-pressed', on ? 'true' : 'false');
+    updateSorterActions();
+  });
+  return button;
+}
+
+function renderSorter() {
+  const slip = document.getElementById('pageWordsSlip');
+  if (slip) {
+    if (pageSorting) slip.dataset.sorting = 'true';
+    else delete slip.dataset.sorting;
+  }
+  const sorter = document.getElementById('pageWordsSorter');
+  if (!sorter) return;
+  sorter.hidden = !pageSorting;
+  if (!pageSorting) return;
+  const title = document.getElementById('pageWordsSorterTitle');
+  if (title) title.textContent = t('sort_title', [String(pageSortList.length)], `You probably know these ${pageSortList.length} words`);
+  pageChips = pageSortList.map(sortChip);
+  document.getElementById('pageWordsSorterWords')?.replaceChildren(...pageChips);
+  updateSorterActions();
+}
+
+function openSorter() {
+  pageSorting = true;
+  pageSortedCount = 0;
+  pageSortList = probablyKnownWords(pageWords, pageStates, pageEstimate);
+  pagePicked = new Set();
+  pageRenderSignature = null;
+  renderPage();
+  pageChips[0]?.focus();
+}
+
+function closeSorter() {
+  pageSorting = false;
+  pageSortList = [];
+  pagePicked = new Set();
+  pageChips = [];
+  pageRenderSignature = null;
+  renderPage();
+}
+
+function selectAllSorted() {
+  pagePicked = new Set(pageSortList.map((word) => word.id));
+  pageChips.forEach((chip) => chip.setAttribute('aria-pressed', 'true'));
+  updateSorterActions();
+  document.getElementById('pageWordsSortDone')?.focus();
+}
+
+/** Mark the tapped words Known, one save at a time; untapped ones stay unmarked. */
+async function finishSort() {
+  const words = pageSortList.filter((word) => pagePicked.has(word.id));
+  if (!words.length) return;
+  pageSortedCount = words.length;
+  closeSorter();
   for (const word of words) {
     // eslint-disable-next-line no-await-in-loop
     await setPageWordState(word, 'known');
   }
-  pageSorting = false;
   pageRenderSignature = null;
   renderPage();
 }
@@ -1087,10 +1164,10 @@ function renderPageGroups() {
   if (!container) return;
   let remaining = pageShowAll ? Infinity : PAGE_INITIAL_ROWS;
   const groups = [];
-  const shown = pageSorting ? new Set(probablyKnownWords(pageWords, pageStates, pageEstimate)) : null;
+  renderSorter();
   PAGE_LEVEL_ORDER.forEach((level) => {
-    if (remaining <= 0) return;
-    const members = pageWords.filter((word) => word.level === level && (!shown || shown.has(word)));
+    if (remaining <= 0 || pageSorting) return;
+    const members = pageWords.filter((word) => word.level === level);
     if (!members.length) return;
     const group = document.createElement('section');
     group.className = 'result-words-group';
@@ -1221,12 +1298,15 @@ export async function initPageTab() {
     pageShowAll = true;
     renderPage();
   });
-  document.getElementById('pageWordsSort')?.addEventListener('click', () => {
-    pageSorting = !pageSorting;
-    renderPage();
+  document.getElementById('pageWordsSort')?.addEventListener('click', openSorter);
+  document.getElementById('pageWordsSelectAll')?.addEventListener('click', selectAllSorted);
+  document.getElementById('pageWordsSortDone')?.addEventListener('click', () => {
+    finishSort().catch((error) => console.warn('Tsukeru: could not mark the words', error?.message));
   });
-  document.getElementById('pageWordsMarkAll')?.addEventListener('click', () => {
-    markProbableKnown().catch((error) => console.warn('Tsukeru: could not mark the words', error?.message));
+  document.getElementById('pageWordsSortCancel')?.addEventListener('click', () => {
+    closeSorter();
+    const sort = document.getElementById('pageWordsSort');
+    if (sort && !sort.hidden) sort.focus();
   });
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync' || !changes.hideKnownFurigana) return;

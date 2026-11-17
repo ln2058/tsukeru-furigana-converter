@@ -248,10 +248,21 @@
           <p class="result-words-hint" data-i18n="page_words_hint">Mark words as Learning or Known. Learning words can be reviewed on EZFurigana. Furigana is hidden for Known words; you can turn this off in Settings.</p>
           <p id="pageWordsProbable" class="result-words-probable" hidden>
             <span id="pageWordsProbableText"></span>
-            <button type="button" id="pageWordsSort" class="text-action"></button>
-            <button type="button" id="pageWordsMarkAll" class="text-action" data-i18n="mark_all_known" hidden>Mark all as known</button>
+            <button type="button" id="pageWordsSort" class="page-sort-open" data-i18n="probable_sort">Sort them</button>
           </p>
         </header>
+        <section id="pageWordsSorter" class="page-sorter" aria-labelledby="pageWordsSorterTitle" hidden>
+          <div class="page-sorter-head">
+            <h3 id="pageWordsSorterTitle" class="page-sorter-title"></h3>
+            <p class="page-sorter-hint" data-i18n="sort_hint">Tap the ones you know.</p>
+            <button type="button" id="pageWordsSelectAll" class="text-action page-sorter-select-all" data-i18n="select_all">Select all</button>
+          </div>
+          <div id="pageWordsSorterWords" class="page-sorter-words" role="group" aria-labelledby="pageWordsSorterTitle"></div>
+          <div class="page-sorter-actions">
+            <button type="button" id="pageWordsSortDone" class="primary-link page-sort-done"></button>
+            <button type="button" id="pageWordsSortCancel" class="text-action" data-i18n="cancel">Cancel</button>
+          </div>
+        </section>
         <div id="pageWordsGroups" class="result-words-groups"></div>
         <button type="button" id="pageWordsMore" class="text-action result-words-more" hidden></button>
         <footer class="result-words-foot">

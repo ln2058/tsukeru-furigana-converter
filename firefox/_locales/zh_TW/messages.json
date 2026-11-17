@@ -659,20 +659,32 @@
   "difficulty_hard": {
     "message": "較難"
   },
-  "probable_one": {
-    "message": "其中 1 個單字你可能已經認識。"
-  },
   "probable_many": {
     "message": "其中 $1 個單字你可能已經認識。"
   },
+  "sort_title": {
+    "message": "你可能認識的 $1 個單字"
+  },
+  "sort_hint": {
+    "message": "點按你認識的單字。"
+  },
+  "select_all": {
+    "message": "全選"
+  },
+  "sort_done": {
+    "message": "將 $1 個標為已掌握"
+  },
+  "sort_done_none": {
+    "message": "標為已掌握"
+  },
+  "sorted_known": {
+    "message": "已將 $1 個標為已掌握"
+  },
+  "cancel": {
+    "message": "取消"
+  },
   "probable_sort": {
     "message": "整理一下"
-  },
-  "show_all_words_short": {
-    "message": "顯示所有單字"
-  },
-  "mark_all_known": {
-    "message": "全部標為已掌握"
   },
   "known_readings_hidden": {
     "message": "已隱藏 $1 個已掌握單字的振假名"

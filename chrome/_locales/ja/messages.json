@@ -659,20 +659,32 @@
   "difficulty_hard": {
     "message": "難しい"
   },
-  "probable_one": {
-    "message": "このうち1語は知っていそうです。"
-  },
   "probable_many": {
     "message": "このうち$1語は知っていそうです。"
   },
+  "sort_title": {
+    "message": "知っていそうな$1語"
+  },
+  "sort_hint": {
+    "message": "知っている単語をタップしてください。"
+  },
+  "select_all": {
+    "message": "すべて選択"
+  },
+  "sort_done": {
+    "message": "$1語を「覚えた」にする"
+  },
+  "sort_done_none": {
+    "message": "「覚えた」にする"
+  },
+  "sorted_known": {
+    "message": "$1語を「覚えた」にしました"
+  },
+  "cancel": {
+    "message": "キャンセル"
+  },
   "probable_sort": {
     "message": "分類する"
-  },
-  "show_all_words_short": {
-    "message": "すべての単語を表示"
-  },
-  "mark_all_known": {
-    "message": "すべて「覚えた」にする"
   },
   "known_readings_hidden": {
     "message": "覚えた$1語のふりがなは非表示です"
