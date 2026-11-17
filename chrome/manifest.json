@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_manifest_name__",
-  "version": "4.5.2",
+  "version": "4.6.0",
   "description": "__MSG_manifest_description__",
   "default_locale": "en",
   "permissions": [
@@ -43,6 +43,8 @@
         "js/content-dom.js",
         "js/tooltip-async-state.js",
         "js/word-rules.js",
+        "js/vocab-model.js",
+        "js/content-vocab.js",
         "js/content-tooltip.js",
         "js/content-main.js"
       ],

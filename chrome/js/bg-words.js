@@ -4,11 +4,11 @@ Purpose: Own the My Words store in the background: load and persist word records
 
 Inputs:
 - Word messages from content scripts and the popup (capture, state, definition, a Supporter's sentence explanation, removal, listing).
-- Sync messages from the content script on EZFurigana pages (outbox request and the page's record snapshot).
+- Sync messages from the content script on EZFurigana pages (outbox request and the page's record snapshot, each with the vocabulary estimate part that bg-vocab owns).
 - `chrome.storage.local` word records, removals, sync metadata, and the retired `vocabulary` list.
 
 Outputs:
-- Message responses with word states, records, summaries, and sync payloads.
+- Message responses with word states, records, summaries, and sync payloads (the outbox carries bg-vocab's level and evidence).
 - Toolbar badge text with the number of learning words due now.
 
 Side Effects:
@@ -25,6 +25,7 @@ Security Notes:
 - Records hold no page URLs; nothing here sends words over the network.
 */
 import './word-rules.js';
+import { applySyncPart, syncPart } from './bg-vocab.js';
 
 const Words = globalThis.TsukeruWords;
 
@@ -235,7 +236,7 @@ export async function handleWordsMessage(message, sender) {
       if (!isEzfuriganaSender(sender)) return { success: false };
       const storeId = text(message.storeId, 100) || null;
       const outbox = await update((store, at) => Words.buildOutbox(store, storeId, at));
-      return { success: true, ...outbox };
+      return { success: true, ...outbox, estimate: await syncPart() };
     }
     case 'wordsSyncFinish': {
       if (!isEzfuriganaSender(sender)) return { success: false };
@@ -243,6 +244,8 @@ export async function handleWordsMessage(message, sender) {
       if (!Number.isFinite(startedAt) || startedAt <= 0 || !Array.isArray(message.records)) return { success: false };
       const storeId = text(message.storeId, 100) || null;
       const changed = await update((store, at) => Words.mergeSnapshot(store, message.records, { startedAt, storeId, at }));
+      // Older EZFurigana pages send no estimate.
+      await applySyncPart(message.estimate);
       return { success: true, changed };
     }
     default:

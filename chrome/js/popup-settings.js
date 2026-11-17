@@ -754,6 +754,16 @@ export async function initSettingsForm() {
     );
   }
   renderLevel();
+  // Choosing a Japanese level for the first time (popup-level) also sets the furigana level.
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'sync' || (!changes.levelSystem && !changes.jlptLevel)) return;
+    level = normalizeLevel({
+      ...level,
+      ...(changes.levelSystem ? { levelSystem: changes.levelSystem.newValue } : {}),
+      ...(changes.jlptLevel ? { jlptLevel: changes.jlptLevel.newValue } : {}),
+    });
+    renderLevel();
+  });
   renderAppearance();
   await refreshRateLimitState();
   refreshPageState();

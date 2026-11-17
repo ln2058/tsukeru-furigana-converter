@@ -501,6 +501,25 @@ a.vocab-action-btn { display: inline-flex; align-items: center; text-decoration:
 .review-prompt-actions .review-prompt-never:hover { color: var(--text); }
 .word-sync-note { margin: 6px 14px 0; color: var(--muted); font-size: 10px; line-height: 1.4; }
 .word-sync-note:empty { display: none; }
+.word-sync-note[data-state="synced"]::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: var(--success); vertical-align: 1px; }
+
+/* The reader's Japanese level: asked once on This page, changed in Settings. */
+.level-ask[hidden] { display: none; }
+#pageLevelAsk:not([hidden]) { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 10px 14px 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); }
+.level-ask-prompt { flex-basis: 100%; margin: 0; color: var(--ink); font-size: 12px; font-weight: 700; }
+.level-ask-choices { display: flex; flex-wrap: wrap; gap: 4px; }
+.level-ask .level-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.level-ask .level-chip[data-suggested="true"] { background: var(--blue-soft); box-shadow: inset 0 0 0 1px var(--blue-border); color: var(--ink); }
+.level-ask-hint { flex-basis: 100%; margin: 0; color: var(--muted); font-size: 10px; line-height: 1.4; }
+.level-ask-skip { margin-left: auto; }
+
+/* A page's difficulty beside how much of it the reader knows. */
+.result-profile-difficulty { margin-left: 6px; padding: 1px 5px; border-radius: 3px; }
+.result-profile-coverage[data-difficulty="comfortable"] .result-profile-difficulty { background: color-mix(in srgb, var(--success) 14%, var(--surface)); color: var(--success); }
+.result-profile-coverage[data-difficulty="stretch"] .result-profile-difficulty { background: color-mix(in srgb, var(--star) 18%, var(--surface)); color: color-mix(in srgb, var(--star) 70%, var(--ink)); }
+.result-profile-coverage[data-difficulty="hard"] .result-profile-difficulty { box-shadow: inset 0 0 0 1px var(--border); color: var(--muted); }
+.result-words-probable { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 6px 0 0; color: var(--text); font-size: 11px; }
+.result-words-probable[hidden] { display: none; }
 
 
 .word-ledger-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 12px 0; }

@@ -626,6 +626,51 @@
   "profile_coverage": {
     "message": "已掌握 $1%"
   },
+  "level_ask_prompt": {
+    "message": "你的日语水平如何？"
+  },
+  "level_ask_change": {
+    "message": "你的水平"
+  },
+  "level_ask_hint": {
+    "message": "用于决定哪些单词显示假名注音，以及你掌握每个页面的比例。可在“设置”中更改。"
+  },
+  "level_ask_change_hint": {
+    "message": "用于估算你掌握每个页面的比例。"
+  },
+  "level_ask_skip": {
+    "message": "跳过"
+  },
+  "level_beginner": {
+    "message": "初学者"
+  },
+  "profile_coverage_estimate_title": {
+    "message": "本页单词（重复出现也计入）里，你已掌握的单词加上对尚未标记单词的估计所占的比例"
+  },
+  "difficulty_comfortable": {
+    "message": "轻松"
+  },
+  "difficulty_stretch": {
+    "message": "稍有挑战"
+  },
+  "difficulty_hard": {
+    "message": "较难"
+  },
+  "probable_one": {
+    "message": "其中 1 个单词你可能已经认识。"
+  },
+  "probable_many": {
+    "message": "其中 $1 个单词你可能已经认识。"
+  },
+  "probable_sort": {
+    "message": "整理一下"
+  },
+  "show_all_words_short": {
+    "message": "显示所有单词"
+  },
+  "mark_all_known": {
+    "message": "全部标为已掌握"
+  },
   "known_readings_hidden": {
     "message": "已隐藏 $1 个已掌握单词的振假名"
   },

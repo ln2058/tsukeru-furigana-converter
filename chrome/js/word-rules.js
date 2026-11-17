@@ -4,7 +4,7 @@ Purpose: Hold the My Words rules shared by the background store, content scripts
 
 Inputs:
 - Word, reading, sentence, JLPT level, and state values from page lookups and popup actions.
-- An in-memory word store, retired `vocabulary` entries, and record snapshots from the EZFurigana page.
+- An in-memory word store (at most 5,000 learning and 20,000 known or ignored words, as on EZFurigana), retired `vocabulary` entries, and record snapshots from the EZFurigana page.
 - Caller-supplied times in milliseconds.
 
 Outputs:
@@ -28,7 +28,12 @@ Security Notes:
   const MAX_SENTENCES = 3;
   const MAX_SENTENCE_LENGTH = 120;
   const MAX_DEFINITION_LENGTH = 160;
-  const MAX_RECORDS = 5000;
+  // The website's limits (static/js/word-progress.js): learning words, and
+  // known or ignored words, kept apart so a long Known list never pushes out
+  // new lookups.
+  const MAX_LEARNING_RECORDS = 5000;
+  const MAX_KEPT_RECORDS = 20000;
+  const MAX_RECORDS = MAX_LEARNING_RECORDS + MAX_KEPT_RECORDS;
   const DAY_MS = 24 * 60 * 60 * 1000;
   // Imported saved words fall due this many a day, like the website.
   const IMPORT_DUE_PER_DAY = 20;
@@ -368,14 +373,25 @@ Security Notes:
     if (!record.definition && definition) record.definition = boundedDefinition(definition);
   }
 
-  /** Oldest-seen records go first once the store is full. */
+  /**
+   * Keep at most MAX_LEARNING_RECORDS learning words (never-reviewed ones go
+   * first, then the least recently seen) and MAX_KEPT_RECORDS known or
+   * ignored words (least recently seen first), like the website.
+   */
   function trim(store) {
-    const ids = Object.keys(store.records);
-    if (ids.length <= MAX_RECORDS) return;
-    ids
-      .sort((a, b) => store.records[a].lastSeenAt - store.records[b].lastSeenAt)
-      .slice(0, ids.length - MAX_RECORDS)
-      .forEach((id) => dropRecord(store, id));
+    const groups = [
+      [(record) => record.state === 'learning', MAX_LEARNING_RECORDS, (record) => (record.lastReviewedAt ? 1 : 0)],
+      [(record) => record.state !== 'learning', MAX_KEPT_RECORDS, () => 0],
+    ];
+    groups.forEach(([inGroup, limit, keepFirst]) => {
+      const ids = Object.keys(store.records).filter((id) => inGroup(store.records[id]));
+      if (ids.length <= limit) return;
+      ids
+        .sort((a, b) => keepFirst(store.records[a]) - keepFirst(store.records[b])
+          || store.records[a].lastSeenAt - store.records[b].lastSeenAt)
+        .slice(0, ids.length - limit)
+        .forEach((id) => dropRecord(store, id));
+    });
   }
 
   function clearRemoval(store, id) {

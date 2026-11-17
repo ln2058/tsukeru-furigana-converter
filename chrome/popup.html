@@ -90,6 +90,11 @@
             <button type="button" class="segment" data-value="romaji" aria-pressed="false" aria-label="Romaji" title="Romaji" data-i18n-aria-label="settings_option_reading_romaji" data-i18n-title="settings_option_reading_romaji">ro</button>
           </div>
         </div>
+        <div class="setting-block level-ask" data-level-ask data-mode="change">
+          <span id="readerLevelLabel" class="setting-label" data-i18n="level_ask_change">Your level</span>
+          <div class="level-chips" role="group" aria-labelledby="readerLevelLabel"><button type="button" class="level-chip" data-reader-level="beginner" aria-pressed="false" data-i18n="level_beginner">Beginner</button><button type="button" class="level-chip" data-reader-level="n5" aria-pressed="false">N5</button><button type="button" class="level-chip" data-reader-level="n4" aria-pressed="false">N4</button><button type="button" class="level-chip" data-reader-level="n3" aria-pressed="false">N3</button><button type="button" class="level-chip" data-reader-level="n2" aria-pressed="false">N2</button><button type="button" class="level-chip" data-reader-level="n1" aria-pressed="false">N1</button><button type="button" class="level-chip" data-reader-level="beyond" aria-pressed="false" data-i18n="level_beyond_n1">Beyond N1</button></div>
+          <p class="setting-hint" data-i18n="level_ask_change_hint">Estimates how much of each page you know.</p>
+        </div>
         <div class="setting-block">
           <span class="setting-label" data-i18n="settings_label_level">Furigana level</span>
           <div class="level-rows" id="levelRows">
@@ -226,6 +231,12 @@
           <button type="button" id="reviewPromptNever" class="text-action review-prompt-never" data-i18n="review_prompt_never">Don't ask again</button>
         </div>
       </section>
+      <section id="pageLevelAsk" class="level-ask" data-level-ask data-mode="ask" hidden>
+        <p class="level-ask-prompt" data-i18n="level_ask_prompt">What's your Japanese level?</p>
+        <div class="level-chips level-ask-choices" role="group" aria-label="Your level" data-i18n-aria-label="level_ask_change"><button type="button" class="level-chip" data-reader-level="beginner" aria-pressed="false" data-i18n="level_beginner">Beginner</button><button type="button" class="level-chip" data-reader-level="n5" aria-pressed="false">N5</button><button type="button" class="level-chip" data-reader-level="n4" aria-pressed="false">N4</button><button type="button" class="level-chip" data-reader-level="n3" aria-pressed="false">N3</button><button type="button" class="level-chip" data-reader-level="n2" aria-pressed="false">N2</button><button type="button" class="level-chip" data-reader-level="n1" aria-pressed="false">N1</button><button type="button" class="level-chip" data-reader-level="beyond" aria-pressed="false" data-i18n="level_beyond_n1">Beyond N1</button></div>
+        <p class="level-ask-hint" data-i18n="level_ask_hint">Sets which words keep furigana and how much of each page you know. You can change it in Settings.</p>
+        <button type="button" class="text-action level-ask-skip" data-reader-level-skip data-i18n="level_ask_skip">Skip</button>
+      </section>
       <div id="pageProfile" class="result-profile" hidden>
         <span id="pageProfileMeter" class="result-profile-meter" role="img"></span>
         <p id="pageProfileSummary" class="result-profile-summary" aria-live="polite"></p>
@@ -235,6 +246,11 @@
         <header class="result-words-head">
           <h2 id="pageWordsTitle" class="section-title" data-i18n="page_words_title">Words in this text</h2>
           <p class="result-words-hint" data-i18n="page_words_hint">Mark words as Learning or Known. Learning words can be reviewed on EZFurigana. Furigana is hidden for Known words; you can turn this off in Settings.</p>
+          <p id="pageWordsProbable" class="result-words-probable" hidden>
+            <span id="pageWordsProbableText"></span>
+            <button type="button" id="pageWordsSort" class="text-action"></button>
+            <button type="button" id="pageWordsMarkAll" class="text-action" data-i18n="mark_all_known" hidden>Mark all as known</button>
+          </p>
         </header>
         <div id="pageWordsGroups" class="result-words-groups"></div>
         <button type="button" id="pageWordsMore" class="text-action result-words-more" hidden></button>
@@ -313,6 +329,7 @@
 
   <script src="js/ui-messages.js"></script>
   <script src="js/word-rules.js"></script>
+  <script src="js/vocab-model.js"></script>
   <script type="module" src="js/popup-main.js"></script>
 </body>
 </html>

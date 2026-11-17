@@ -626,6 +626,51 @@
   "profile_coverage": {
     "message": "You know $1%"
   },
+  "level_ask_prompt": {
+    "message": "What's your Japanese level?"
+  },
+  "level_ask_change": {
+    "message": "Your level"
+  },
+  "level_ask_hint": {
+    "message": "Sets which words keep furigana and how much of each page you know. You can change it in Settings."
+  },
+  "level_ask_change_hint": {
+    "message": "Estimates how much of each page you know."
+  },
+  "level_ask_skip": {
+    "message": "Skip"
+  },
+  "level_beginner": {
+    "message": "Beginner"
+  },
+  "profile_coverage_estimate_title": {
+    "message": "Of the words on this page, counting repeats: your Known words, and an estimate for the words you have not marked"
+  },
+  "difficulty_comfortable": {
+    "message": "Comfortable"
+  },
+  "difficulty_stretch": {
+    "message": "Stretch"
+  },
+  "difficulty_hard": {
+    "message": "Hard"
+  },
+  "probable_one": {
+    "message": "You probably know 1 of these words."
+  },
+  "probable_many": {
+    "message": "You probably know $1 of these words."
+  },
+  "probable_sort": {
+    "message": "Sort them"
+  },
+  "show_all_words_short": {
+    "message": "Show all words"
+  },
+  "mark_all_known": {
+    "message": "Mark all as known"
+  },
   "known_readings_hidden": {
     "message": "Furigana hidden for $1 known words"
   },

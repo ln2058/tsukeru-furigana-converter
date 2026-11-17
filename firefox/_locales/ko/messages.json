@@ -626,6 +626,51 @@
   "profile_coverage": {
     "message": "아는 단어 $1%"
   },
+  "level_ask_prompt": {
+    "message": "일본어 레벨은 어느 정도인가요?"
+  },
+  "level_ask_change": {
+    "message": "내 레벨"
+  },
+  "level_ask_hint": {
+    "message": "후리가나를 표시할 단어와 각 페이지에서 아는 단어 비율에 사용됩니다. 설정에서 바꿀 수 있습니다."
+  },
+  "level_ask_change_hint": {
+    "message": "각 페이지에서 아는 단어 비율을 추정하는 데 사용됩니다."
+  },
+  "level_ask_skip": {
+    "message": "건너뛰기"
+  },
+  "level_beginner": {
+    "message": "입문"
+  },
+  "profile_coverage_estimate_title": {
+    "message": "이 페이지의 단어(반복도 셉니다) 중 아는 단어와, 아직 표시하지 않은 단어의 추정치를 합한 비율입니다"
+  },
+  "difficulty_comfortable": {
+    "message": "편하게 읽음"
+  },
+  "difficulty_stretch": {
+    "message": "약간 도전"
+  },
+  "difficulty_hard": {
+    "message": "어려움"
+  },
+  "probable_one": {
+    "message": "이 중 1개는 아마 아는 단어입니다."
+  },
+  "probable_many": {
+    "message": "이 중 $1개는 아마 아는 단어입니다."
+  },
+  "probable_sort": {
+    "message": "분류하기"
+  },
+  "show_all_words_short": {
+    "message": "모든 단어 보기"
+  },
+  "mark_all_known": {
+    "message": "모두 아는 단어로 표시"
+  },
   "known_readings_hidden": {
     "message": "아는 단어 $1개의 후리가나가 숨겨집니다"
   },

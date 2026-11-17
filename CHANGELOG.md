@@ -1,5 +1,24 @@
 # Changelog
 
+## 4.6.0 — 2026-11-17
+
+### Added
+
+- **Your Japanese level**: after Tsukeru has added furigana for you, This page asks your level once (Beginner, N5 to N1, or Beyond N1; you can skip). Your first answer also sets the JLPT furigana level to match; after that you can change either one in Settings without changing the other. The level syncs with EZFurigana.
+- **How much of a page you know**: This page shows "You know X%" with a label: Comfortable (95% or more), Stretch (85 to 94%) or Hard. It counts your Known words, plus an estimate for words you have not marked, based on your level and what you read. It is the same estimate EZFurigana uses.
+- **Words you probably know**: when at least three unmarked words on a page are very likely known, This page offers to sort them, with Mark all as known. They are never marked for you.
+- The estimate learns from what you read: words you look up, and words read without a lookup around them (the lookup's sentence, the text between two lookups made close together, or a whole short page). For this, Tsukeru keeps only counts per word difficulty. They are shared only with EZFurigana, and with your account there if you are signed in. No words, sentences or page addresses are kept for it.
+- Learning words have a faint underline on the page outside Study mode too.
+- My Words shows a dot on the sync line once it has synced with EZFurigana.
+
+### Changed
+
+- **My Words holds as many words as EZFurigana**: up to 5,000 Learning words and 20,000 Known words, kept separately, so a long Known list never pushes out new lookups. When Learning is full, words never reviewed go first.
+
+### Fixed
+
+- Syncing with an EZFurigana list of more than 5,000 words no longer removes words from this browser.
+
 ## 4.5.2 — 2026-11-14
 
 ### Changed

@@ -68,7 +68,7 @@ function routerHarness(browser) {
   let listener;
   const calls = [];
   const sandbox = {
-    URL, isWordsAction: () => false,
+    URL, isWordsAction: () => false, isVocabAction: () => false,
     chrome: { runtime: { onMessage: { addListener(fn) { listener = fn; } } } },
     handleFetchProxyAudio: async url => { calls.push(url); return { dataUrl: 'data:audio/mpeg;base64,YQ==' }; },
   };
@@ -81,7 +81,7 @@ function routerHarness(browser) {
 function sentenceRouter(browser) {
   let listener;
   const sandbox = {
-    URL, isWordsAction: () => false,
+    URL, isWordsAction: () => false, isVocabAction: () => false,
     chrome: { runtime: { id: 'tsukeru', onMessage: { addListener(fn) { listener = fn; } } } },
     fetchSentenceAudio: async () => { const error = new Error('no token'); error.code = 'supporter_required'; throw error; },
     hasSupporterToken: async () => false,
@@ -161,7 +161,7 @@ for (const browser of ['chrome', 'firefox']) {
   test(`${browser} sync routing accepts only this extension on the canonical HTTPS origin`, async () => {
     let reads = 0;
     const sandbox = {
-      URL, console,
+      URL, console, syncPart: async () => ({}), applySyncPart: async () => {},
       chrome: { runtime: { id: 'extension-id' }, storage: { local: {
         async get() { reads++; return {}; }, async set() {}, async remove() {},
       } } },

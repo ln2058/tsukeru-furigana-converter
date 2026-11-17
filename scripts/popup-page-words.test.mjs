@@ -312,4 +312,41 @@ for (const browserName of ['chrome', 'firefox']) {
     }
     assert.deepEqual(sent, ['pageWordsChanged', 'pageWordsChanged']);
   });
+
+  test(`${browserName} the page shows how much of it the reader knows, kana words included, and the words they probably know`, () => {
+    const { sandbox } = loadPopupVocab(browserName);
+    vm.runInContext(readFileSync(new URL(`../${browserName}/js/vocab-model.js`, import.meta.url), 'utf8'), sandbox);
+    const raw = [
+      { word: '天気', surface: '天気', reading: 'てんき', jlpt: '5', band: '0', pos: 'Noun', frequency: 5 },
+      { word: '形而上学', surface: '形而上学', reading: 'けいじじょうがく', jlpt: '', band: '20', pos: 'Noun', frequency: 5 },
+      { word: 'する', surface: 'する', reading: 'する', jlpt: '', pos: 'Verb', frequency: 10 },
+      { word: 'は', surface: 'は', reading: 'は', pos: 'Particle', frequency: 30 },
+    ];
+    const coverageWords = sandbox.coverageWordsOf(raw);
+    assert.equal(coverageWords.length, 3, 'particles are left out; kana words count');
+    const estimate = { ready: true, ability: sandbox.TsukeruVocab.levelAbility('n3') };
+    // 天気 and する are known (15 of 20 uses); 形而上学 is not.
+    const share = sandbox.pageKnownShare(coverageWords, {}, estimate);
+    assert.ok(share.pct >= 70 && share.pct <= 80, String(share.pct));
+    assert.equal(share.label, 'hard');
+    assert.equal(sandbox.pageKnownShare(coverageWords, { '形而上学\u0000けいじじょうがく': 'known' }, estimate).label, 'comfortable');
+    assert.equal(sandbox.pageKnownShare(coverageWords, {}, { ready: false, ability: 5 }), null, 'no readout before the estimate rests on anything');
+
+    const words = sandbox.collectPageWords(raw);
+    assert.deepEqual([...sandbox.probablyKnownWords(words, {}, estimate).map((word) => word.word)], ['天気']);
+    assert.equal(sandbox.probablyKnownWords(words, { '天気\u0000てんき': 'learning' }, estimate).length, 0, 'marked words are not offered');
+  });
+
+  test(`${browserName} an ID rule that shows an element never overrides its hidden attribute`, () => {
+    // Regression: `#pageLevelAsk { display: flex }` outranked `.level-ask[hidden]`, so the
+    // level question stayed on screen after an answer and looked unresponsive.
+    const css = readFileSync(new URL(`../${browserName}/popup.css`, import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const match of css.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+      if (!/(^|;)\s*display\s*:\s*(?!none)/.test(match[2])) continue;
+      for (const selector of match[1].split(',').map((part) => part.trim())) {
+        if (!/#[\w-]+/.test(selector) || selector.startsWith('@')) continue;
+        assert.ok(selector.includes(':not([hidden])'), `${selector} overrides [hidden]`);
+      }
+    }
+  });
 }

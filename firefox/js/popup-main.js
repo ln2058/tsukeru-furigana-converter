@@ -10,7 +10,7 @@ Outputs:
 
 Side Effects:
 - Mutates popup DOM state, shows the toggle shortcut the browser has set (`commands.getAll`), sets language-specific home/pricing/store-review links, requests coalesced page-word refreshes, and sends `reportReadingError` messages.
-- Starts the occasional store-review card (`popup-review`).
+- Starts the occasional store-review card (`popup-review`) and the Japanese level question (`popup-level`).
 
 Failure Modes:
 - Runtime messaging failures keep the modal open with localized error feedback; raw backend messages are not displayed.
@@ -32,6 +32,7 @@ import {
 } from './popup-settings.js';
 import { initMyWordsTab, initPageTab, loadMyWords, relativeTime, requestPageWordsRefresh } from './popup-vocab.js';
 import { initReviewPrompt } from './popup-review.js';
+import { initLevelAsk } from './popup-level.js';
 import { storeReviewUrl } from './review-prompt.js';
 
 // ── Tab navigation ────────────────────────────────────────────────────────────
@@ -145,6 +146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSettingsForm();
     initMyWordsTab();
     initPageTab();
+    void initLevelAsk({ onChange: () => requestPageWordsRefresh() });
     initTabNavigation();
     selectInitialTab();
     void initReviewPrompt({ store: reviewStore, language: TsukeruI18n.language() });

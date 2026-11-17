@@ -4,7 +4,7 @@ Purpose: Route extension events and messages between popup/content scripts and b
 
 Inputs:
 - Shared UI catalogs, uiLocale storage changes, runtime install, command, and context menu events.
-- Message actions and payloads from popup/content scripts, including My Words and EZFurigana sync actions.
+- Message actions and payloads from popup/content scripts, including My Words, the vocabulary estimate, and EZFurigana sync actions.
 - Browser startup and tab activation, which refresh the review badge.
 
 Outputs:
@@ -38,6 +38,7 @@ import {
   fetchSentenceAudio, fetchExampleAudio, fetchSentenceExplanation,
 } from './js/bg-api.js';
 import { handleWordsMessage, isEzfuriganaSender, isWordsAction, refreshWordBadge } from './js/bg-words.js';
+import { handleVocabMessage, isVocabAction } from './js/bg-vocab.js';
 import { isAutoSite } from './js/auto-sites.js';
 import { hasSupportedLocalFileExtension } from './js/utils.js';
 import { REVIEW_USAGE_KEY, localDay, markFirstSeen, recordUsageDay } from './js/review-prompt.js';
@@ -231,6 +232,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch((error) => {
         console.warn('Tsukeru: word storage failed', error?.message);
         sendResponse({ success: false, error: 'Word storage failed' });
+      });
+    return true;
+  }
+
+  if (isVocabAction(message?.action)) {
+    handleVocabMessage(message, sender)
+      .then(sendResponse)
+      .catch((error) => {
+        console.warn('Tsukeru: estimate storage failed', error?.message);
+        sendResponse({ success: false, error: 'Estimate storage failed' });
       });
     return true;
   }
@@ -509,6 +520,8 @@ async function ensureContentScript(tabId) {
     'js/content-dom.js',
     'js/tooltip-async-state.js',
     'js/word-rules.js',
+    'js/vocab-model.js',
+    'js/content-vocab.js',
     'js/content-tooltip.js',
     'js/content-main.js',
   ]) {

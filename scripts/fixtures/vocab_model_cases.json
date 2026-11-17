@@ -1,0 +1,1471 @@
+{
+  "note": "Shared by static/js/vocab-model.js and the Tsukeru extension's js/vocab-model.js; expected values come from the website module.",
+  "difficulty": [
+    {
+      "band": 0,
+      "jlpt": 5,
+      "expected": 0
+    },
+    {
+      "band": 17,
+      "jlpt": 5,
+      "expected": 3
+    },
+    {
+      "band": 21,
+      "jlpt": 5,
+      "expected": 3
+    },
+    {
+      "band": null,
+      "jlpt": 4,
+      "expected": 5
+    },
+    {
+      "band": 8,
+      "jlpt": 3,
+      "expected": 5.882353
+    },
+    {
+      "band": 3,
+      "jlpt": 2,
+      "expected": 7.705882
+    },
+    {
+      "band": 12,
+      "jlpt": 1,
+      "expected": 12.823529
+    },
+    {
+      "band": 0,
+      "jlpt": 0,
+      "expected": 7
+    },
+    {
+      "band": 10,
+      "jlpt": 0,
+      "expected": 13
+    },
+    {
+      "band": 21,
+      "jlpt": 0,
+      "expected": 19.6
+    },
+    {
+      "band": null,
+      "jlpt": 0,
+      "expected": null
+    },
+    {
+      "band": "4",
+      "jlpt": "3",
+      "expected": 4.941176
+    }
+  ],
+  "ability": [
+    {
+      "name": "prior only (n3)",
+      "level": "n3",
+      "n": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "k": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "expected": 8.29
+    },
+    {
+      "name": "mixed evidence (n4)",
+      "level": "n4",
+      "n": [
+        0,
+        0,
+        0,
+        0,
+        25,
+        0,
+        0,
+        0,
+        0,
+        12,
+        0,
+        0,
+        0,
+        6,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "k": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0,
+        0,
+        5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "expected": 8.131821
+    },
+    {
+      "name": "skipped, all read (null)",
+      "level": null,
+      "n": [
+        0,
+        0,
+        40,
+        0,
+        0,
+        0,
+        30,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "k": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "expected": 9.12481
+    },
+    {
+      "name": "beginner, all looked up",
+      "level": "beginner",
+      "n": [
+        0,
+        0,
+        40,
+        0,
+        0,
+        0,
+        30,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "k": [
+        0,
+        0,
+        40,
+        0,
+        0,
+        0,
+        30,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "expected": -2.525022
+    }
+  ],
+  "coverage": [
+    {
+      "name": "n3 reader, mixed text",
+      "ability": 8.29,
+      "words": [
+        {
+          "band": 2,
+          "jlpt": 5,
+          "state": null,
+          "occurrences": 8,
+          "kana": false
+        },
+        {
+          "band": 6,
+          "jlpt": 4,
+          "state": null,
+          "occurrences": 5,
+          "kana": false
+        },
+        {
+          "band": 9,
+          "jlpt": 3,
+          "state": null,
+          "occurrences": 4,
+          "kana": false
+        },
+        {
+          "band": 11,
+          "jlpt": 2,
+          "state": "learning",
+          "occurrences": 2,
+          "kana": false
+        },
+        {
+          "band": 14,
+          "jlpt": 0,
+          "state": null,
+          "occurrences": 3,
+          "kana": false
+        },
+        {
+          "band": null,
+          "jlpt": 0,
+          "state": null,
+          "occurrences": 6,
+          "kana": true
+        },
+        {
+          "band": 3,
+          "jlpt": 0,
+          "state": "known",
+          "occurrences": 2,
+          "kana": false
+        }
+      ],
+      "expected": 80
+    },
+    {
+      "name": "beginner, same text",
+      "ability": -1.34,
+      "words": [
+        {
+          "band": 2,
+          "jlpt": 5,
+          "state": null,
+          "occurrences": 8,
+          "kana": false
+        },
+        {
+          "band": 6,
+          "jlpt": 4,
+          "state": null,
+          "occurrences": 5,
+          "kana": false
+        },
+        {
+          "band": 9,
+          "jlpt": 3,
+          "state": null,
+          "occurrences": 4,
+          "kana": false
+        },
+        {
+          "band": 11,
+          "jlpt": 2,
+          "state": "learning",
+          "occurrences": 2,
+          "kana": false
+        },
+        {
+          "band": 14,
+          "jlpt": 0,
+          "state": null,
+          "occurrences": 3,
+          "kana": false
+        },
+        {
+          "band": null,
+          "jlpt": 0,
+          "state": null,
+          "occurrences": 6,
+          "kana": true
+        },
+        {
+          "band": 3,
+          "jlpt": 0,
+          "state": "known",
+          "occurrences": 2,
+          "kana": false
+        }
+      ],
+      "expected": 33
+    },
+    {
+      "name": "too short",
+      "ability": 5,
+      "words": [
+        {
+          "band": 2,
+          "jlpt": 5,
+          "state": null,
+          "occurrences": 3,
+          "kana": false
+        }
+      ],
+      "expected": null
+    }
+  ],
+  "stretches": [
+    {
+      "name": "one lookup reads its sentence",
+      "units": [
+        {
+          "offset": 0,
+          "sentence": 0
+        },
+        {
+          "offset": 5,
+          "sentence": 0
+        },
+        {
+          "offset": 10,
+          "sentence": 0
+        },
+        {
+          "offset": 15,
+          "sentence": 0
+        },
+        {
+          "offset": 20,
+          "sentence": 0
+        },
+        {
+          "offset": 25,
+          "sentence": 0
+        },
+        {
+          "offset": 30,
+          "sentence": 0
+        },
+        {
+          "offset": 35,
+          "sentence": 0
+        },
+        {
+          "offset": 40,
+          "sentence": 1
+        },
+        {
+          "offset": 45,
+          "sentence": 1
+        },
+        {
+          "offset": 50,
+          "sentence": 1
+        },
+        {
+          "offset": 55,
+          "sentence": 1
+        },
+        {
+          "offset": 60,
+          "sentence": 1
+        },
+        {
+          "offset": 65,
+          "sentence": 1
+        },
+        {
+          "offset": 70,
+          "sentence": 1
+        },
+        {
+          "offset": 75,
+          "sentence": 1
+        },
+        {
+          "offset": 80,
+          "sentence": 2
+        },
+        {
+          "offset": 85,
+          "sentence": 2
+        },
+        {
+          "offset": 90,
+          "sentence": 2
+        },
+        {
+          "offset": 95,
+          "sentence": 2
+        },
+        {
+          "offset": 100,
+          "sentence": 2
+        },
+        {
+          "offset": 105,
+          "sentence": 2
+        },
+        {
+          "offset": 110,
+          "sentence": 2
+        },
+        {
+          "offset": 115,
+          "sentence": 2
+        },
+        {
+          "offset": 120,
+          "sentence": 3
+        },
+        {
+          "offset": 125,
+          "sentence": 3
+        },
+        {
+          "offset": 130,
+          "sentence": 3
+        },
+        {
+          "offset": 135,
+          "sentence": 3
+        },
+        {
+          "offset": 140,
+          "sentence": 3
+        },
+        {
+          "offset": 145,
+          "sentence": 3
+        },
+        {
+          "offset": 150,
+          "sentence": 3
+        },
+        {
+          "offset": 155,
+          "sentence": 3
+        },
+        {
+          "offset": 160,
+          "sentence": 4
+        },
+        {
+          "offset": 165,
+          "sentence": 4
+        },
+        {
+          "offset": 170,
+          "sentence": 4
+        },
+        {
+          "offset": 175,
+          "sentence": 4
+        },
+        {
+          "offset": 180,
+          "sentence": 4
+        },
+        {
+          "offset": 185,
+          "sentence": 4
+        },
+        {
+          "offset": 190,
+          "sentence": 4
+        },
+        {
+          "offset": 195,
+          "sentence": 4
+        }
+      ],
+      "lookups": [
+        {
+          "index": 10,
+          "at": 0
+        }
+      ],
+      "options": {},
+      "expected": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ]
+    },
+    {
+      "name": "two lookups a minute apart read between",
+      "units": [
+        {
+          "offset": 0,
+          "sentence": 0
+        },
+        {
+          "offset": 5,
+          "sentence": 0
+        },
+        {
+          "offset": 10,
+          "sentence": 0
+        },
+        {
+          "offset": 15,
+          "sentence": 0
+        },
+        {
+          "offset": 20,
+          "sentence": 0
+        },
+        {
+          "offset": 25,
+          "sentence": 0
+        },
+        {
+          "offset": 30,
+          "sentence": 0
+        },
+        {
+          "offset": 35,
+          "sentence": 0
+        },
+        {
+          "offset": 40,
+          "sentence": 1
+        },
+        {
+          "offset": 45,
+          "sentence": 1
+        },
+        {
+          "offset": 50,
+          "sentence": 1
+        },
+        {
+          "offset": 55,
+          "sentence": 1
+        },
+        {
+          "offset": 60,
+          "sentence": 1
+        },
+        {
+          "offset": 65,
+          "sentence": 1
+        },
+        {
+          "offset": 70,
+          "sentence": 1
+        },
+        {
+          "offset": 75,
+          "sentence": 1
+        },
+        {
+          "offset": 80,
+          "sentence": 2
+        },
+        {
+          "offset": 85,
+          "sentence": 2
+        },
+        {
+          "offset": 90,
+          "sentence": 2
+        },
+        {
+          "offset": 95,
+          "sentence": 2
+        },
+        {
+          "offset": 100,
+          "sentence": 2
+        },
+        {
+          "offset": 105,
+          "sentence": 2
+        },
+        {
+          "offset": 110,
+          "sentence": 2
+        },
+        {
+          "offset": 115,
+          "sentence": 2
+        },
+        {
+          "offset": 120,
+          "sentence": 3
+        },
+        {
+          "offset": 125,
+          "sentence": 3
+        },
+        {
+          "offset": 130,
+          "sentence": 3
+        },
+        {
+          "offset": 135,
+          "sentence": 3
+        },
+        {
+          "offset": 140,
+          "sentence": 3
+        },
+        {
+          "offset": 145,
+          "sentence": 3
+        },
+        {
+          "offset": 150,
+          "sentence": 3
+        },
+        {
+          "offset": 155,
+          "sentence": 3
+        },
+        {
+          "offset": 160,
+          "sentence": 4
+        },
+        {
+          "offset": 165,
+          "sentence": 4
+        },
+        {
+          "offset": 170,
+          "sentence": 4
+        },
+        {
+          "offset": 175,
+          "sentence": 4
+        },
+        {
+          "offset": 180,
+          "sentence": 4
+        },
+        {
+          "offset": 185,
+          "sentence": 4
+        },
+        {
+          "offset": 190,
+          "sentence": 4
+        },
+        {
+          "offset": 195,
+          "sentence": 4
+        }
+      ],
+      "lookups": [
+        {
+          "index": 3,
+          "at": 0
+        },
+        {
+          "index": 30,
+          "at": 60000
+        }
+      ],
+      "options": {},
+      "expected": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ]
+    },
+    {
+      "name": "a quick jump reads only the sentences",
+      "units": [
+        {
+          "offset": 0,
+          "sentence": 0
+        },
+        {
+          "offset": 5,
+          "sentence": 0
+        },
+        {
+          "offset": 10,
+          "sentence": 0
+        },
+        {
+          "offset": 15,
+          "sentence": 0
+        },
+        {
+          "offset": 20,
+          "sentence": 0
+        },
+        {
+          "offset": 25,
+          "sentence": 0
+        },
+        {
+          "offset": 30,
+          "sentence": 0
+        },
+        {
+          "offset": 35,
+          "sentence": 0
+        },
+        {
+          "offset": 40,
+          "sentence": 1
+        },
+        {
+          "offset": 45,
+          "sentence": 1
+        },
+        {
+          "offset": 50,
+          "sentence": 1
+        },
+        {
+          "offset": 55,
+          "sentence": 1
+        },
+        {
+          "offset": 60,
+          "sentence": 1
+        },
+        {
+          "offset": 65,
+          "sentence": 1
+        },
+        {
+          "offset": 70,
+          "sentence": 1
+        },
+        {
+          "offset": 75,
+          "sentence": 1
+        },
+        {
+          "offset": 80,
+          "sentence": 2
+        },
+        {
+          "offset": 85,
+          "sentence": 2
+        },
+        {
+          "offset": 90,
+          "sentence": 2
+        },
+        {
+          "offset": 95,
+          "sentence": 2
+        },
+        {
+          "offset": 100,
+          "sentence": 2
+        },
+        {
+          "offset": 105,
+          "sentence": 2
+        },
+        {
+          "offset": 110,
+          "sentence": 2
+        },
+        {
+          "offset": 115,
+          "sentence": 2
+        },
+        {
+          "offset": 120,
+          "sentence": 3
+        },
+        {
+          "offset": 125,
+          "sentence": 3
+        },
+        {
+          "offset": 130,
+          "sentence": 3
+        },
+        {
+          "offset": 135,
+          "sentence": 3
+        },
+        {
+          "offset": 140,
+          "sentence": 3
+        },
+        {
+          "offset": 145,
+          "sentence": 3
+        },
+        {
+          "offset": 150,
+          "sentence": 3
+        },
+        {
+          "offset": 155,
+          "sentence": 3
+        },
+        {
+          "offset": 160,
+          "sentence": 4
+        },
+        {
+          "offset": 165,
+          "sentence": 4
+        },
+        {
+          "offset": 170,
+          "sentence": 4
+        },
+        {
+          "offset": 175,
+          "sentence": 4
+        },
+        {
+          "offset": 180,
+          "sentence": 4
+        },
+        {
+          "offset": 185,
+          "sentence": 4
+        },
+        {
+          "offset": 190,
+          "sentence": 4
+        },
+        {
+          "offset": 195,
+          "sentence": 4
+        }
+      ],
+      "lookups": [
+        {
+          "index": 3,
+          "at": 0
+        },
+        {
+          "index": 38,
+          "at": 1000
+        }
+      ],
+      "options": {},
+      "expected": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    },
+    {
+      "name": "lookups out of order still bracket",
+      "units": [
+        {
+          "offset": 0,
+          "sentence": 0
+        },
+        {
+          "offset": 5,
+          "sentence": 0
+        },
+        {
+          "offset": 10,
+          "sentence": 0
+        },
+        {
+          "offset": 15,
+          "sentence": 0
+        },
+        {
+          "offset": 20,
+          "sentence": 0
+        },
+        {
+          "offset": 25,
+          "sentence": 0
+        },
+        {
+          "offset": 30,
+          "sentence": 0
+        },
+        {
+          "offset": 35,
+          "sentence": 0
+        },
+        {
+          "offset": 40,
+          "sentence": 1
+        },
+        {
+          "offset": 45,
+          "sentence": 1
+        },
+        {
+          "offset": 50,
+          "sentence": 1
+        },
+        {
+          "offset": 55,
+          "sentence": 1
+        },
+        {
+          "offset": 60,
+          "sentence": 1
+        },
+        {
+          "offset": 65,
+          "sentence": 1
+        },
+        {
+          "offset": 70,
+          "sentence": 1
+        },
+        {
+          "offset": 75,
+          "sentence": 1
+        },
+        {
+          "offset": 80,
+          "sentence": 2
+        },
+        {
+          "offset": 85,
+          "sentence": 2
+        },
+        {
+          "offset": 90,
+          "sentence": 2
+        },
+        {
+          "offset": 95,
+          "sentence": 2
+        },
+        {
+          "offset": 100,
+          "sentence": 2
+        },
+        {
+          "offset": 105,
+          "sentence": 2
+        },
+        {
+          "offset": 110,
+          "sentence": 2
+        },
+        {
+          "offset": 115,
+          "sentence": 2
+        },
+        {
+          "offset": 120,
+          "sentence": 3
+        },
+        {
+          "offset": 125,
+          "sentence": 3
+        },
+        {
+          "offset": 130,
+          "sentence": 3
+        },
+        {
+          "offset": 135,
+          "sentence": 3
+        },
+        {
+          "offset": 140,
+          "sentence": 3
+        },
+        {
+          "offset": 145,
+          "sentence": 3
+        },
+        {
+          "offset": 150,
+          "sentence": 3
+        },
+        {
+          "offset": 155,
+          "sentence": 3
+        },
+        {
+          "offset": 160,
+          "sentence": 4
+        },
+        {
+          "offset": 165,
+          "sentence": 4
+        },
+        {
+          "offset": 170,
+          "sentence": 4
+        },
+        {
+          "offset": 175,
+          "sentence": 4
+        },
+        {
+          "offset": 180,
+          "sentence": 4
+        },
+        {
+          "offset": 185,
+          "sentence": 4
+        },
+        {
+          "offset": 190,
+          "sentence": 4
+        },
+        {
+          "offset": 195,
+          "sentence": 4
+        }
+      ],
+      "lookups": [
+        {
+          "index": 30,
+          "at": 0
+        },
+        {
+          "index": 12,
+          "at": 40000
+        }
+      ],
+      "options": {},
+      "expected": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31
+      ]
+    },
+    {
+      "name": "a short text open 30 s is read whole",
+      "units": [
+        {
+          "offset": 0,
+          "sentence": 0
+        },
+        {
+          "offset": 5,
+          "sentence": 0
+        },
+        {
+          "offset": 10,
+          "sentence": 0
+        },
+        {
+          "offset": 15,
+          "sentence": 0
+        },
+        {
+          "offset": 20,
+          "sentence": 0
+        },
+        {
+          "offset": 25,
+          "sentence": 0
+        },
+        {
+          "offset": 30,
+          "sentence": 0
+        },
+        {
+          "offset": 35,
+          "sentence": 0
+        },
+        {
+          "offset": 40,
+          "sentence": 1
+        },
+        {
+          "offset": 45,
+          "sentence": 1
+        },
+        {
+          "offset": 50,
+          "sentence": 1
+        },
+        {
+          "offset": 55,
+          "sentence": 1
+        },
+        {
+          "offset": 60,
+          "sentence": 1
+        },
+        {
+          "offset": 65,
+          "sentence": 1
+        },
+        {
+          "offset": 70,
+          "sentence": 1
+        },
+        {
+          "offset": 75,
+          "sentence": 1
+        },
+        {
+          "offset": 80,
+          "sentence": 2
+        },
+        {
+          "offset": 85,
+          "sentence": 2
+        },
+        {
+          "offset": 90,
+          "sentence": 2
+        },
+        {
+          "offset": 95,
+          "sentence": 2
+        },
+        {
+          "offset": 100,
+          "sentence": 2
+        },
+        {
+          "offset": 105,
+          "sentence": 2
+        },
+        {
+          "offset": 110,
+          "sentence": 2
+        },
+        {
+          "offset": 115,
+          "sentence": 2
+        },
+        {
+          "offset": 120,
+          "sentence": 3
+        },
+        {
+          "offset": 125,
+          "sentence": 3
+        },
+        {
+          "offset": 130,
+          "sentence": 3
+        },
+        {
+          "offset": 135,
+          "sentence": 3
+        },
+        {
+          "offset": 140,
+          "sentence": 3
+        },
+        {
+          "offset": 145,
+          "sentence": 3
+        },
+        {
+          "offset": 150,
+          "sentence": 3
+        },
+        {
+          "offset": 155,
+          "sentence": 3
+        },
+        {
+          "offset": 160,
+          "sentence": 4
+        },
+        {
+          "offset": 165,
+          "sentence": 4
+        },
+        {
+          "offset": 170,
+          "sentence": 4
+        },
+        {
+          "offset": 175,
+          "sentence": 4
+        },
+        {
+          "offset": 180,
+          "sentence": 4
+        },
+        {
+          "offset": 185,
+          "sentence": 4
+        },
+        {
+          "offset": 190,
+          "sentence": 4
+        },
+        {
+          "offset": 195,
+          "sentence": 4
+        }
+      ],
+      "lookups": [],
+      "options": {
+        "textChars": 200,
+        "openMs": 30000
+      },
+      "expected": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    }
+  ],
+  "sizes": [
+    {
+      "level": "beginner",
+      "expected": 134
+    },
+    {
+      "level": "n5",
+      "expected": 1197
+    },
+    {
+      "level": "n4",
+      "expected": 2084
+    },
+    {
+      "level": "n3",
+      "expected": 3707
+    },
+    {
+      "level": "n2",
+      "expected": 7410
+    },
+    {
+      "level": "n1",
+      "expected": 10445
+    },
+    {
+      "level": "beyond",
+      "expected": 11327
+    }
+  ],
+  "shares": [
+    {
+      "level": "beginner",
+      "expected": {
+        "1": 0.000053,
+        "2": 0.000475,
+        "3": 0.007691,
+        "4": 0.040485,
+        "5": 0.149997
+      }
+    },
+    {
+      "level": "n4",
+      "expected": {
+        "1": 0.006662,
+        "2": 0.054442,
+        "3": 0.431921,
+        "4": 0.799975,
+        "5": 0.938615
+      }
+    },
+    {
+      "level": "n1",
+      "expected": {
+        "1": 0.799969,
+        "2": 0.971221,
+        "3": 0.997883,
+        "4": 0.999698,
+        "5": 0.999925
+      }
+    }
+  ]
+}

@@ -1,11 +1,11 @@
 /*
 Module: content-sync
-Purpose: Keep My Words in step with EZFurigana while one of its pages is open: send the words changed in the extension to the page, then hand the page's full record list to the background store. Also collect a signed-in Supporter's extension token for the background.
+Purpose: Keep My Words and the vocabulary estimate in step with EZFurigana while one of its pages is open: send the words changed in the extension (and the chosen level and reading evidence) to the page, then hand the page's full record list and estimate to the background. Also collect a signed-in Supporter's extension token for the background.
 
 Inputs:
 - Window messages from the EZFurigana page on this origin (ready with its store id, changed, snapshot, and supporter once checkout has activated Supporter).
 - A `?tsukeru=connect` page address (the popup's Connect button and the checkout success page).
-- Outbox and merge responses from the background store, and local word changes from `chrome.storage.onChanged`.
+- Outbox and merge responses from the background store, and local word and estimate changes from `chrome.storage.onChanged`.
 
 Outputs:
 - Hello and push messages posted to this window for the page's sync module.
@@ -24,7 +24,7 @@ Failure Modes:
 
 Security Notes:
 - Runs only on https://www.ezfurigana.com pages (manifest match) and posts only to that origin.
-- Word sync carries only words, readings, states, schedule times, and short sentences from the reader's lists; nothing is sent to a server.
+- Word sync carries only words, readings, states, schedule times, and short sentences from the reader's lists, plus the chosen level and counts per difficulty; nothing is sent to a server.
 - Only a SHA-256 digest of the CSRF cookie is kept (tab session storage) to notice an account change; the cookie itself is never stored or posted.
 - The Supporter token goes straight to the background and is never posted to the page window.
 */
@@ -73,7 +73,7 @@ Security Notes:
       if (!outbox?.success) throw new Error('The word store did not answer');
       exchange.startedAt = outbox.startedAt;
       exchange.timeout = setTimeout(endExchange, EXCHANGE_TIMEOUT_MS);
-      post({ type: 'push', exchangeId: exchange.id, changes: outbox.changes, removed: outbox.removed });
+      post({ type: 'push', exchangeId: exchange.id, changes: outbox.changes, removed: outbox.removed, estimate: outbox.estimate || {} });
     } catch (error) {
       console.warn('Tsukeru: word sync could not start', error?.message);
       endExchange();
@@ -89,6 +89,7 @@ Security Notes:
         startedAt,
         storeId: typeof data.storeId === 'string' ? data.storeId : null,
         records: data.records,
+        estimate: data.estimate && typeof data.estimate === 'object' ? data.estimate : null,
       });
     } catch (error) {
       console.warn('Tsukeru: word sync could not finish', error?.message);
@@ -118,7 +119,7 @@ Security Notes:
   // Words marked in other tabs while this page is open.
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local' || !pageReady) return;
-    if (Object.keys(changes).some((key) => key.startsWith('w:') || key.startsWith('wr:'))) schedule();
+    if (Object.keys(changes).some((key) => key.startsWith('w:') || key.startsWith('wr:') || key === 'vocabEstimate')) schedule();
   });
 
   const FORCED_REFRESH_GAP_MS = 5000;

@@ -265,6 +265,8 @@ function getAnalysisWordData(target) {
       .split(',').map((value) => value.trim()).filter(Boolean),
     // Frequency tier (common / uncommon / rare) from current backends.
     freq: getDataAttribute(element, 'freq').trim(),
+    // Frequency band 0 (most frequent) to 21 for the vocabulary estimate, from current backends.
+    band: getDataAttribute(element, 'band').trim(),
     // Pitch accent "reading:downstep" (たべる:2) from current backends.
     accent: getDataAttribute(element, 'accent').trim(),
     // Conjugation codes such as "negative,past" from current backends.
@@ -2706,6 +2708,7 @@ function extractAllPageWords() {
           lookupReading: wordInfo.lookupReading || '',
           lookupReadingType: wordInfo.lookupReadingType || '',
           jlpt: wordInfo.jlpt || '',
+          band: wordInfo.band || '',
           pos: wordInfo.pos || '',
           frequency: 1,
           occurrenceIndex: occurrenceCounter++,

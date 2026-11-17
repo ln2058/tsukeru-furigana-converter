@@ -626,6 +626,51 @@
   "profile_coverage": {
     "message": "覚えた単語の割合：$1%"
   },
+  "level_ask_prompt": {
+    "message": "日本語のレベルは？"
+  },
+  "level_ask_change": {
+    "message": "あなたのレベル"
+  },
+  "level_ask_hint": {
+    "message": "ふりがなを付ける単語と、各ページで覚えている割合に使います。設定でいつでも変更できます。"
+  },
+  "level_ask_change_hint": {
+    "message": "各ページで覚えている割合の推定に使います。"
+  },
+  "level_ask_skip": {
+    "message": "スキップ"
+  },
+  "level_beginner": {
+    "message": "初心者"
+  },
+  "profile_coverage_estimate_title": {
+    "message": "このページの単語（繰り返しも数えます）のうち、覚えた単語と、まだ分類していない単語の推定を合わせた割合です"
+  },
+  "difficulty_comfortable": {
+    "message": "楽に読める"
+  },
+  "difficulty_stretch": {
+    "message": "少し背伸び"
+  },
+  "difficulty_hard": {
+    "message": "難しい"
+  },
+  "probable_one": {
+    "message": "このうち1語は知っていそうです。"
+  },
+  "probable_many": {
+    "message": "このうち$1語は知っていそうです。"
+  },
+  "probable_sort": {
+    "message": "分類する"
+  },
+  "show_all_words_short": {
+    "message": "すべての単語を表示"
+  },
+  "mark_all_known": {
+    "message": "すべて「覚えた」にする"
+  },
   "known_readings_hidden": {
     "message": "覚えた$1語のふりがなは非表示です"
   },

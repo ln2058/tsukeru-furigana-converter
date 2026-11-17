@@ -1,10 +1,10 @@
 /*
 Module: popup-vocab
-Purpose: Power the popup's My Words tab (review strip, Learning / Known lists, exports) and This page tab (Study mode switch, JLPT profile meter, and Words in this text with Learning / Known switches), styled after EZFurigana's My Words and result panel.
+Purpose: Power the popup's My Words tab (review strip, sync line, Learning / Known lists, exports) and This page tab (Study mode switch, JLPT profile meter, how much of the page the reader knows with its difficulty, the words they probably know, and Words in this text with Learning / Known switches), styled after EZFurigana's My Words and result panel.
 
 Inputs:
 - The resolved UI language and website routes from the shared i18n helper.
-- Word records and summaries from the background store, page words from the active tab, the stored Study mode setting, popup UI events, background dictionary and audio responses, and `pageWordsChanged` notices from the active tab's content script.
+- Word records and summaries from the background store, the vocabulary estimate (`vocabGet`) and the shared model (`TsukeruVocab`), page words from the active tab, the stored Study mode setting, popup UI events, background dictionary and audio responses, and `pageWordsChanged` notices from the active tab's content script.
 
 Outputs:
 - Rendered My Words and page word lists (each saved word with a pronunciation button; numbers that share a counter form one 〜年 row with their most frequent uses), Learning/Known/removal requests, Study mode updates, and CSV export downloads.
@@ -45,6 +45,11 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 // Easiest first, like the website's meter; 0 is beyond N1.
 const PAGE_LEVEL_ORDER = [5, 4, 3, 2, 1, 0];
 const PAGE_INITIAL_ROWS = 60;
+// Not counted toward how much of a page the reader knows (as on EZFurigana).
+const NOT_COVERAGE_WORDS = new Set(['Particle', 'Grammar', 'Aux verb', 'Symbol', 'Punctuation']);
+const KANJI_RE = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u3005]|[\uD840-\uD87F][\uDC00-\uDFFF]/;
+// The probably-known message needs at least this many words.
+const PROBABLE_MIN = 3;
 // Missing definitions an export looks up, so a large list cannot flood the dictionary.
 const EXPORT_DEFINITION_LOOKUPS = 60;
 
@@ -590,6 +595,7 @@ function renderStrip(summary) {
   }
   if (strip) strip.dataset.due = due > 0 ? 'true' : 'false';
   if (sync) {
+    sync.dataset.state = summary?.lastSyncAt ? 'synced' : 'never';
     sync.textContent = summary?.lastSyncAt
       ? t('sync_last', [relativeTime(summary.lastSyncAt)], `Synced ${relativeTime(summary.lastSyncAt)}`)
       : t('sync_never', undefined, 'Open EZFurigana once to sync your words.');
@@ -715,6 +721,10 @@ export function initMyWordsTab() {
 
 let pageWords = [];
 let pageStates = {};
+// Every counted word on the page, kana words too, for the share the reader knows.
+let pageCoverageWords = [];
+let pageEstimate = null;
+let pageSorting = false;
 // Show the note only after the stored display setting has been read.
 let hideKnownFurigana = false;
 let pageShowAll = false;
@@ -772,6 +782,8 @@ export function collectPageWords(rawWords) {
       word = {
         ...identity,
         level: rules.levelOf(raw.jlpt),
+        jlpt: String(raw.jlpt || ''),
+        band: String(raw.band ?? ''),
         pos: String(raw.pos || '').split(',')[0].trim(),
         surface: raw.surface || identity.word,
         snippet: String(raw.snippet || ''),
@@ -783,6 +795,58 @@ export function collectPageWords(rawWords) {
     if (isCounter) addCounterExample(word, raw, occurrences);
   });
   return Array.from(byId.values());
+}
+
+/** Every word that counts toward how much of the page the reader knows, kana words too, with its uses. */
+export function coverageWordsOf(rawWords) {
+  const rules = wordRules();
+  const byId = new Map();
+  if (!rules) return [];
+  (Array.isArray(rawWords) ? rawWords : []).forEach((raw) => {
+    if (NOT_COVERAGE_WORDS.has(String(raw?.pos || '').split(',')[0].trim())) return;
+    const surface = String(raw.surface || raw.word || '');
+    if (!surface) return;
+    const kana = !KANJI_RE.test(surface);
+    const identity = kana ? null : rules.identityForWordInfo({
+      surface: raw.surface,
+      dictForm: raw.word,
+      lookupReading: raw.lookupReading,
+      reading: raw.reading,
+      counter: raw.counter,
+      counterReading: raw.counterReading,
+    });
+    if (!kana && !identity) return;
+    const id = kana ? `kana\u0000${surface}` : identity.id;
+    const occurrences = Math.max(1, Number(raw.frequency) || 1);
+    const word = byId.get(id);
+    if (word) word.occurrences += occurrences;
+    else byId.set(id, { id, kana, jlpt: String(raw.jlpt || ''), band: String(raw.band ?? ''), occurrences });
+  });
+  return Array.from(byId.values());
+}
+
+function vocabModel() {
+  return globalThis.TsukeruVocab || null;
+}
+
+/** How much of the page the reader knows (Known words, and the estimate for unmarked ones), or null. */
+export function pageKnownShare(words, states, estimate) {
+  const Vocab = vocabModel();
+  if (!Vocab || !estimate?.ready || !Number.isFinite(estimate.ability)) return null;
+  const pct = Vocab.textCoverage(words.map((word) => ({ ...word, state: word.kana ? null : states[word.id] || null })), estimate.ability);
+  return pct === null ? null : { pct, label: Vocab.difficultyLabel(pct) };
+}
+
+/** Unmarked words on the page the reader very probably knows, most likely first. */
+export function probablyKnownWords(words, states, estimate) {
+  const Vocab = vocabModel();
+  if (!Vocab || !estimate?.ready || !Number.isFinite(estimate.ability)) return [];
+  return words
+    .filter((word) => !states[word.id])
+    .map((word) => ({ word, chance: Vocab.wordChance(word, estimate.ability) }))
+    .filter((item) => item.chance !== null && item.chance >= Vocab.PROBABLY_KNOWN)
+    .sort((a, b) => b.chance - a.chance)
+    .map((item) => item.word);
 }
 
 /** Level counts, states, and how much of the text (counting repeats) the reader knows. */
@@ -840,11 +904,24 @@ function renderPageSummary(summary) {
   }
   const coverage = document.getElementById('pageProfileCoverage');
   if (coverage) {
-    coverage.hidden = summary.known === 0;
-    coverage.textContent = summary.known > 0
-      ? t('profile_coverage', [String(summary.coverage)], `You know ${summary.coverage}%`)
-      : '';
+    const share = pageKnownShare(pageCoverageWords, pageStates, pageEstimate);
+    coverage.hidden = !share;
+    coverage.replaceChildren();
+    if (share) {
+      coverage.dataset.difficulty = share.label;
+      coverage.title = t('profile_coverage_estimate_title', undefined, 'Of the words on this page, counting repeats: your Known words, and an estimate for the words you have not marked');
+      const label = {
+        comfortable: t('difficulty_comfortable', undefined, 'Comfortable'),
+        stretch: t('difficulty_stretch', undefined, 'Stretch'),
+        hard: t('difficulty_hard', undefined, 'Hard'),
+      }[share.label];
+      coverage.append(
+        document.createTextNode(t('profile_coverage', [String(share.pct)], `You know ${share.pct}%`)),
+        textSpan('result-profile-difficulty', label)
+      );
+    }
   }
+  renderProbable();
   const note = document.getElementById('pageWordsKnownNote');
   if (note) {
     const hidden = hideKnownFurigana && summary.known > 0;
@@ -945,14 +1022,51 @@ function buildPageRow(word) {
   return row;
 }
 
+function renderProbable() {
+  const target = document.getElementById('pageWordsProbable');
+  if (!target) return;
+  const words = probablyKnownWords(pageWords, pageStates, pageEstimate);
+  if (pageSorting && !words.length) pageSorting = false;
+  const show = words.length >= PROBABLE_MIN || pageSorting;
+  target.hidden = !show;
+  if (!show) return;
+  const text = document.getElementById('pageWordsProbableText');
+  if (text) {
+    text.textContent = words.length === 1
+      ? t('probable_one', undefined, 'You probably know 1 of these words.')
+      : t('probable_many', [String(words.length)], `You probably know ${words.length} of these words.`);
+  }
+  const sort = document.getElementById('pageWordsSort');
+  if (sort) {
+    sort.textContent = pageSorting
+      ? t('show_all_words_short', undefined, 'Show all words')
+      : t('probable_sort', undefined, 'Sort them');
+  }
+  const markAll = document.getElementById('pageWordsMarkAll');
+  if (markAll) markAll.hidden = !pageSorting;
+}
+
+/** Mark every probably-known word on the page Known, one save at a time. */
+async function markProbableKnown() {
+  const words = probablyKnownWords(pageWords, pageStates, pageEstimate);
+  for (const word of words) {
+    // eslint-disable-next-line no-await-in-loop
+    await setPageWordState(word, 'known');
+  }
+  pageSorting = false;
+  pageRenderSignature = null;
+  renderPage();
+}
+
 function renderPageGroups() {
   const container = document.getElementById('pageWordsGroups');
   if (!container) return;
   let remaining = pageShowAll ? Infinity : PAGE_INITIAL_ROWS;
   const groups = [];
+  const shown = pageSorting ? new Set(probablyKnownWords(pageWords, pageStates, pageEstimate)) : null;
   PAGE_LEVEL_ORDER.forEach((level) => {
     if (remaining <= 0) return;
-    const members = pageWords.filter((word) => word.level === level);
+    const members = pageWords.filter((word) => word.level === level && (!shown || shown.has(word)));
     if (!members.length) return;
     const group = document.createElement('section');
     group.className = 'result-words-group';
@@ -977,7 +1091,7 @@ function renderPageGroups() {
 function renderPage() {
   // Compare the full ordered list: even undisplayed words affect counts and coverage.
   // Snippets and POS remain fresh in pageWords without replacing unchanged rows.
-  const signature = JSON.stringify([pageShowAll, hideKnownFurigana, pageWords.map((word) => [
+  const signature = JSON.stringify([pageShowAll, hideKnownFurigana, pageSorting, pageEstimate, pageCoverageWords.length, pageWords.map((word) => [
     word.id, word.word, word.reading, word.level, word.occurrences, pageStates[word.id] || 'new',
     counterExamples(word).map((example) => [example.surface, example.reading]),
   ])]);
@@ -1037,8 +1151,11 @@ async function loadPageWords() {
   if (sequence !== pageLoadSequence) return;
   const words = collectPageWords(rawWords);
   const states = words.length ? await sendWords({ action: 'wordsGetStates' }) : null;
+  const estimate = words.length ? await sendWords({ action: 'vocabGet' }) : null;
   if (sequence !== pageLoadSequence) return;
   hideKnownFurigana = display.hideKnownFurigana !== false;
+  pageEstimate = estimate?.success ? { ready: estimate.ready === true, ability: Number(estimate.ability) } : null;
+  pageCoverageWords = coverageWordsOf(rawWords);
   pageWords = words;
   pageStates = states?.success && states.states ? states.states : {};
   renderPage();
@@ -1077,6 +1194,13 @@ export async function initPageTab() {
   document.getElementById('pageWordsMore')?.addEventListener('click', () => {
     pageShowAll = true;
     renderPage();
+  });
+  document.getElementById('pageWordsSort')?.addEventListener('click', () => {
+    pageSorting = !pageSorting;
+    renderPage();
+  });
+  document.getElementById('pageWordsMarkAll')?.addEventListener('click', () => {
+    markProbableKnown().catch((error) => console.warn('Tsukeru: could not mark the words', error?.message));
   });
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync' || !changes.hideKnownFurigana) return;

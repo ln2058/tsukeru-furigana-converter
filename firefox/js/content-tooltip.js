@@ -2134,6 +2134,8 @@ function noteLocalWordState(record) {
  * Resolves to {id, word, reading, state}, or null for kana-only words.
  */
 async function captureCheckedWord(element, wordInfo, source) {
+  // The vocabulary estimate counts the lookup and the text read around it.
+  globalThis.TsukeruPageVocab?.noteLookup(element);
   const identity = wordIdentityOf(element);
   if (!identity || !chrome.runtime?.id) return null;
   const countCheck = !countedWordIds.has(identity.id);

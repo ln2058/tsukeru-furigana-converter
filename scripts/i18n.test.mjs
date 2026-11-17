@@ -256,7 +256,7 @@ for (const browser of ['chrome', 'firefox']) {
     const listeners = {};
     const event = name => ({ addListener(fn) { (listeners[name] ||= []).push(fn); } });
     Object.assign(fixture.sandbox, {
-      refreshWordBadge() {}, isWordsAction: () => false,
+      refreshWordBadge() {}, isWordsAction: () => false, isVocabAction: () => false,
     });
     Object.assign(fixture.sandbox.chrome, {
       runtime: {
@@ -336,7 +336,7 @@ for (const browser of ['chrome', 'firefox']) {
       history: { replaceState() {} },
       applyI18nToPopupDom() { translated = true; assert.equal(root.lang, 'ko'); },
       initLocaleSelect() {}, initThemeToggle() {}, closeReportModal() {},
-      initSettingsForm() {}, initMyWordsTab() {}, initPageTab() {},
+      initSettingsForm() {}, initMyWordsTab() {}, initPageTab() {}, initLevelAsk() {},
       loadMyWords() { assert.fail('Settings reload should not load My Words'); },
       requestPageWordsRefresh() { assert.fail('Settings reload should not open This page'); },
       storeReviewUrl: (store, language) => `${store}:${language}`,

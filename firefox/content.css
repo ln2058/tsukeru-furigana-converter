@@ -351,6 +351,10 @@
   background-image: linear-gradient(to top, var(--tsukeru-mechanism-line, rgba(82, 77, 70, .3)) 0 1px, transparent 1px);
   cursor: pointer;
 }
+/* Outside Study mode, learning words keep a fainter version of the same underline. */
+:root:not([data-tsukeru-study="on"]) body:not(.tsukeru-furigana-disabled) [data-tsukeru-wrapper="1"] .tsukeru-learning {
+  background-image: linear-gradient(to top, color-mix(in srgb, var(--tsukeru-star, #d29a27) 55%, transparent) 0 1.5px, transparent 1.5px);
+}
 :root[data-tsukeru-study="on"] [data-tsukeru-wrapper="1"] .tsukeru-learning:has(rt) {
   background-image: linear-gradient(to top, color-mix(in srgb, var(--tsukeru-star, #d29a27) 70%, transparent) 0 2px, transparent 2px);
 }

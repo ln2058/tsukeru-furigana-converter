@@ -241,4 +241,31 @@ for (const browserName of ['chrome', 'firefox']) {
       '雨の天気。': [[0, 1, 'あめ', '']],
     });
   });
+
+  test(`${browserName} a website list longer than 5,000 words keeps every word in this browser`, () => {
+    // Regression: the snapshot was cut at 5,000 rows and local words past the cut were dropped.
+    const store = Words.createStore();
+    Words.captureWord(store, { word: '天気', reading: 'てんき' }, T0 - 10);
+    const rows = Array.from({ length: 8000 }, (_, index) => ({ word: `字${index}`, reading: 'じ', state: 'known', changedAt: T0 - 1 }));
+    rows.push({ word: '天気', reading: 'てんき', state: 'learning' });
+    Words.mergeSnapshot(store, rows, { startedAt: T0, storeId: 'store-a', at: T0 + 1 });
+    assert.equal(Object.keys(store.records).length, 8001);
+    assert.equal(store.records['天気\u0000てんき'].state, 'learning');
+  });
+
+  test(`${browserName} keeps 5,000 learning words, dropping never-reviewed ones first, apart from known words`, () => {
+    const store = Words.createStore();
+    const reviewed = Words.captureWord(store, { word: '復習', reading: 'ふくしゅう' }, T0);
+    reviewed.lastReviewedAt = T0 + 1;
+    Words.captureWord(store, { word: '既知', reading: 'きち' }, T0);
+    Words.setWordState(store, { word: '既知', reading: 'きち' }, 'known', T0);
+    for (let index = 0; index < 5000; index += 1) {
+      Words.captureWord(store, { word: `字${index}`, reading: 'じ' }, T0 + 10 + index);
+    }
+    const learning = Object.values(store.records).filter((record) => record.state === 'learning');
+    assert.equal(learning.length, 5000);
+    assert.ok(store.records['復習\u0000ふくしゅう'], 'a reviewed word outlasts newer unreviewed ones');
+    assert.equal(store.records['字0\u0000じ'], undefined);
+    assert.equal(store.records['既知\u0000きち'].state, 'known');
+  });
 }
