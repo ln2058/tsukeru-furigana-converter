@@ -90,6 +90,8 @@ Security Notes:
         storeId: typeof data.storeId === 'string' ? data.storeId : null,
         records: data.records,
         estimate: data.estimate && typeof data.estimate === 'object' ? data.estimate : null,
+        // The day of the page's last finished review session; the badge clears after it.
+        reviewedDay: typeof data.reviewedDay === 'string' ? data.reviewedDay.slice(0, 10) : null,
       });
     } catch (error) {
       console.warn('Tsukeru: word sync could not finish', error?.message);

@@ -109,6 +109,26 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(Words.summarize(store, T0 + DAY).due, 22);
   });
 
+  test(`${browserName} the badge shows one session of due words and clears once today's review is done`, () => {
+    const store = Words.createStore();
+    const rows = Array.from({ length: 12 }, (_, index) => ({
+      word: `漢字${index}`, reading: `かんじ${index}`, state: 'learning', dueAt: T0 - DAY,
+    }));
+    Words.mergeSnapshot(store, rows, { startedAt: T0, storeId: 'store-a', at: T0 });
+    assert.equal(Words.summarize(store, T0).due, 12);
+    // Twelve due, but a review session on EZFurigana covers seven.
+    assert.equal(Words.badgeCount(store, T0), Words.SESSION_WORDS);
+    // The page reports today's finished session: nothing more today.
+    Words.mergeSnapshot(store, rows, { startedAt: T0 + 1, storeId: 'store-a', at: T0 + 1, reviewedDay: Words.dayKey(T0) });
+    assert.equal(Words.badgeCount(store, T0 + 2), 0);
+    // An older page sends no day and keeps it; a malformed one is ignored.
+    Words.mergeSnapshot(store, rows, { startedAt: T0 + 3, storeId: 'store-a', at: T0 + 3 });
+    Words.mergeSnapshot(store, rows, { startedAt: T0 + 4, storeId: 'store-a', at: T0 + 4, reviewedDay: 'today' });
+    assert.equal(store.meta.reviewedDay, Words.dayKey(T0));
+    // Tomorrow the words still due show again.
+    assert.equal(Words.badgeCount(store, T0 + DAY), Words.SESSION_WORDS);
+  });
+
   test(`${browserName} sentences are plain and at most 120 characters, centred on the word`, () => {
     const long = `${'あ'.repeat(100)}勉強${'い'.repeat(100)}`;
     const fitted = Words.fitSentence(long, '勉強');

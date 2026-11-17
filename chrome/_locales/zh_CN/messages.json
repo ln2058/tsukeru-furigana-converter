@@ -581,6 +581,9 @@
   "level_beyond_n1": {
     "message": "超出 N1 范围"
   },
+  "level_no_jlpt": {
+    "message": "无 JLPT 级别"
+  },
   "state_learning": {
     "message": "学习中"
   },

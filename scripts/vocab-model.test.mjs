@@ -32,8 +32,11 @@ for (const browserName of ['chrome', 'firefox']) {
     cases.ability.forEach(({ name, level, n, k, expected }) => {
       assert.ok(near(Vocab.fitAbility({ n, k }, level), expected, 1e-3), name);
     });
-    cases.coverage.forEach(({ name, ability, words, expected }) => {
-      assert.equal(Vocab.textCoverage(words, ability), expected, name);
+    cases.coverage.forEach(({ name, ability, level, words, expected }) => {
+      assert.equal(Vocab.textCoverage(words, ability, level), expected, name);
+    });
+    cases.assumed.forEach(({ band, jlpt, level, expected }) => {
+      assert.equal(Vocab.assumedKnown({ band, jlpt }, level), expected, `${band}/${jlpt} for ${level}`);
     });
     cases.stretches.forEach(({ name, units, lookups, options, expected }) => {
       assert.deepEqual([...Vocab.readStretches(units, lookups, options)].sort((a, b) => a - b), expected, name);

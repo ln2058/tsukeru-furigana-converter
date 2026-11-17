@@ -9,7 +9,7 @@ Inputs:
 
 Outputs:
 - Message responses with word states, records, summaries, and sync payloads (the outbox carries bg-vocab's level and evidence).
-- Toolbar badge text with the number of learning words due now.
+- Toolbar badge text: the learning words due now, at most one review session (7), and nothing once today's session is finished on EZFurigana.
 
 Side Effects:
 - Writes one `chrome.storage.local` key per word (`w:`), per pending removal (`wr:`), and `wordsMeta`; removes or trims the retired `vocabulary` key after migrating it.
@@ -107,8 +107,8 @@ function loadStore() {
 }
 
 async function refreshBadge(store) {
-  const { due } = Words.summarize(store, Date.now());
-  const text = due > 99 ? '99+' : (due > 0 ? String(due) : '');
+  const due = Words.badgeCount(store, Date.now());
+  const text = due > 0 ? String(due) : '';
   try {
     await chrome.action.setBadgeText({ text });
     if (text) await chrome.action.setBadgeBackgroundColor({ color: BADGE_COLOR });
@@ -122,7 +122,8 @@ function update(change) {
   const run = queue.then(async () => {
     const store = await loadStore();
     const result = change(store, nextTime());
-    const recordsChanged = store.dirtyRecords.size > 0;
+    // A synced review day changes only metadata, and clears the badge too.
+    const recordsChanged = store.dirtyRecords.size > 0 || store.metaDirty;
     try {
       await flush(store);
     } catch (error) {
@@ -243,7 +244,8 @@ export async function handleWordsMessage(message, sender) {
       const startedAt = Number(message.startedAt);
       if (!Number.isFinite(startedAt) || startedAt <= 0 || !Array.isArray(message.records)) return { success: false };
       const storeId = text(message.storeId, 100) || null;
-      const changed = await update((store, at) => Words.mergeSnapshot(store, message.records, { startedAt, storeId, at }));
+      const reviewedDay = typeof message.reviewedDay === 'string' ? message.reviewedDay : null;
+      const changed = await update((store, at) => Words.mergeSnapshot(store, message.records, { startedAt, storeId, at, reviewedDay }));
       // Older EZFurigana pages send no estimate.
       await applySyncPart(message.estimate);
       return { success: true, changed };

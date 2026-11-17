@@ -581,6 +581,9 @@
   "level_beyond_n1": {
     "message": "Beyond N1"
   },
+  "level_no_jlpt": {
+    "message": "No JLPT level"
+  },
   "state_learning": {
     "message": "Learning"
   },

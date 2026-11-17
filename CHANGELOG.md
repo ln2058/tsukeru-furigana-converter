@@ -6,6 +6,7 @@
 
 - **Your Japanese level**: after Tsukeru has added furigana for you, This page asks your level once (Beginner, N5 to N1, or Beyond N1; you can skip). Your first answer also sets the JLPT furigana level to match; after that you can change either one in Settings without changing the other. The level syncs with EZFurigana.
 - **How much of a page you know**: This page shows "You know X%" with a label: Comfortable (95% or more), Stretch (85 to 94%) or Hard. It counts your Known words, plus an estimate for words you have not marked, based on your level and what you read. It is the same estimate EZFurigana uses.
+- **Easier levels count as known**: with a level chosen, unmarked words two or more levels easier count as Known on This page (all N5 words for an N3 reader), and so do the most common words of the level just below. A word you mark yourself always keeps your mark.
 - **Words you probably know**: when at least three unmarked words on a page are very likely known, This page offers to sort them, with Mark all as known. They are never marked for you.
 - The estimate learns from what you read: words you look up, and words read without a lookup around them (the lookup's sentence, the text between two lookups made close together, or a whole short page). For this, Tsukeru keeps only counts per word difficulty. They are shared only with EZFurigana, and with your account there if you are signed in. No words, sentences or page addresses are kept for it.
 - Learning words have a faint underline on the page outside Study mode too.
@@ -13,6 +14,9 @@
 
 ### Changed
 
+- **Review badge**: the toolbar number shows at most one review session (7 words), and it clears once you finish today's review on EZFurigana. Words still due come back tomorrow.
+- **Smaller furigana sizes**: furigana size now goes down to 10% (it stopped at 40%).
+- Words outside the JLPT lists are grouped under "No JLPT level" on This page instead of "Beyond N1": most of them are words the lists leave out, not harder ones.
 - **My Words holds as many words as EZFurigana**: up to 5,000 Learning words and 20,000 Known words, kept separately, so a long Known list never pushes out new lookups. When Learning is full, words never reviewed go first.
 
 ### Fixed

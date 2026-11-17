@@ -114,7 +114,7 @@
         0,
         0
       ],
-      "expected": 8.29
+      "expected": 8.273
     },
     {
       "name": "mixed evidence (n4)",
@@ -402,6 +402,43 @@
         }
       ],
       "expected": null
+    },
+    {
+      "name": "an N2 reader knows unmarked N5 and N4 words",
+      "ability": 0,
+      "level": "n2",
+      "words": [
+        {
+          "band": 20,
+          "jlpt": 5,
+          "occurrences": 10
+        },
+        {
+          "band": 15,
+          "jlpt": 4,
+          "occurrences": 10
+        }
+      ],
+      "expected": 100
+    },
+    {
+      "name": "the level never overrides a Learning mark",
+      "ability": 0,
+      "level": "n2",
+      "words": [
+        {
+          "band": 20,
+          "jlpt": 5,
+          "occurrences": 10
+        },
+        {
+          "band": 15,
+          "jlpt": 4,
+          "state": "learning",
+          "occurrences": 10
+        }
+      ],
+      "expected": 50
     }
   ],
   "stretches": [
@@ -1409,31 +1446,31 @@
   "sizes": [
     {
       "level": "beginner",
-      "expected": 134
+      "expected": 135
     },
     {
       "level": "n5",
-      "expected": 1197
+      "expected": 1222
     },
     {
       "level": "n4",
-      "expected": 2084
+      "expected": 2148
     },
     {
       "level": "n3",
-      "expected": 3707
+      "expected": 3849
     },
     {
       "level": "n2",
-      "expected": 7410
+      "expected": 7382
     },
     {
       "level": "n1",
-      "expected": 10445
+      "expected": 10453
     },
     {
       "level": "beyond",
-      "expected": 11327
+      "expected": 11331
     }
   ],
   "shares": [
@@ -1441,31 +1478,129 @@
       "level": "beginner",
       "expected": {
         "1": 0.000053,
-        "2": 0.000475,
-        "3": 0.007691,
-        "4": 0.040485,
+        "2": 0.000533,
+        "3": 0.007653,
+        "4": 0.040405,
         "5": 0.149997
       }
     },
     {
       "level": "n4",
       "expected": {
-        "1": 0.006662,
-        "2": 0.054442,
-        "3": 0.431921,
-        "4": 0.799975,
-        "5": 0.938615
+        "1": 0.006858,
+        "2": 0.060277,
+        "3": 0.432526,
+        "4": 0.799955,
+        "5": 0.938629
       }
     },
     {
       "level": "n1",
       "expected": {
-        "1": 0.799969,
-        "2": 0.971221,
-        "3": 0.997883,
+        "1": 0.79999,
+        "2": 0.972984,
+        "3": 0.997869,
         "4": 0.999698,
         "5": 0.999925
       }
+    }
+  ],
+  "assumed": [
+    {
+      "band": 21,
+      "jlpt": 5,
+      "level": "n3",
+      "expected": true
+    },
+    {
+      "band": null,
+      "jlpt": 5,
+      "level": "n3",
+      "expected": true
+    },
+    {
+      "band": 7,
+      "jlpt": 4,
+      "level": "n3",
+      "expected": true
+    },
+    {
+      "band": 8,
+      "jlpt": 4,
+      "level": "n3",
+      "expected": false
+    },
+    {
+      "band": null,
+      "jlpt": 4,
+      "level": "n3",
+      "expected": false
+    },
+    {
+      "band": 0,
+      "jlpt": 3,
+      "level": "n3",
+      "expected": false
+    },
+    {
+      "band": 4,
+      "jlpt": 5,
+      "level": "n4",
+      "expected": true
+    },
+    {
+      "band": 5,
+      "jlpt": 5,
+      "level": "n4",
+      "expected": false
+    },
+    {
+      "band": 0,
+      "jlpt": 5,
+      "level": "n5",
+      "expected": false
+    },
+    {
+      "band": 0,
+      "jlpt": 5,
+      "level": "beginner",
+      "expected": false
+    },
+    {
+      "band": 12,
+      "jlpt": 1,
+      "level": "beyond",
+      "expected": true
+    },
+    {
+      "band": 13,
+      "jlpt": 1,
+      "level": "beyond",
+      "expected": false
+    },
+    {
+      "band": 21,
+      "jlpt": 2,
+      "level": "beyond",
+      "expected": true
+    },
+    {
+      "band": 0,
+      "jlpt": 0,
+      "level": "beyond",
+      "expected": false
+    },
+    {
+      "band": 0,
+      "jlpt": 5,
+      "level": null,
+      "expected": false
+    },
+    {
+      "band": "3",
+      "jlpt": "4",
+      "level": "n2",
+      "expected": true
     }
   ]
 }

@@ -4,11 +4,11 @@ Purpose: Hold the My Words rules shared by the background store, content scripts
 
 Inputs:
 - Word, reading, sentence, JLPT level, and state values from page lookups and popup actions.
-- An in-memory word store (at most 5,000 learning and 20,000 known or ignored words, as on EZFurigana), retired `vocabulary` entries, and record snapshots from the EZFurigana page.
+- An in-memory word store (at most 5,000 learning and 20,000 known or ignored words, as on EZFurigana), retired `vocabulary` entries, and record snapshots from the EZFurigana page with the local day of its last finished review session.
 - Caller-supplied times in milliseconds.
 
 Outputs:
-- `globalThis.TsukeruWords`: identity helpers, store mutations, summaries, and sync payloads.
+- `globalThis.TsukeruWords`: identity helpers, store mutations, summaries, the toolbar badge count, and sync payloads.
 - Dirty-key sets on the store that tell the caller which records, removals, and metadata to persist.
 
 Side Effects:
@@ -37,6 +37,9 @@ Security Notes:
   const DAY_MS = 24 * 60 * 60 * 1000;
   // Imported saved words fall due this many a day, like the website.
   const IMPORT_DUE_PER_DAY = 20;
+  // Words in one EZFurigana review session (SESSION_WORDS in its my-words.js).
+  const SESSION_WORDS = 7;
+  const DAY_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
   function normalize(value) {
     return String(value == null ? '' : value).trim().normalize('NFC');
@@ -563,6 +566,22 @@ Security Notes:
     return { due, learning, known, nextDueAt, lastSyncAt: timeOf(store.meta.lastSyncAt) };
   }
 
+  /** The local calendar day ('YYYY-MM-DD') of a time, as EZFurigana writes review days. */
+  function dayKey(at) {
+    const date = new Date(at);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  /**
+   * The toolbar badge: the words due now, at most one review session's worth,
+   * and none once today's session is finished on EZFurigana (the rest wait
+   * for tomorrow, as the streak does).
+   */
+  function badgeCount(store, at) {
+    if (store.meta.reviewedDay === dayKey(at)) return 0;
+    return Math.min(summarize(store, at).due, SESSION_WORDS);
+  }
+
   /* ---------- sync with EZFurigana ---------- */
 
   function pushable(record) {
@@ -661,7 +680,7 @@ Security Notes:
    * Words the page no longer has were removed there. Returns whether any
    * record changed.
    */
-  function mergeSnapshot(store, rows, { startedAt, storeId, at }) {
+  function mergeSnapshot(store, rows, { startedAt, storeId, at, reviewedDay = null }) {
     const incoming = new Map();
     (Array.isArray(rows) ? rows : []).slice(0, MAX_RECORDS).forEach((row) => {
       const record = snapshotRecord(row);
@@ -691,12 +710,17 @@ Security Notes:
       if (store.removed[id].removedAt <= startedAt) clearRemoval(store, id);
     });
     store.meta = { ...store.meta, pushedThrough: startedAt, storeId: storeId || null, lastSyncAt: at };
+    // Older EZFurigana pages send no review day; keep the one we have.
+    if (typeof reviewedDay === 'string' && DAY_KEY_RE.test(reviewedDay)) store.meta.reviewedDay = reviewedDay;
     store.metaDirty = true;
     return changed;
   }
 
   root.TsukeruWords = {
     DAY_MS,
+    SESSION_WORDS,
+    badgeCount,
+    dayKey,
     MAX_RECORDS,
     MAX_SENTENCE_LENGTH,
     buildOutbox,

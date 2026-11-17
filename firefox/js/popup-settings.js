@@ -454,7 +454,7 @@ const ALL_KANJI_LEVEL = 5;
 const BEYOND_N1_LEVEL = 6;
 const JUNIOR_HIGH_GRADE = 7;
 const NON_JOYO_GRADE = 8;
-const RUBY_SIZE_MIN = 0.4;
+const RUBY_SIZE_MIN = 0.1;
 const RUBY_SIZE_MAX = 1;
 const RUBY_SIZE_STEP = 0.05;
 

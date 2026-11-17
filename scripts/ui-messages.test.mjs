@@ -106,23 +106,23 @@ for (const browser of ['chrome', 'firefox']) {
     vm.runInContext(read('js/popup-vocab.js').replace(/import\s*\{[\s\S]*?\}\s*from\s*'[^']+';/g, '').replaceAll('export ', ''), sandbox);
     await sandbox.initPageTab();
     await sandbox.loadPageWords();
-    sandbox.renderPageSummary({ known: 2 });
+    sandbox.renderPageSummary({ known: 2, markedKnown: 2 });
     assert.equal(note.hidden, true);
     assert.equal(note.textContent, '');
 
     stored = true;
     await sandbox.loadPageWords();
-    sandbox.renderPageSummary({ known: 2 });
+    sandbox.renderPageSummary({ known: 2, markedKnown: 2 });
     assert.equal(note.hidden, false);
     assert.match(note.textContent, /2語/);
     storageListener({ hideKnownFurigana: { newValue: false } }, 'sync');
     assert.equal(note.hidden, true, 'turning the setting off clears a visible claim');
     assert.equal(note.textContent, '');
     storageListener({ hideKnownFurigana: { newValue: true } }, 'local');
-    sandbox.renderPageSummary({ known: 2 });
+    sandbox.renderPageSummary({ known: 2, markedKnown: 2 });
     assert.equal(note.hidden, true, 'unrelated storage does not change the setting');
     storageListener({ hideKnownFurigana: { newValue: true } }, 'sync');
-    sandbox.renderPageSummary({ known: 0 });
+    sandbox.renderPageSummary({ known: 0, markedKnown: 0 });
     assert.equal(note.hidden, true, 'there is no hidden-reading claim without known words');
   });
 }

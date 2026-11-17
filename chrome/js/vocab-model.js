@@ -6,7 +6,7 @@ Inputs:
 - A word's frequency band (data-band) and JLPT level (data-jlpt), per-band evidence counts, the reader's chosen level, word states, and lookup positions and times.
 
 Outputs:
-- `globalThis.TsukeruVocab`: difficulties, chances, the fitted ability, coverage, labels, read stretches, vocabulary size and level shares.
+- `globalThis.TsukeruVocab`: difficulties, chances, words a chosen level counts as known, the fitted ability, coverage, labels, read stretches, vocabulary size and level shares.
 
 Side Effects:
 - None.
@@ -19,24 +19,24 @@ Security Notes:
 */
 (function attachVocabModel(root) {
   // Common kanji words (JLPT lists and the 9,000 most frequent) per difficulty.
-  const BAND_SIZES = [129, 247, 223, 373, 333, 545, 598, 460, 572, 639, 814, 1264, 1481, 1525, 2412, 0, 0, 0, 0, 0, 0, 0];
+  const BAND_SIZES = [129, 248, 224, 377, 339, 552, 670, 460, 626, 836, 799, 1197, 1278, 1471, 2413, 0, 0, 0, 0, 0, 0, 0];
   // Each JLPT level's kanji words per difficulty.
   const LEVEL_BANDS = {
-      5: [129, 247, 134, 113, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      4: [0, 0, 89, 260, 176, 89, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      3: [0, 0, 0, 0, 157, 456, 598, 318, 261, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      2: [0, 0, 0, 0, 0, 0, 0, 27, 128, 348, 593, 686, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      1: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 177, 533, 970, 1474, 0, 0, 0, 0, 0, 0, 0],
+      5: [129, 248, 135, 113, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      4: [0, 0, 89, 264, 181, 89, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      3: [0, 0, 0, 0, 158, 463, 670, 318, 261, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      2: [0, 0, 0, 0, 0, 0, 0, 27, 183, 571, 594, 686, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      1: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 189, 636, 972, 1476, 0, 0, 0, 0, 0, 0, 0],
   };
   // The ability each chosen reader level starts from.
   const LEVEL_ABILITY = {
-      beginner: -1.34,
+      beginner: -1.339,
       n5: 3.556,
       n4: 5.579,
-      n3: 8.29,
-      n2: 12.177,
-      n1: 15.304,
-      beyond: 17.592,
+      n3: 8.273,
+      n2: 12.03,
+      n1: 15.267,
+      beyond: 17.559,
   };
 
 
@@ -78,6 +78,13 @@ Security Notes:
   const STRETCH_FROM = 85;
   // A word this likely to be known is "probably known".
   const PROBABLY_KNOWN = 0.9;
+
+  // The common words of each JLPT level: frequency bands up to these, the most
+  // frequent words that make up 90% of the level's words in running text
+  // (measured on data/word_frequency.sqlite; under half of each level's list).
+  const COMMON_BAND = { 5: 4, 4: 7, 3: 8, 2: 12, 1: 12 };
+  // The JLPT level a chosen reader level stands at; beginner and N5 vouch for nothing.
+  const READER_RANK = { beginner: 6, n5: 5, n4: 4, n3: 3, n2: 2, n1: 1, beyond: 0 };
 
   // Read stretches: two lookups at most this far apart in time and text mark
   // the words between them as read, if the text between could have been read
@@ -213,15 +220,33 @@ Security Notes:
   }
 
   /**
-   * How likely the reader knows a word they have not marked: their own
-   * choice decides for marked words (known 1, learning 0, ignored null). A
-   * kana word (`kana`) is known unless it is on a JLPT list, where its level
-   * decides: conjugated kana forms carry no level and are the basic verbs.
+   * Whether the chosen reader level counts an unmarked word as known: every
+   * JLPT word two or more levels below it (N5 for an N3 reader) and the
+   * common words (COMMON_BAND) of the level just below (N4 for N3). Words
+   * outside the JLPT lists, and a missing or skipped level, never count.
    */
-  function wordChance({ band, jlpt, state = null, kana = false }, ability) {
+  function assumedKnown({ band, jlpt }, readerLevel) {
+      const level = levelOf(jlpt);
+      const rank = READER_RANK[readerLevel];
+      if (!level || rank === undefined) return false;
+      if (level >= rank + 2) return true;
+      if (level !== rank + 1) return false;
+      const value = finite(band);
+      return value !== null && value <= COMMON_BAND[level];
+  }
+
+  /**
+   * How likely the reader knows a word they have not marked: their own
+   * choice decides for marked words (known 1, learning 0, ignored null), then
+   * the chosen level (assumedKnown, 1). A kana word (`kana`) is known unless
+   * it is on a JLPT list, where its level decides: conjugated kana forms
+   * carry no level and are the basic verbs.
+   */
+  function wordChance({ band, jlpt, state = null, kana = false }, ability, readerLevel = null) {
       if (state === 'known') return 1;
       if (state === 'learning') return 0;
       if (state === 'ignored') return null;
+      if (assumedKnown({ band, jlpt }, readerLevel)) return 1;
       if (kana && !levelOf(jlpt)) return 1;
       const difficulty = wordDifficulty(band, jlpt);
       return difficulty === null ? null : chanceKnown(difficulty, ability);
@@ -233,13 +258,14 @@ Security Notes:
    * percentage, or null below MIN_COVERAGE_WORDS counted words. Counting the
    * kana words too makes it the running-word coverage the COMFORTABLE_FROM
    * and STRETCH_FROM thresholds come from.
-   * `words`: [{ band, jlpt, state, kana, occurrences }].
+   * `words`: [{ band, jlpt, state, kana, occurrences }]; `readerLevel` is the
+   * chosen level (assumedKnown), or null.
    */
-  function textCoverage(words, ability) {
+  function textCoverage(words, ability, readerLevel = null) {
       let counted = 0;
       let known = 0;
       (Array.isArray(words) ? words : []).forEach((word) => {
-          const chance = wordChance(word, ability);
+          const chance = wordChance(word, ability, readerLevel);
           if (chance === null) return;
           const times = Number.isInteger(word.occurrences) && word.occurrences > 0 ? word.occurrences : 1;
           counted += times;
@@ -385,6 +411,7 @@ Security Notes:
     COMFORTABLE_FROM,
     STRETCH_FROM,
     PROBABLY_KNOWN,
+    COMMON_BAND,
     STRETCH_MAX_MS,
     STRETCH_MAX_CHARS,
     READ_CHARS_PER_SECOND,
@@ -399,6 +426,7 @@ Security Notes:
     addEvidence,
     levelAbility,
     fitAbility,
+    assumedKnown,
     wordChance,
     textCoverage,
     difficultyLabel,

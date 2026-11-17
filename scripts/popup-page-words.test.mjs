@@ -335,6 +335,16 @@ for (const browserName of ['chrome', 'firefox']) {
     const words = sandbox.collectPageWords(raw);
     assert.deepEqual([...sandbox.probablyKnownWords(words, {}, estimate).map((word) => word.word)], ['天気']);
     assert.equal(sandbox.probablyKnownWords(words, { '天気\u0000てんき': 'learning' }, estimate).length, 0, 'marked words are not offered');
+
+    // An N3 reader's level vouches for N5 words: shown known, counted known, never offered.
+    const n3 = { ...estimate, level: 'n3' };
+    const weather = words.find((word) => word.word === '天気');
+    assert.equal(sandbox.shownPageState(weather, {}, n3), 'known');
+    assert.equal(sandbox.shownPageState(weather, { [weather.id]: 'learning' }, n3), 'learning', 'a mark of their own wins');
+    assert.equal(sandbox.probablyKnownWords(words, {}, n3).length, 0);
+    const summary = sandbox.summarizePageWords(words, {}, n3);
+    assert.equal(summary.known, 1);
+    assert.equal(summary.markedKnown, 0, 'only marked words have their furigana hidden');
   });
 
   test(`${browserName} an ID rule that shows an element never overrides its hidden attribute`, () => {

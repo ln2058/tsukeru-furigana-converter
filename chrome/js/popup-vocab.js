@@ -95,7 +95,8 @@ function textSpan(className, text, lang) {
 }
 
 function levelTag(level) {
-  const tag = textSpan('saved-entry-tag', level ? `N${level}` : t('level_beyond_n1', undefined, 'Beyond N1'));
+  // 0 is no JLPT level: mostly words missing from the lists, so not labelled beyond N1.
+  const tag = textSpan('saved-entry-tag', level ? `N${level}` : t('level_no_jlpt', undefined, 'No JLPT level'));
   tag.dataset.jlpt = String(level);
   return tag;
 }
@@ -833,45 +834,66 @@ function vocabModel() {
 export function pageKnownShare(words, states, estimate) {
   const Vocab = vocabModel();
   if (!Vocab || !estimate?.ready || !Number.isFinite(estimate.ability)) return null;
-  const pct = Vocab.textCoverage(words.map((word) => ({ ...word, state: word.kana ? null : states[word.id] || null })), estimate.ability);
+  const pct = Vocab.textCoverage(
+    words.map((word) => ({ ...word, state: word.kana ? null : states[word.id] || null })),
+    estimate.ability,
+    estimate.level || null
+  );
   return pct === null ? null : { pct, label: Vocab.difficultyLabel(pct) };
 }
 
-/** Unmarked words on the page the reader very probably knows, most likely first. */
+/**
+ * The state a page word shows: the reader's own mark, else known when their
+ * chosen level vouches for it (all N5 words for an N3 reader).
+ */
+export function shownPageState(word, states, estimate) {
+  const marked = states[word.id];
+  if (marked) return marked;
+  const Vocab = vocabModel();
+  if (!Vocab || !estimate?.level) return null;
+  return Vocab.assumedKnown({ band: word.examples ? null : word.band, jlpt: word.level }, estimate.level) ? 'known' : null;
+}
+
+/** Unmarked words on the page the reader very probably knows, most likely first; not those their level vouches for. */
 export function probablyKnownWords(words, states, estimate) {
   const Vocab = vocabModel();
   if (!Vocab || !estimate?.ready || !Number.isFinite(estimate.ability)) return [];
   return words
-    .filter((word) => !states[word.id])
+    .filter((word) => !states[word.id] && !Vocab.assumedKnown(word, estimate.level || null))
     .map((word) => ({ word, chance: Vocab.wordChance(word, estimate.ability) }))
     .filter((item) => item.chance !== null && item.chance >= Vocab.PROBABLY_KNOWN)
     .sort((a, b) => b.chance - a.chance)
     .map((item) => item.word);
 }
 
-/** Level counts, states, and how much of the text (counting repeats) the reader knows. */
-export function summarizePageWords(words, states) {
+/**
+ * Level counts, shown states (shownPageState), how much of the text
+ * (counting repeats) the reader knows, and the Known words they marked.
+ */
+export function summarizePageWords(words, states, estimate = null) {
   const byLevel = new Map(PAGE_LEVEL_ORDER.map((level) => [level, 0]));
   let learning = 0;
   let known = 0;
+  let markedKnown = 0;
   let occurrences = 0;
   let knownOccurrences = 0;
   words.forEach((word) => {
     byLevel.set(word.level, (byLevel.get(word.level) || 0) + 1);
-    const state = states[word.id];
+    const state = shownPageState(word, states, estimate);
     occurrences += word.occurrences;
     if (state === 'learning') learning += 1;
     else if (state === 'known') {
       known += 1;
       knownOccurrences += word.occurrences;
+      if (states[word.id] === 'known') markedKnown += 1;
     }
   });
   const coverage = occurrences ? Math.floor((knownOccurrences / occurrences) * 100) : 0;
-  return { byLevel, learning, known, fresh: words.length - learning - known, coverage };
+  return { byLevel, learning, known, markedKnown, fresh: words.length - learning - known, coverage };
 }
 
 function levelLabel(level) {
-  return level ? `N${level}` : t('level_beyond_n1', undefined, 'Beyond N1');
+  return level ? `N${level}` : t('level_no_jlpt', undefined, 'No JLPT level');
 }
 
 function renderPageMeter(byLevel) {
@@ -924,10 +946,11 @@ function renderPageSummary(summary) {
   renderProbable();
   const note = document.getElementById('pageWordsKnownNote');
   if (note) {
-    const hidden = hideKnownFurigana && summary.known > 0;
+    // Only words the reader marked Known have their furigana hidden on the page.
+    const hidden = hideKnownFurigana && summary.markedKnown > 0;
     note.hidden = !hidden;
     note.textContent = hidden
-      ? t('known_readings_hidden', [String(summary.known)], `Furigana hidden for ${summary.known} known words`)
+      ? t('known_readings_hidden', [String(summary.markedKnown)], `Furigana hidden for ${summary.markedKnown} known words`)
       : '';
   }
 }
@@ -963,7 +986,8 @@ function pageStateButton(row, state, label) {
   button.className = 'result-word-state';
   button.dataset.state = state;
   button.textContent = label;
-  button.setAttribute('aria-pressed', pageStates[row.dataset.wordId] === state ? 'true' : 'false');
+  const word = pageWords.find((item) => item.id === row.dataset.wordId);
+  button.setAttribute('aria-pressed', word && shownPageState(word, pageStates, pageEstimate) === state ? 'true' : 'false');
   button.addEventListener('click', () => {
     if (button.getAttribute('aria-pressed') === 'true') return;
     const word = pageWords.find((item) => item.id === row.dataset.wordId);
@@ -993,7 +1017,7 @@ function buildPageRow(word) {
   const row = document.createElement('li');
   row.className = 'result-word-row';
   row.dataset.wordId = word.id;
-  row.dataset.state = pageStates[word.id] || 'new';
+  row.dataset.state = shownPageState(word, pageStates, pageEstimate) || 'new';
   const term = document.createElement('button');
   term.type = 'button';
   term.className = 'result-word-jump';
@@ -1110,7 +1134,7 @@ function renderPage() {
     document.getElementById('pageWordsGroups')?.replaceChildren();
     return;
   }
-  const summary = summarizePageWords(pageWords, pageStates);
+  const summary = summarizePageWords(pageWords, pageStates, pageEstimate);
   renderPageMeter(summary.byLevel);
   renderPageSummary(summary);
   renderPageGroups();
@@ -1154,7 +1178,9 @@ async function loadPageWords() {
   const estimate = words.length ? await sendWords({ action: 'vocabGet' }) : null;
   if (sequence !== pageLoadSequence) return;
   hideKnownFurigana = display.hideKnownFurigana !== false;
-  pageEstimate = estimate?.success ? { ready: estimate.ready === true, ability: Number(estimate.ability) } : null;
+  pageEstimate = estimate?.success
+    ? { ready: estimate.ready === true, ability: Number(estimate.ability), level: typeof estimate.level === 'string' ? estimate.level : null }
+    : null;
   pageCoverageWords = coverageWordsOf(rawWords);
   pageWords = words;
   pageStates = states?.success && states.states ? states.states : {};
@@ -1205,7 +1231,7 @@ export async function initPageTab() {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync' || !changes.hideKnownFurigana) return;
     hideKnownFurigana = changes.hideKnownFurigana.newValue !== false;
-    renderPageSummary(summarizePageWords(pageWords, pageStates));
+    renderPageSummary(summarizePageWords(pageWords, pageStates, pageEstimate));
   });
   followPageChanges();
 }
