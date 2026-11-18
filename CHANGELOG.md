@@ -31,6 +31,7 @@
 
 ### Fixed
 
+- Firefox: the popup's rounded corners no longer show a sliver of a different colour.
 - Syncing with an EZFurigana list of more than 5,000 words no longer removes words from this browser.
 - **Pages that already have furigana**: words the site had already given furigana (as on NHK News Web Easy or web novel sites) now open the dictionary when clicked. The site's own furigana stays, and Tsukeru adds no second reading on top.
 

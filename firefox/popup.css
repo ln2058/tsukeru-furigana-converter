@@ -164,10 +164,14 @@ body {
   overflow: hidden;
 }
 
+/* Every section paints its own background, so the body shows only at the window edge.
+   Firefox only: the popup panel takes the body colour, and it clips the page with a wider
+   curve than its own outline, so that colour shows in each corner. The body, header and
+   footer share one flat metal (see "Firefox corners" below) so the corners match. */
 body {
   display: flex;
   flex-direction: column;
-  background: var(--canvas);
+  background: var(--metal);
   color: var(--text);
   font-family: var(--sans);
   font-size: 12px;
@@ -679,6 +683,11 @@ a.vocab-action-btn { display: inline-flex; align-items: center; text-decoration:
   .content { min-height: 100px; }
   .settings-section { padding-top: 10px; padding-bottom: 9px; }
 }
+
+/* Firefox corners: the header and footer are flat metal instead of a gradient with a top
+   highlight, because the panel fills each clipped corner with one flat colour (the body's). */
+.header,
+.actions { background: var(--metal); box-shadow: none; }
 
 /* Firefox for Android opens the popup full screen; fill it instead of clipping at 370px.
    popup-theme-init.js sets the attribute, because touch media queries are unreliable there. */
