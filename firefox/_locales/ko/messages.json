@@ -823,6 +823,30 @@
   "review_prompt_never": {
     "message": "다시 묻지 않기"
   },
+  "reading_picks_title": {
+    "message": "읽을거리를 찾고 있나요?"
+  },
+  "reading_picks_text": {
+    "message": "무료 소설, 뉴스, 영상을 JLPT 레벨별로 모았어요. 모두 Tsukeru로 읽을 수 있어요."
+  },
+  "reading_picks_open": {
+    "message": "추천 읽을거리 보기"
+  },
+  "reading_picks_later": {
+    "message": "다음에"
+  },
+  "kakurenbo_slip_title": {
+    "message": "오늘의 かくれんぼ"
+  },
+  "kakurenbo_slip_text": {
+    "message": "매일 하는 단어 게임: 숨겨진 가나 네 글자 단어를 여섯 번 안에 맞혀 보세요."
+  },
+  "kakurenbo_slip_play": {
+    "message": "플레이"
+  },
+  "kakurenbo_slip_later": {
+    "message": "다음에"
+  },
   "settings_label_popup_size": {
     "message": "사전 팝업 크기"
   },

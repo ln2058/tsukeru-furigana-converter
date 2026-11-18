@@ -10,7 +10,7 @@ Outputs:
 
 Side Effects:
 - Mutates popup DOM state, shows the toggle shortcut the browser has set (`commands.getAll`), sets language-specific home/pricing/store-review links, requests coalesced page-word refreshes, and sends `reportReadingError` messages.
-- Starts the occasional store-review card (`popup-review`) and the Japanese level question (`popup-level`).
+- Starts the occasional store-review card (`popup-review`), the Japanese level question (`popup-level`), the occasional reading picks slip (`popup-reading-picks`), and the occasional word game slip in My Words (`popup-kakurenbo`).
 
 Failure Modes:
 - Runtime messaging failures keep the modal open with localized error feedback; raw backend messages are not displayed.
@@ -30,9 +30,11 @@ import {
   t,
   userFacingError,
 } from './popup-settings.js';
-import { initMyWordsTab, initPageTab, loadMyWords, relativeTime, requestPageWordsRefresh } from './popup-vocab.js';
+import { initMyWordsTab, initPageTab, loadMyWords, relativeTime, requestPageWordsRefresh, whenPageListed } from './popup-vocab.js';
 import { initReviewPrompt } from './popup-review.js';
 import { initLevelAsk } from './popup-level.js';
+import { initReadingPicks } from './popup-reading-picks.js';
+import { initKakurenboSlip } from './popup-kakurenbo.js';
 import { storeReviewUrl } from './review-prompt.js';
 
 // ── Tab navigation ────────────────────────────────────────────────────────────
@@ -146,10 +148,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSettingsForm();
     initMyWordsTab();
     initPageTab();
-    void initLevelAsk({ onChange: () => requestPageWordsRefresh() });
+    const levelAsk = initLevelAsk({ onChange: () => requestPageWordsRefresh() });
     initTabNavigation();
     selectInitialTab();
-    void initReviewPrompt({ store: reviewStore, language: TsukeruI18n.language() });
+    const reviewPrompt = initReviewPrompt({ store: reviewStore, language: TsukeruI18n.language() });
+    // The reading picks slip waits for the level question and review card, and the word game
+    // slip for all of them, so only one card shows.
+    void Promise.allSettled([levelAsk, reviewPrompt])
+      .then(() => initReadingPicks({ language: TsukeruI18n.language(), pageListed: whenPageListed() }))
+      .catch(() => {})
+      .then(() => initKakurenboSlip({ language: TsukeruI18n.language() }));
   } finally {
     document.documentElement.removeAttribute('data-i18n-pending');
   }

@@ -500,6 +500,33 @@ a.vocab-action-btn { display: inline-flex; align-items: center; text-decoration:
 .review-prompt-actions .primary-link { min-height: 30px; }
 .review-prompt-actions .review-prompt-never { color: var(--muted); }
 .review-prompt-actions .review-prompt-never:hover { color: var(--text); }
+
+/* Reading picks: a slip in the empty This page state, led by the JLPT tint strip. */
+.vocab-empty:has(> .reading-picks:not([hidden])) { padding-bottom: 14px; }
+.reading-picks { display: grid; justify-items: start; gap: 5px; margin: 18px -10px 0; padding: 11px 13px 11px 12px; border: 1px solid var(--paper-edge); border-radius: 4px; background: var(--paper); background-image: url("paper-texture.svg"); color: var(--muted); text-align: left; animation: popup-notice-rise 140ms ease-out; }
+.reading-picks[hidden] { display: none; }
+.reading-picks-levels { display: flex; align-items: center; gap: 8px; margin: 0 0 2px; color: var(--muted); font-family: var(--mono); font-size: 9px; font-variant-numeric: tabular-nums; letter-spacing: .06em; }
+.reading-picks-cells { display: flex; gap: 1px; padding: 1px; border: 1px solid var(--border); border-radius: 2px; background: var(--border); }
+.reading-picks-cells i { width: 14px; height: 6px; background: var(--tint); }
+.reading-picks-title { margin: 0; color: var(--ink); font-size: 14px; font-weight: 700; line-height: 1.25; }
+.reading-picks-text { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.reading-picks-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 5px; }
+.reading-picks-actions .primary-link { min-height: 30px; }
+.reading-picks-actions .reading-picks-later { color: var(--muted); }
+.reading-picks-actions .reading-picks-later:hover { color: var(--text); }
+/* The word game slip: under the My Words review strip, led by four small tiles. */
+.kakurenbo-slip { display: grid; justify-items: start; gap: 5px; margin: 10px 12px 0; padding: 11px 13px 11px 12px; border: 1px solid var(--paper-edge); border-radius: 4px; background: var(--paper); background-image: url("paper-texture.svg"); animation: popup-notice-rise 140ms ease-out; }
+.kakurenbo-slip[hidden] { display: none; }
+.kakurenbo-slip-tiles { display: flex; gap: 2px; margin-bottom: 2px; }
+.kakurenbo-slip-tiles i { width: 9px; height: 9px; border: 1px solid var(--border); border-radius: 1px; background: var(--surface); }
+.kakurenbo-slip-tiles i[data-tile="correct"] { border-color: var(--success); background: var(--success); }
+.kakurenbo-slip-tiles i[data-tile="present"] { border-color: var(--star); background: var(--star); }
+.kakurenbo-slip-title { margin: 0; color: var(--ink); font-size: 14px; font-weight: 700; line-height: 1.25; }
+.kakurenbo-slip-text { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.kakurenbo-slip-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 5px; }
+.kakurenbo-slip-actions .primary-link { min-height: 30px; }
+.kakurenbo-slip-actions .kakurenbo-slip-later { color: var(--muted); }
+.kakurenbo-slip-actions .kakurenbo-slip-later:hover { color: var(--text); }
 .word-sync-note { margin: 6px 14px 0; color: var(--muted); font-size: 10px; line-height: 1.4; }
 .word-sync-note:empty { display: none; }
 .word-sync-note[data-state="synced"]::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: var(--success); vertical-align: 1px; }

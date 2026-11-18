@@ -51,7 +51,7 @@ export function localDay(now) {
 
 const finiteTime = value => (Number.isFinite(value) && value > 0 ? value : 0);
 
-function normalizeUsage(usage) {
+export function normalizeUsage(usage) {
   const days = Array.isArray(usage?.activeDays)
     ? usage.activeDays.filter(day => typeof day === 'string' && DAY_PATTERN.test(day))
     : [];

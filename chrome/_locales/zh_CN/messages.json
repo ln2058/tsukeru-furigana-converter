@@ -823,6 +823,30 @@
   "review_prompt_never": {
     "message": "不再询问"
   },
+  "reading_picks_title": {
+    "message": "想找点日语读物？"
+  },
+  "reading_picks_text": {
+    "message": "按 JLPT 级别整理的免费小说、新闻和视频，全都能用 Tsukeru 阅读。"
+  },
+  "reading_picks_open": {
+    "message": "看看推荐读物"
+  },
+  "reading_picks_later": {
+    "message": "下次再说"
+  },
+  "kakurenbo_slip_title": {
+    "message": "今天的かくれんぼ"
+  },
+  "kakurenbo_slip_text": {
+    "message": "每日猜词游戏：在六次之内猜出藏起来的四个假名的词。"
+  },
+  "kakurenbo_slip_play": {
+    "message": "开始玩"
+  },
+  "kakurenbo_slip_later": {
+    "message": "下次再说"
+  },
   "settings_label_popup_size": {
     "message": "词典弹出窗口大小"
   },

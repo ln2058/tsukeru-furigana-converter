@@ -341,6 +341,7 @@ for (const browser of ['chrome', 'firefox']) {
       requestPageWordsRefresh() { assert.fail('Settings reload should not open This page'); },
       storeReviewUrl: (store, language) => `${store}:${language}`,
       initReviewPrompt(options) { reviewPrompts.push(options); },
+      initReadingPicks() {}, whenPageListed: async () => false, initKakurenboSlip() {},
       t: fixture.i18n.t,
     });
     vm.runInNewContext(read(browser, 'js/popup-main.js').replace(/^import\s[\s\S]*?;\r?\n/gm, ''), fixture.sandbox);

@@ -823,6 +823,30 @@
   "review_prompt_never": {
     "message": "不再詢問"
   },
+  "reading_picks_title": {
+    "message": "想找點日文讀物嗎？"
+  },
+  "reading_picks_text": {
+    "message": "依 JLPT 程度整理的免費小說、新聞與影片，全都能用 Tsukeru 閱讀。"
+  },
+  "reading_picks_open": {
+    "message": "看看推薦讀物"
+  },
+  "reading_picks_later": {
+    "message": "下次再說"
+  },
+  "kakurenbo_slip_title": {
+    "message": "今天的かくれんぼ"
+  },
+  "kakurenbo_slip_text": {
+    "message": "每日猜字遊戲：在六次之內猜出藏起來的四個假名的字詞。"
+  },
+  "kakurenbo_slip_play": {
+    "message": "開始玩"
+  },
+  "kakurenbo_slip_later": {
+    "message": "下次再說"
+  },
   "settings_label_popup_size": {
     "message": "字典彈出視窗大小"
   },

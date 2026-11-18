@@ -12,6 +12,8 @@
 - Learning words have a faint underline on the page outside Study mode too.
 - My Words shows a dot on the sync line once it has synced with EZFurigana.
 - **Try sentence audio and Explain with a free account**: connect a free EZFurigana account to play and explain a few sentences a week, counted together with your use on EZFurigana. Without an account, Play sentence and Explain invite you to sign in; once the week's tries are used, they offer Supporter.
+- **Something to read**: now and then, when This page has no words yet, Tsukeru suggests EZFurigana's reading picks: free stories, news and videos sorted by JLPT level, opened at your level. "Not now" hides it for two weeks, and it stops after you open the page. Not shown when Tsukeru is in Japanese.
+- **Today's かくれんぼ**: now and then, My Words suggests かくれんぼ, EZFurigana's daily word game: find the hidden four-kana word in six tries. It shows for a day at most once a week; "Not now" hides it for two weeks, and it stops after you open the game.
 - **Move the dictionary**: drag its top row to move it out of the way. It stays where you drop it while you scroll, and the next word opens beside that word again. Not on narrow screens, where the dictionary is a bottom sheet.
 
 ### Changed

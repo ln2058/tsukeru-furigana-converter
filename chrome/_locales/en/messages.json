@@ -823,6 +823,30 @@
   "review_prompt_never": {
     "message": "Don't ask again"
   },
+  "reading_picks_title": {
+    "message": "Looking for something to read?"
+  },
+  "reading_picks_text": {
+    "message": "Free stories, news and videos sorted by JLPT level. Tsukeru works on all of them."
+  },
+  "reading_picks_open": {
+    "message": "See reading picks"
+  },
+  "reading_picks_later": {
+    "message": "Not now"
+  },
+  "kakurenbo_slip_title": {
+    "message": "Today's かくれんぼ"
+  },
+  "kakurenbo_slip_text": {
+    "message": "A daily word game: find the hidden four-kana word in six tries."
+  },
+  "kakurenbo_slip_play": {
+    "message": "Play"
+  },
+  "kakurenbo_slip_later": {
+    "message": "Not now"
+  },
   "settings_label_popup_size": {
     "message": "Dictionary popup size"
   },

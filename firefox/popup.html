@@ -228,6 +228,15 @@
       <div class="vocab-empty" id="pageWordsEmpty">
         <div class="vocab-empty-text" data-i18n="page_words_empty_text">No words on this page yet</div>
         <div class="vocab-empty-hint" data-i18n="page_words_empty_hint">Apply furigana to see the words in this text</div>
+        <aside id="readingPicks" class="reading-picks" aria-labelledby="readingPicksTitle" hidden>
+          <p class="reading-picks-levels" aria-hidden="true"><span class="reading-picks-cells"><i data-jlpt="5"></i><i data-jlpt="4"></i><i data-jlpt="3"></i><i data-jlpt="2"></i><i data-jlpt="1"></i></span>JLPT N5–N1</p>
+          <h2 id="readingPicksTitle" class="reading-picks-title" data-i18n="reading_picks_title">Looking for something to read?</h2>
+          <p class="reading-picks-text" data-i18n="reading_picks_text">Free stories, news and videos sorted by JLPT level. Tsukeru works on all of them.</p>
+          <div class="reading-picks-actions">
+            <a id="readingPicksOpen" class="primary-link" href="https://www.ezfurigana.com/japanese-reading-practice" target="_blank" rel="noopener noreferrer" data-i18n="reading_picks_open">See reading picks</a>
+            <button type="button" id="readingPicksLater" class="text-action reading-picks-later" data-i18n="reading_picks_later">Not now</button>
+          </div>
+        </aside>
       </div>
     </section>
 
@@ -239,6 +248,15 @@
         </div>
         <a id="startReviewLink" class="primary-link word-review-strip-action" href="https://www.ezfurigana.com/#review" target="_blank" rel="noopener noreferrer" data-i18n="review_now" hidden>Review now</a>
       </section>
+      <aside id="kakurenboSlip" class="kakurenbo-slip" aria-labelledby="kakurenboSlipTitle" hidden>
+        <span class="kakurenbo-slip-tiles" aria-hidden="true"><i data-tile="correct"></i><i data-tile="present"></i><i></i><i data-tile="correct"></i></span>
+        <h2 id="kakurenboSlipTitle" class="kakurenbo-slip-title" data-i18n="kakurenbo_slip_title">Today's かくれんぼ</h2>
+        <p class="kakurenbo-slip-text" data-i18n="kakurenbo_slip_text">A daily word game: find the hidden four-kana word in six tries.</p>
+        <div class="kakurenbo-slip-actions">
+          <a id="kakurenboSlipOpen" class="primary-link" href="https://www.ezfurigana.com/japanese-wordle?from=tsukeru" target="_blank" rel="noopener noreferrer" data-i18n="kakurenbo_slip_play">Play</a>
+          <button type="button" id="kakurenboSlipLater" class="text-action kakurenbo-slip-later" data-i18n="kakurenbo_slip_later">Not now</button>
+        </div>
+      </aside>
       <p id="wordSyncNote" class="word-sync-note"></p>
       <div class="word-ledger-bar">
         <div class="saved-ledger-views" role="tablist" aria-label="My Words" data-i18n-aria-label="tab_my_words">

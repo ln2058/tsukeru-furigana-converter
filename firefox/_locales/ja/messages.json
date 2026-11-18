@@ -823,6 +823,30 @@
   "review_prompt_never": {
     "message": "今後表示しない"
   },
+  "reading_picks_title": {
+    "message": "読むものをお探しですか？"
+  },
+  "reading_picks_text": {
+    "message": "JLPTレベル別に、無料で読める物語やニュース、動画を集めました。どれもTsukeruで読めます。"
+  },
+  "reading_picks_open": {
+    "message": "おすすめを見る"
+  },
+  "reading_picks_later": {
+    "message": "あとで"
+  },
+  "kakurenbo_slip_title": {
+    "message": "今日のかくれんぼ"
+  },
+  "kakurenbo_slip_text": {
+    "message": "毎日の言葉当てゲームです。かな四文字の隠れた言葉を六回以内で当てましょう。"
+  },
+  "kakurenbo_slip_play": {
+    "message": "遊ぶ"
+  },
+  "kakurenbo_slip_later": {
+    "message": "あとで"
+  },
   "settings_label_popup_size": {
     "message": "辞書ポップアップの大きさ"
   },
