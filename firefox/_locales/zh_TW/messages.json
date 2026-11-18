@@ -96,8 +96,14 @@
   "settings_auto_site": {
     "message": "在此網站一律加上振假名"
   },
+  "popup_auto_site": {
+    "message": "在 $1 一律加上"
+  },
   "settings_auto_sites_list": {
     "message": "自動加上振假名的網站"
+  },
+  "settings_auto_sites_empty": {
+    "message": "開啟「套用」下方的開關，即可加入目前的網站。"
   },
   "settings_auto_site_remove": {
     "message": "移除 $1"

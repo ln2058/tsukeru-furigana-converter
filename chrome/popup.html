@@ -151,15 +151,11 @@
             <button type="button" class="segment" data-value="large" aria-pressed="false" data-i18n="settings_popup_size_large">Large</button>
           </div>
         </div>
-        <label class="setting-switch" for="autoSite" id="autoSiteRow" hidden>
-          <span class="setting-switch-text">
-            <span id="autoSiteLabel" class="setting-switch-label" data-i18n="settings_auto_site">Always add furigana on this site</span>
-            <span id="autoSiteHost" class="setting-hint auto-site-host"></span>
-          </span>
-          <input type="checkbox" id="autoSite" role="switch" aria-labelledby="autoSiteLabel" aria-describedby="autoSiteHost">
-          <span class="study-switch-track" aria-hidden="true"></span>
-        </label>
-        <ul id="autoSiteList" class="auto-site-list" aria-label="Sites with automatic furigana" data-i18n-aria-label="settings_auto_sites_list" hidden></ul>
+        <div class="auto-sites">
+          <span id="autoSiteListLabel" class="setting-label" data-i18n="settings_auto_sites_list">Sites with automatic furigana</span>
+          <ul id="autoSiteList" class="auto-site-list" aria-labelledby="autoSiteListLabel" hidden></ul>
+          <p id="autoSiteEmpty" class="setting-hint" data-i18n="settings_auto_sites_empty">Turn on the switch under Apply to add the site you're on.</p>
+        </div>
       </section>
 
       <section class="settings-section">
@@ -327,7 +323,14 @@
   <footer class="actions">
     <div class="popup-notice" id="status" data-status="error" role="alert" hidden><span class="popup-notice-label"></span><p class="popup-notice-message"></p><button type="button" class="popup-notice-close" id="statusClose" aria-label="Close" data-i18n-aria-label="content_close">&times;</button></div>
     <div class="actions-row"><button id="applyBtn" data-i18n="actions_apply">Apply</button><button id="clearBtn" class="secondary" data-i18n="actions_clear">Clear</button></div>
-    <div id="shortcut-text" class="shortcut-text" hidden></div>
+    <div class="actions-meta">
+      <label class="auto-site-switch" for="autoSite" id="autoSiteRow" title="Always add furigana on this site" data-i18n-title="settings_auto_site" hidden>
+        <input type="checkbox" id="autoSite" role="switch" aria-labelledby="autoSiteLabel">
+        <span class="study-switch-track" aria-hidden="true"></span>
+        <span id="autoSiteLabel" class="auto-site-label"></span>
+      </label>
+      <div id="shortcut-text" class="shortcut-text" hidden></div>
+    </div>
     <div id="statusAnnounce" class="visually-hidden" role="status" aria-live="polite"></div>
   </footer>
 

@@ -383,27 +383,38 @@ function removeIcon() {
   return svg;
 }
 
+/** "Always on <site>" with the site in its own span, whatever the language's word order. */
+function autoSiteLabel(label, site) {
+  const marker = '\u0001';
+  const [before, after = ''] = t('popup_auto_site', [marker], `Always on ${marker}`).split(marker);
+  const host = document.createElement('span');
+  host.className = 'auto-site-label-host';
+  host.textContent = site;
+  label.replaceChildren(document.createTextNode(before), host, document.createTextNode(after));
+}
+
 /**
- * Settings > Page behavior: a switch for the open tab's site and, below it,
- * the other listed sites, each with a remove button. `onListed` runs when the
- * open tab's site is switched on, so its page gets furigana right away.
+ * The "Always on <site>" switch under Apply for the open tab's site (hidden
+ * where Tsukeru cannot run), and Settings > Page behavior's list of every
+ * listed site, each with a remove button. `onListed` runs when the open tab's
+ * site is switched on, so its page gets furigana right away.
  */
 async function initAutoSites({ onListed = () => {} } = {}) {
   const row = document.getElementById('autoSiteRow');
   const toggle = document.getElementById('autoSite');
-  const hostLabel = document.getElementById('autoSiteHost');
+  const label = document.getElementById('autoSiteLabel');
   const list = document.getElementById('autoSiteList');
-  if (!row || !toggle || !hostLabel || !list) return;
+  const empty = document.getElementById('autoSiteEmpty');
+  if (!row || !toggle || !label || !list) return;
   const tab = await getActiveTab().catch(() => null);
   const current = siteKey(tab?.url || '');
   let sites = await readAutoSites().catch(() => []);
+  if (current) autoSiteLabel(label, current);
 
   const render = () => {
     row.hidden = !current;
-    hostLabel.textContent = current;
     toggle.checked = Boolean(current) && sites.includes(current);
-    const others = sites.filter((site) => site !== current);
-    list.replaceChildren(...others.map((site) => {
+    list.replaceChildren(...sites.map((site) => {
       const item = document.createElement('li');
       item.className = 'auto-site';
       const name = document.createElement('span');
@@ -418,16 +429,17 @@ async function initAutoSites({ onListed = () => {} } = {}) {
       remove.title = label;
       remove.appendChild(removeIcon());
       remove.addEventListener('click', async () => {
-        const index = others.indexOf(site);
+        const index = sites.indexOf(site);
         await save(site, false);
         // Keep keyboard focus in the list after its row goes away.
         const buttons = list.querySelectorAll('.auto-site-remove');
-        (buttons[Math.min(index, buttons.length - 1)] || (row.hidden ? null : toggle))?.focus();
+        buttons[Math.min(index, buttons.length - 1)]?.focus();
       });
       item.append(name, remove);
       return item;
     }));
-    list.hidden = others.length === 0;
+    list.hidden = sites.length === 0;
+    if (empty) empty.hidden = sites.length > 0;
   };
 
   async function save(site, listed) {

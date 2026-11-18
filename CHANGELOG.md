@@ -18,6 +18,7 @@
 
 - **Weekly dictionary translations**: without an account, Tsukeru gives a few new dictionary translations a week instead of a day, and a connected free account uses its own weekly translations. The dictionary shows how many are left this week.
 - The "Supporter" tag next to Play sentence is gone, since everyone can try it now.
+- **Always on this site, under Apply**: the switch that adds furigana automatically on the open site moved from Settings to just below Apply ("Always on youtube.com"). Settings still lists every site with automatic furigana, each with a remove button.
 - **Review badge**: the toolbar number shows at most one review session (7 words), and it clears once you finish today's review on EZFurigana. Words still due come back tomorrow.
 - **Smaller furigana sizes**: furigana size now goes down to 10% (it stopped at 40%).
 - Words outside the JLPT lists are grouped under "No JLPT level" on This page instead of "Beyond N1": most of them are words the lists leave out, not harder ones.

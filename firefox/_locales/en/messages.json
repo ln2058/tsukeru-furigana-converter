@@ -96,8 +96,14 @@
   "settings_auto_site": {
     "message": "Always add furigana on this site"
   },
+  "popup_auto_site": {
+    "message": "Always on $1"
+  },
   "settings_auto_sites_list": {
     "message": "Sites with automatic furigana"
+  },
+  "settings_auto_sites_empty": {
+    "message": "Turn on the switch under Apply to add the site you're on."
   },
   "settings_auto_site_remove": {
     "message": "Remove $1"

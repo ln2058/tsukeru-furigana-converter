@@ -96,8 +96,14 @@
   "settings_auto_site": {
     "message": "このサイトでは常にふりがなを付ける"
   },
+  "popup_auto_site": {
+    "message": "$1 で常に付ける"
+  },
   "settings_auto_sites_list": {
     "message": "自動でふりがなを付けるサイト"
+  },
+  "settings_auto_sites_empty": {
+    "message": "「ふりがなを付ける」の下のスイッチをオンにすると、開いているサイトを追加できます。"
   },
   "settings_auto_site_remove": {
     "message": "$1 を削除"

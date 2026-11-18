@@ -320,13 +320,11 @@ input[type="text"]:focus { border-color: var(--blue); outline: none; }
 .setting-switch-label { color: var(--text); font-size: 11px; font-weight: 650; line-height: 1.35; }
 .setting-switch input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .setting-switch[hidden] { display: none; }
-/* Sites with automatic furigana: the open tab's host under its switch, then the other listed sites. */
-.auto-site-host { font-family: var(--mono); letter-spacing: .02em; overflow-wrap: anywhere; }
-.auto-site-list { margin: -4px 0 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); list-style: none; }
-.auto-site-list[hidden] { display: none; }
-/* The list closes the section; with it hidden, the control above ends it instead. */
-.setting-switch:has(+ .auto-site-list[hidden]),
-.setting-row:has(+ .setting-switch[hidden] + .auto-site-list[hidden]) { margin-bottom: 0; }
+/* Sites with automatic furigana (Settings): every listed site with a remove button; the switch for the open tab's site is under Apply. */
+.auto-sites .setting-label { display: block; margin-bottom: 6px; }
+.auto-sites .setting-hint { margin: 0; }
+.auto-site-list { margin: 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); list-style: none; }
+.auto-site-list[hidden], .auto-sites .setting-hint[hidden] { display: none; }
 .auto-site { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; padding: 0 3px 0 9px; border-top: 1px solid var(--border); }
 .auto-site:first-child { border-top: 0; }
 .auto-site-name { min-width: 0; overflow: hidden; color: var(--text); font-family: var(--mono); font-size: 10px; letter-spacing: .02em; text-overflow: ellipsis; white-space: nowrap; }
@@ -437,11 +435,14 @@ a.vocab-action-btn { display: inline-flex; align-items: center; text-decoration:
 .study-switch-track { position: relative; width: 30px; height: 17px; flex: 0 0 auto; border: 1px solid var(--border-strong); border-radius: 9px; background: var(--surface-muted); transition: background-color .14s ease, border-color .14s ease; }
 .study-switch-track::after { position: absolute; top: 2px; left: 2px; width: 11px; height: 11px; border-radius: 50%; background: var(--paper); box-shadow: 0 1px 2px rgba(0, 0, 0, .3); content: ""; transition: transform .14s ease; }
 .study-switch input:checked + .study-switch-track,
-.setting-switch input:checked + .study-switch-track { border-color: var(--blue-dark); background: var(--blue); }
+.setting-switch input:checked + .study-switch-track,
+.auto-site-switch input:checked + .study-switch-track { border-color: var(--blue-dark); background: var(--blue); }
 .study-switch input:checked + .study-switch-track::after,
-.setting-switch input:checked + .study-switch-track::after { transform: translateX(13px); }
+.setting-switch input:checked + .study-switch-track::after,
+.auto-site-switch input:checked + .study-switch-track::after { transform: translateX(13px); }
 .study-switch input:focus-visible + .study-switch-track,
-.setting-switch input:focus-visible + .study-switch-track { outline: 2px solid var(--canvas); box-shadow: 0 0 0 4px var(--blue); }
+.setting-switch input:focus-visible + .study-switch-track,
+.auto-site-switch input:focus-visible + .study-switch-track { outline: 2px solid var(--canvas); box-shadow: 0 0 0 4px var(--blue); }
 .page-study-hint { margin: 5px 0 0; color: var(--muted); font-size: 10px; line-height: 1.4; }
 
 .result-profile { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 11px 14px; border-bottom: 1px solid var(--border); }
@@ -600,7 +601,16 @@ a.vocab-action-btn { display: inline-flex; align-items: center; text-decoration:
 .actions-row button:disabled { opacity: .48; cursor: not-allowed; filter: none; transform: none; }
 .actions-row button.secondary { border: 1px solid var(--border-strong); border-bottom-width: 1px; background: var(--surface); color: var(--text); box-shadow: none; }
 .actions-row button.is-done::before { display: inline-block; width: 4px; height: 8px; margin: 0 8px 3px 0; border-right: 2px solid var(--success); border-bottom: 2px solid var(--success); content: ""; transform: rotate(45deg); vertical-align: middle; }
-.shortcut-text { margin-top: 5px; color: var(--muted); font-family: var(--mono); font-size: 9px; text-align: right; }
+/* Under Apply: "Always on <site>" on the left, the toggle shortcut on the right. */
+.actions-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.actions-meta:not(:has(> :not([hidden]))) { display: none; }
+.auto-site-switch { position: relative; display: inline-flex; align-items: center; gap: 7px; min-width: 0; color: var(--muted); font-size: 11px; cursor: pointer; }
+.auto-site-switch[hidden] { display: none; }
+.auto-site-switch input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.auto-site-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.auto-site-label-host { color: var(--text); font-weight: 600; }
+.auto-site-switch:hover .auto-site-label { color: var(--text); }
+.shortcut-text { flex: 0 0 auto; margin-left: auto; color: var(--muted); font-family: var(--mono); font-size: 9px; text-align: right; }
 
 /* Errors and limits sit just above Apply / Clear, as EZFurigana's status register: a signal
    square and short mono label carry the severity; limits are a notice, so they get the amber panel. */
