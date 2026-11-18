@@ -572,6 +572,10 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 .tsukeru-word-tooltip .tooltip-word-header { display: flex !important; flex-wrap: wrap !important; align-items: baseline !important; justify-content: flex-start !important; gap: 7px !important; margin-bottom: 7px !important; padding-bottom: 7px !important; border-bottom: 2px solid var(--tsukeru-blue) !important; }
 .tsukeru-word-tooltip .tooltip-word-label,
 .tsukeru-word-tooltip .tooltip-word { color: var(--tsukeru-ink) !important; font-size: 19px !important; font-weight: 700 !important; line-height: 1.3 !important; overflow-wrap: anywhere !important; }
+/* The header moves the tooltip (content-tooltip.js); the headword stays selectable. */
+.tsukeru-word-tooltip:not(.tsukeru-sheet) .tsukeru-header-row { cursor: move !important; touch-action: none !important; user-select: none !important; -webkit-user-select: none !important; }
+.tsukeru-word-tooltip:not(.tsukeru-sheet) .tsukeru-header-row .tooltip-word-label { cursor: text !important; user-select: text !important; -webkit-user-select: text !important; }
+.tsukeru-word-tooltip.tsukeru-dragging, .tsukeru-word-tooltip.tsukeru-dragging * { cursor: move !important; user-select: none !important; -webkit-user-select: none !important; }
 .tsukeru-word-tooltip .tsukeru-header-right { display: flex !important; align-items: center !important; gap: 2px !important; margin-left: auto !important; flex: 0 0 auto !important; }
 .tsukeru-word-tooltip .tooltip-badge,
 .tsukeru-word-tooltip .tsukeru-badge-jlpt,
@@ -1004,7 +1008,6 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 .tsukeru-word-tooltip .tsukeru-explain-piece { display: block !important; color: var(--tsukeru-blue-readable) !important; font-weight: 650 !important; }
 .tsukeru-word-tooltip .tsukeru-explain-result .tsukeru-explain-note { margin-top: 6px !important; color: var(--tsukeru-secondary) !important; }
 .tsukeru-word-tooltip .tsukeru-explain-result .tsukeru-explain-ai { margin-top: 6px !important; color: var(--tsukeru-secondary) !important; font-family: var(--tsukeru-mono) !important; font-size: 10px !important; letter-spacing: .03em !important; }
-.tsukeru-word-tooltip .tsukeru-supporter-tag { flex: 0 0 auto !important; align-self: center !important; padding: 0 5px !important; border: 1px solid var(--tsukeru-border) !important; border-radius: 2px !important; color: var(--tsukeru-secondary) !important; font-size: 10px !important; line-height: 1.6 !important; }
 .tsukeru-word-tooltip .tsukeru-form-surface { color: var(--tsukeru-text) !important; font-weight: 500 !important; }
 .tsukeru-word-tooltip .tsukeru-form-inflection { color: var(--tsukeru-secondary) !important; }
 /* A narrow row wraps between morae, never inside one (し|ゅ). */

@@ -8,14 +8,14 @@ Inputs:
 
 Outputs:
 - Rendered My Words and page word lists (each saved word with a pronunciation button; numbers that share a counter form one 〜年 row with their most frequent uses), Learning/Known/removal requests, Study mode updates, and CSV export downloads.
-- A saved word opens in place to its first meanings (the display language's cached translation when there is one, else English); its sentence has a Supporter "Play sentence" button.
+- A saved word opens in place to its first meanings (the display language's cached translation when there is one, else English); its sentence has a "Play sentence" button (account audio).
 - A word under Words in this text opens the dictionary popup on the page (or scrolls to it when the page cannot open one) and closes the extension popup.
 
 Side Effects:
 - Sends word requests to the background store and page messages to the active tab.
 - Coalesces page refreshes, pauses them during word saves, and skips unchanged page-list renders.
 - Sends one `playAudio` request per speaker click (none before a click) and plays the clip, or the browser's Japanese voice when it fails.
-- Sends one `playSentence` request per sentence click (Supporter audio) and shows a notice when it is refused.
+- Sends one `playSentence` request per sentence click (account audio) and shows a notice when it is refused (sign in for free, or the free tries are spent). A browser's first sentence click shows, under the row, that the sentence goes to ElevenLabs and waits for Continue (remembered as `sentenceAudioNoticeSeen` in local storage, shared with the dictionary tooltip); without an account token nothing is sent, so the notice is skipped.
 - Opening a saved word sends a dictionary lookup and, for ja/ko/zh-CN/zh-TW, a cache-only localized lookup (never one that creates a translation).
 - Writes the Study mode setting to `chrome.storage.sync` and triggers browser downloads.
 - Export fills a bounded number of missing definitions through background lookups and stores them with the words.
@@ -428,7 +428,7 @@ async function toggleEntry(row, record, button) {
   entry.replaceChildren(list);
 }
 
-/** Read a saved sentence with Supporter audio; a refusal shows a notice. */
+/** Read a saved sentence with account audio; a refusal shows a notice. */
 export function playSentence(sentence, button) {
   if (!sentence || !button) return;
   if (audioPlayback && audioPlayback.button === button) return;
@@ -442,7 +442,8 @@ export function playSentence(sentence, button) {
     if (chrome.runtime.lastError || !response?.success || !String(response.dataUrl || '').startsWith('data:audio/')) {
       finishPlayback(playback);
       const code = chrome.runtime.lastError ? '' : response?.error;
-      showNotice(TsukeruUiMessages.sentenceAudioMessage(code, t), code === 'supporter_required' ? 'info' : 'error');
+      // A sign-in or Supporter offer is a limit, not an error; the account card above has the button.
+      showNotice(TsukeruUiMessages.sentenceAudioMessage(code, t), TsukeruUiMessages.refusalOffer(code) ? 'limit' : 'error');
       return;
     }
     const audio = new globalThis.Audio(response.dataUrl);
@@ -450,6 +451,57 @@ export function playSentence(sentence, button) {
     audio.addEventListener('ended', () => finishPlayback(playback));
     audio.addEventListener('error', () => finishPlayback(playback));
     audio.play().catch(() => finishPlayback(playback));
+  });
+}
+
+// Shared with the dictionary tooltip, which shows the same notice.
+const SENTENCE_AUDIO_NOTICE_KEY = 'sentenceAudioNoticeSeen';
+
+async function sentenceNoticeSeen() {
+  try {
+    const stored = await chrome.storage.local.get({ [SENTENCE_AUDIO_NOTICE_KEY]: false });
+    return stored[SENTENCE_AUDIO_NOTICE_KEY] === true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function hasSupporterToken() {
+  return new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage({ action: 'hasSupporterToken' }, (response) => resolve(chrome.runtime.lastError ? null : response));
+    } catch (_) {
+      resolve(null);
+    }
+  });
+}
+
+/** Before this browser's first sentence play, show under the row that the sentence goes to ElevenLabs; resolves on Continue. */
+async function confirmSentenceNotice(button) {
+  if (await sentenceNoticeSeen()) return;
+  // Without an account token nothing is sent, so the notice is not shown either.
+  const token = await hasSupporterToken();
+  if (token?.success && token.account !== true) return;
+  const row = button.closest('.word-ledger-row');
+  row.querySelector('.word-ledger-audio-notice')?.remove();
+  await new Promise((resolve) => {
+    const notice = document.createElement('div');
+    notice.className = 'word-ledger-audio-notice';
+    notice.setAttribute('role', 'status');
+    const message = document.createElement('p');
+    message.textContent = t('content_sentence_audio_notice', undefined, 'This sentence will be sent to ElevenLabs to make the audio.');
+    const proceed = document.createElement('button');
+    proceed.type = 'button';
+    proceed.className = 'word-ledger-audio-continue';
+    proceed.textContent = t('content_explain_continue', undefined, 'Continue');
+    proceed.addEventListener('click', (event) => {
+      if (!event.isTrusted) return;
+      chrome.storage.local.set({ [SENTENCE_AUDIO_NOTICE_KEY]: true }).catch(() => {});
+      notice.remove();
+      resolve();
+    });
+    notice.append(message, proceed);
+    row.appendChild(notice);
   });
 }
 
@@ -462,7 +514,10 @@ function sentenceButton(sentence, word) {
   button.title = label;
   button.appendChild(icon(ICONS.play));
   const spoken = wordRules()?.fitSentence ? wordRules().fitSentence(sentence, word) : sentence;
-  button.addEventListener('click', () => playSentence(spoken, button));
+  button.addEventListener('click', async () => {
+    await confirmSentenceNotice(button);
+    playSentence(spoken, button);
+  });
   return button;
 }
 

@@ -10,7 +10,7 @@ const ENGLISH = {
 };
 const KOREAN = { source: 'je_localized_cache', locale: 'ko', entry: { gloss: ['날씨'], definitions: [{ gloss: ['기후'] }] } };
 
-function loadPopupVocab(browserName, { language = 'en', respond = () => ({ success: false }), page = () => null } = {}) {
+function loadPopupVocab(browserName, { language = 'en', respond = () => ({ success: false }), page = () => null, stored = {} } = {}) {
   const fileUrl = new URL(`../${browserName}/js/popup-vocab.js`, import.meta.url);
   const source = readFileSync(fileUrl, 'utf8')
     .replace(/import\s*\{[\s\S]*?\}\s*from\s*'\.\/popup-settings\.js';/, '')
@@ -47,6 +47,12 @@ function loadPopupVocab(browserName, { language = 'en', respond = () => ({ succe
           return Promise.resolve(response);
         },
       },
+      storage: {
+        local: {
+          get: async (defaults) => ({ ...defaults, ...stored }),
+          set: async (values) => { Object.assign(stored, values); },
+        },
+      },
       tabs: {
         sendMessage: async (tabId, message) => {
           tabMessages.push([tabId, message]);
@@ -64,6 +70,20 @@ function loadPopupVocab(browserName, { language = 'en', respond = () => ({ succe
 }
 
 const run = (harness, code) => vm.runInContext(code, harness.context);
+const settle = () => new Promise((resolve) => setImmediate(resolve));
+
+function fakeElement() {
+  const node = {
+    children: [], parent: null, className: '', textContent: '', attributes: {}, listeners: {},
+    setAttribute(name, value) { node.attributes[name] = value; },
+    addEventListener(name, listener) { node.listeners[name] = listener; },
+    append(...nodes) { nodes.forEach((child) => node.appendChild(child)); },
+    appendChild(child) { child.parent = node; node.children.push(child); },
+    remove() { if (node.parent) node.parent.children = node.parent.children.filter((child) => child !== node); },
+    querySelector: () => null,
+  };
+  return node;
+}
 
 for (const browserName of ['chrome', 'firefox']) {
   test(`${browserName} a word under Words in this text opens its dictionary popup on the page`, async () => {
@@ -100,7 +120,7 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.ok(!english.sent.some((message) => message.action === 'lookupLocalizedDefinition'));
   });
 
-  test(`${browserName} a saved sentence plays Supporter audio, and a refusal explains it`, () => {
+  test(`${browserName} a saved sentence plays account audio, and a refusal explains it`, () => {
     const button = () => {
       const classes = new Set();
       return { classes, classList: { add: (name) => classes.add(name), remove: (name) => classes.delete(name) } };
@@ -110,13 +130,49 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.deepEqual(supporter.sent.map((message) => ({ ...message })), [{ action: 'playSentence', text: '天気がいい。' }]);
     assert.equal(supporter.audios.length, 1);
 
-    const free = loadPopupVocab(browserName, { respond: () => ({ success: false, error: 'supporter_required' }) });
-    const freeButton = button();
-    free.sandbox.playSentence('天気がいい。', freeButton);
-    assert.equal(free.audios.length, 0);
-    assert.equal(free.notices.length, 1);
-    assert.match(free.notices[0][0], /Supporter feature/);
-    assert.equal(free.notices[0][1], 'info');
-    assert.ok(!freeButton.classes.has('is-playing'));
+    // A browser without an account is invited to sign in; a spent free week is offered Supporter.
+    for (const [error, message] of [['account_required', /Sign in to try sentence audio for free/], ['free_daily_limit', /this week's free sentence audio/]]) {
+      const refused = loadPopupVocab(browserName, { respond: () => ({ success: false, error }) });
+      const refusedButton = button();
+      refused.sandbox.playSentence('天気がいい。', refusedButton);
+      assert.equal(refused.audios.length, 0);
+      assert.equal(refused.notices.length, 1);
+      assert.match(refused.notices[0][0], message);
+      assert.equal(refused.notices[0][1], 'limit');
+      assert.ok(!refusedButton.classes.has('is-playing'));
+    }
+  });
+
+  test(`${browserName} the first sentence play waits for the ElevenLabs notice, once per browser`, async () => {
+    const stored = {};
+    // A free account's token is enough: the sentence is sent either way.
+    const respond = (message) => (message.action === 'hasSupporterToken' ? { success: true, account: true, supporter: false } : { success: false });
+    const harness = loadPopupVocab(browserName, { respond, stored });
+    harness.sandbox.document.createElement = fakeElement;
+    const row = fakeElement();
+    const button = { closest: () => row };
+    let continued = false;
+    const waiting = harness.sandbox.confirmSentenceNotice(button).then(() => { continued = true; });
+    await settle();
+    assert.equal(row.children.length, 1);
+    assert.match(row.children[0].children[0].textContent, /ElevenLabs/);
+    const proceed = row.children[0].children[1];
+    proceed.listeners.click({ isTrusted: false });
+    await settle();
+    assert.equal(continued, false);
+    proceed.listeners.click({ isTrusted: true });
+    await waiting;
+    assert.equal(row.children.length, 0);
+    assert.equal(stored.sentenceAudioNoticeSeen, true);
+
+    const asked = harness.sent.length;
+    await harness.sandbox.confirmSentenceNotice(button);
+    assert.equal(harness.sent.length, asked, 'an accepted notice is not shown or checked again');
+
+    // Without an account token nothing is sent, so there is no notice to accept.
+    const free = loadPopupVocab(browserName, { respond: () => ({ success: true, account: false, supporter: false }) });
+    const freeRow = fakeElement();
+    await free.sandbox.confirmSentenceNotice({ closest: () => freeRow });
+    assert.equal(freeRow.children.length, 0);
   });
 }

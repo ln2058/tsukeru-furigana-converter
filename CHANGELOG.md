@@ -11,17 +11,25 @@
 - The estimate learns from what you read: words you look up, and words read without a lookup around them (the lookup's sentence, the text between two lookups made close together, or a whole short page). For this, Tsukeru keeps only counts per word difficulty. They are shared only with EZFurigana, and with your account there if you are signed in. No words, sentences or page addresses are kept for it.
 - Learning words have a faint underline on the page outside Study mode too.
 - My Words shows a dot on the sync line once it has synced with EZFurigana.
+- **Try sentence audio and Explain with a free account**: connect a free EZFurigana account to play and explain a few sentences a week, counted together with your use on EZFurigana. Without an account, Play sentence and Explain invite you to sign in; once the week's tries are used, they offer Supporter.
+- **Move the dictionary**: drag its top row to move it out of the way. It stays where you drop it while you scroll, and the next word opens beside that word again. Not on narrow screens, where the dictionary is a bottom sheet.
 
 ### Changed
 
+- **Weekly dictionary translations**: without an account, Tsukeru gives a few new dictionary translations a week instead of a day, and a connected free account uses its own weekly translations. The dictionary shows how many are left this week.
+- The "Supporter" tag next to Play sentence is gone, since everyone can try it now.
 - **Review badge**: the toolbar number shows at most one review session (7 words), and it clears once you finish today's review on EZFurigana. Words still due come back tomorrow.
 - **Smaller furigana sizes**: furigana size now goes down to 10% (it stopped at 40%).
 - Words outside the JLPT lists are grouped under "No JLPT level" on This page instead of "Beyond N1": most of them are words the lists leave out, not harder ones.
+- Adding furigana no longer sends the page address to EZFurigana; only the text is sent.
+- **Play sentence**: the first time, Tsukeru says that the sentence goes to ElevenLabs to make the audio and waits for Continue, in the dictionary and in My Words. Without an account connected, nothing is sent and no notice is shown.
+- Firefox: Tsukeru now needs Firefox 140 or later (142 on Android), and lists the data it sends (page text) when you install it.
 - **My Words holds as many words as EZFurigana**: up to 5,000 Learning words and 20,000 Known words, kept separately, so a long Known list never pushes out new lookups. When Learning is full, words never reviewed go first.
 
 ### Fixed
 
 - Syncing with an EZFurigana list of more than 5,000 words no longer removes words from this browser.
+- **Pages that already have furigana**: words the site had already given furigana (as on NHK News Web Easy or web novel sites) now open the dictionary when clicked. The site's own furigana stays, and Tsukeru adds no second reading on top.
 
 ## 4.5.2 — 2026-11-14
 

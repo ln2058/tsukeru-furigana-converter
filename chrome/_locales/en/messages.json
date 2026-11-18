@@ -330,9 +330,6 @@
   "content_play_example": {
     "message": "Play example sentence"
   },
-  "content_supporter_tag": {
-    "message": "Supporter"
-  },
   "content_play_sentence": {
     "message": "Play sentence"
   },
@@ -341,6 +338,15 @@
   },
   "content_sentence_audio_supporter": {
     "message": "Sentence audio is a Supporter feature. Sign in on ezfurigana.com as a Supporter to turn it on."
+  },
+  "content_sentence_audio_sign_in": {
+    "message": "Sign in to try sentence audio for free."
+  },
+  "content_sentence_audio_free_used": {
+    "message": "You've used this week's free sentence audio. Supporters can keep listening."
+  },
+  "content_sentence_audio_free_pool": {
+    "message": "Today's free sentence audio is used up. Try again tomorrow, or become a Supporter to keep listening."
   },
   "content_explain": {
     "message": "Explain"
@@ -357,11 +363,20 @@
   "content_explain_notice": {
     "message": "This sentence will be sent to OpenAI to write the explanation, and OpenAI may use it to improve its models."
   },
+  "content_sentence_audio_notice": {
+    "message": "This sentence will be sent to ElevenLabs to make the audio."
+  },
   "content_explain_ai_note": {
     "message": "Written by AI. It can contain mistakes."
   },
   "content_explain_supporter": {
     "message": "Sentence explanations are a Supporter feature. Sign in on ezfurigana.com as a Supporter to turn them on."
+  },
+  "content_explain_sign_in": {
+    "message": "Sign in to try sentence explanations for free."
+  },
+  "content_explain_free_used": {
+    "message": "You've used this week's free explanations. Supporters get more every day."
   },
   "content_explain_limit": {
     "message": "You've used today's explanations. They reset tomorrow."
@@ -770,7 +785,7 @@
     "message": "You've used today's dictionary translations. Showing English until tomorrow."
   },
   "dictionary_translation_supporter": {
-    "message": "You've used today's free dictionary translations. Supporters get more each day."
+    "message": "You've used this week's free dictionary translations. Supporters get more each day."
   },
   "dictionary_translation_pending": {
     "message": "A translation is being prepared. Showing English."
@@ -782,7 +797,7 @@
     "message": "English"
   },
   "dictionary_translations_left": {
-    "message": "$1 left today"
+    "message": "$1 left this week"
   },
   "dictionary_translation_supporter_daily": {
     "message": "Supporters get $1 new translations a day."
@@ -911,7 +926,7 @@
     "message": "EZFurigana account"
   },
   "supporter_state_none": {
-    "message": "Connect your Supporter account to turn on sentence audio and get more dictionary translations each day."
+    "message": "Connect a free account to try sentence audio and explanations. Supporters get much more."
   },
   "supporter_connect": {
     "message": "Connect account"
@@ -929,16 +944,19 @@
     "message": "Manage account"
   },
   "supporter_state_free": {
-    "message": "Connected with a Free account. Sentence audio is a Supporter feature."
+    "message": "Connected with a free account. You can try sentence audio and explanations a few times a week."
   },
   "supporter_become": {
     "message": "Become a Supporter"
+  },
+  "supporter_sign_in": {
+    "message": "Sign in"
   },
   "supporter_state_expired": {
     "message": "Your Supporter connection expired. Open EZFurigana once to reconnect."
   },
   "supporter_state_disconnected": {
-    "message": "Disconnected from your EZFurigana account. Connect again to use your Supporter benefits."
+    "message": "Disconnected from your EZFurigana account. Connect again to use your account in Tsukeru."
   },
   "supporter_reconnect": {
     "message": "Reconnect"
@@ -947,6 +965,6 @@
     "message": "Tsukeru is connected to your Supporter account. Sentence audio is on."
   },
   "supporter_connected_free_toast": {
-    "message": "Tsukeru is connected. This account is on the Free plan, so sentence audio stays off."
+    "message": "Tsukeru is connected to your free account. You can try sentence audio and explanations a few times a week."
   }
 }

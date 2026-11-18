@@ -668,6 +668,42 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(split(result, ['学校に', '行']), null, 'a result that does not line up is not split');
   });
 
+  test(`${browserName} makes words in a page's own ruby clickable without a second reading`, () => {
+    const { sandbox, root, document } = loadBrowser(browserName);
+    const pageRuby = ruby('天気', 'てんき');
+    const [before, base, after] = [new FakeText('今日は'), pageRuby.childNodes[0], new FakeText('がいい')];
+    root.appendChild(new FakeElement('p', {}, [before, pageRuby, after]));
+    // An EZFurigana result: its ruby already belongs to a word.
+    const resultRuby = ruby('学校', 'がっこう');
+    root.appendChild(new FakeElement('p', {}, [
+      new FakeElement('span', { class: 'analysis-word', 'data-surface': '学校' }, [resultRuby]),
+    ]));
+
+    assert.equal(sandbox.isProcessableTextNode(base), true, 'the base of a page ruby is text');
+    assert.equal(sandbox.isProcessableTextNode(pageRuby.childNodes[1].childNodes[0]), false, 'its reading is not');
+    assert.equal(sandbox.isProcessableTextNode(resultRuby.childNodes[0]), false, 'an analysis word is left alone');
+    assert.equal(sandbox.continuesInlineRun(before, base), true);
+    assert.equal(sandbox.continuesInlineRun(base, after), true, 'the page reading does not end the run');
+    const [batch] = sandbox.buildBatches([before, base, after]);
+    assert.equal(batch.payload, `${batch.markers[0]}今日は天気がいい`);
+
+    // The piece for the ruby base keeps the word's metadata but drops our reading.
+    const backend = new FakeElement('template-content', {}, [
+      new FakeElement('span', { class: 'analysis-word', 'data-surface': '天気' }, [ruby('天気', 'てんき')]),
+      new FakeElement('ruby', { 'data-surface': '天' }, [new FakeText('天'), new FakeElement('rt', {}, [new FakeText('てん')])]),
+    ]);
+    document.createElement = (tag) => (tag === 'template' ? { content: backend } : new FakeElement(tag));
+    document.createDocumentFragment = () => new FakeElement('fragment');
+    document.createTextNode = (text) => new FakeText(text);
+    const sanitized = sandbox.sanitizeHtmlFragment('<html>', { pageRuby: true });
+    assert.equal(sanitized.textContent, '天気天');
+    assert.deepEqual(sanitized.children.map((child) => child.localName), ['span', 'span']);
+    assert.equal(sanitized.children[0].getAttribute('data-surface'), '天気');
+    assert.equal(sanitized.children[1].getAttribute('data-surface'), '天', 'a word ruby becomes a span');
+    assert.equal(sanitized.querySelectorAll('ruby, rt').length, 0);
+    assert.equal(sandbox.sanitizeHtmlFragment('<html>').querySelectorAll('rt').length, 2, 'other text keeps its readings');
+  });
+
   test(`${browserName} counts kanji outside the main block as Japanese text`, () => {
     const { sandbox } = loadBrowser(browserName);
     assert.equal(sandbox.countJapaneseCharacters('々〆㐂﨑𠮟'), 5);

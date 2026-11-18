@@ -445,7 +445,7 @@ Security Notes:
   }
 
   /**
-   * Keep a sentence explanation with a tracked word (Supporters): one per
+   * Keep a sentence explanation with a tracked word (connected accounts): one per
    * word, replacing an older one; its sentence joins the word's sentences.
    */
   function setExplanation(store, input, explanation, at) {

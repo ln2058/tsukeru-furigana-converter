@@ -1,9 +1,9 @@
 /*
 Module: bg-api
-Purpose: Execute backend workflows for furigana processing, dictionary data, audio proxying, Supporter sentence explanations and reading-error reports.
+Purpose: Execute backend workflows for furigana processing, dictionary data, audio proxying, account sentence audio and explanations, and reading-error reports.
 
 Inputs:
-- Text chunk payloads, settings, tab URLs, and action parameters.
+- Text chunk payloads, settings, and action parameters.
 - Network responses from EZFurigana API endpoints.
 
 Outputs:
@@ -11,7 +11,7 @@ Outputs:
 
 Side Effects:
 - Performs network fetches, tracks shared cooldown deadlines, and coalesces nonce acquisition/recovery across API requests.
-- Persists only validated cooldown metadata, the current UTC day's and ISO week's random IDs, and the website's Supporter token answer through extension-local storage; backend quotas remain authoritative. A token refused before its expiry marks this browser disconnected, and the website does not reconnect it until the popup's Connect.
+- Persists only validated cooldown metadata, the current UTC day's and ISO week's random IDs, and the website's account token answer (a free account's or a Supporter's) through extension-local storage; backend quotas remain authoritative. A token refused before its expiry marks this browser disconnected, and the website does not reconnect it until the popup's Connect.
 - Shares logical dictionary lookups and bounds completed in-memory dictionary results.
 - Reads/writes furigana fragments and successful localized dictionary entries through `bg-cache`.
 
@@ -22,9 +22,9 @@ Failure Modes:
 
 Security Notes:
 - Treat all backend responses as untrusted until sanitized by content scripts.
-- Redacts non-web tab URLs before sending backend metadata.
+- Never sends page URLs: furigana requests carry only the text and settings.
 - Sends only the per-worker session ID and the manifest version as identifying headers, plus, on furigana requests, a random day ID replaced each UTC day, a random week ID replaced each ISO week (UTC), and the browser UI language's primary subtag; no stable install ID.
-- Sends the Supporter token only to Supporter endpoints (the plan check, sentence audio, sentence explanations, and localized dictionary lookups that may create a new entry, which count against the Supporter's allowance), never with furigana, English dictionary, or cache-only requests.
+- Sends the account token only to account endpoints (the plan check, sentence audio, sentence explanations, and localized dictionary lookups that may create a new entry, which count against the account's allowance; a free account's cache-only lookups too, so its weekly count shows), never with furigana or English dictionary requests.
 - Sentence audio sends one plain sentence of at most 120 characters, only after the reader clicks Play sentence; responses are bounded audio/mpeg.
 - Sentence explanations send one plain sentence of at most 120 characters and the display language, only after the reader clicks Explain; responses are bounded JSON, reduced to bounded plain-text fields.
 - Keep endpoint configuration centralized to avoid host sprawl.
@@ -229,7 +229,7 @@ export function dismantlePayload(text) {
 }
 
 export async function handleFuriganaRequest(payload) {
-  const { textContent = '', settings = {}, tabUrl } = payload;
+  const { textContent = '', settings = {} } = payload;
 
   // Settings suffix shared by all chunks (levels excluded — filtered client-side via CSS).
   // The trailing |0 is the retired first-occurrence flag, kept so existing cache entries still match.
@@ -241,7 +241,7 @@ export async function handleFuriganaRequest(payload) {
 
   // No markers: unusual edge case — rate-check the whole payload and fetch raw.
   if (!chunks.length) {
-    return fetchFromAPI(textContent, settings, tabUrl);
+    return fetchFromAPI(textContent, settings);
   }
 
   // ── Step 2: Check cache per chunk (trim for key; re-inject whitespace on hit) ─
@@ -270,7 +270,7 @@ export async function handleFuriganaRequest(payload) {
     const missingChars = missingChunks.reduce((sum, c) => sum + c.text.length, 0);
 
     const missingPayload = missingChunks.map(c => c.marker + c.text).join('');
-    const result = await fetchFromAPI(missingPayload, settings, tabUrl);
+    const result = await fetchFromAPI(missingPayload, settings);
     if (result.nonceRateLimit) nonceRateLimit = result.nonceRateLimit;
 
     const parsedChunks = dismantlePayload(result.processedHTML);
@@ -396,8 +396,9 @@ function _extensionHeaders() {
     : { 'x-extension-session-id': _EXT_SESSION_ID };
 }
 
-// Supporter token from the website (see content-sync). It names the account;
-// the backend looks up the current plan on every use.
+// Account token from the website (see content-sync), for free accounts and
+// Supporters alike. It names the account; the backend looks up the current
+// plan on every use, so `plan` here only drives what the UI shows.
 const _SUPPORTER_KEY = 'tsukeruSupporter';
 const _SUPPORTER_TOKEN_RE = /^v2\.[0-9a-f]{32}\.[0-9]{1,9}\.[0-9]{1,12}\.[0-9a-f]{64}$/;
 const _SUPPORTER_RECHECK_MS = 24 * 60 * 60 * 1000;
@@ -430,17 +431,15 @@ export async function supporterRefreshDue(now = Date.now(), { forced = false } =
   if (record?.plan === 'disconnected') return false;
   if (forced) return true;
   if (!Number.isFinite(record?.checkedAt)) return true;
-  if (record.plan === 'supporter' && !_hasLiveToken(record, now)) return true;
-  if (record.plan === 'expired') return true;
+  if (!_hasLiveToken(record, now)) return true;
   const wait = record.plan === 'supporter' ? _SUPPORTER_RECHECK_MS : _FREE_RECHECK_MS;
   if (now - record.checkedAt < wait) return false;
-  if (record.plan !== 'supporter') return true;
-  // Before the daily renewal, make sure the account has not disconnected this browser.
+  // Before renewing, make sure the account has not disconnected this browser.
   await getSupporterPlan(now, { fresh: true });
   return (await _readSupporter())?.plan !== 'disconnected';
 }
 
-/** Store the website's answer: a Supporter token, or that the account is Free. */
+/** Store the website's answer: the account's plan and its token (older websites sent Free without one). */
 export async function storeSupporterHandoff(answer, now = Date.now(), { connect = false } = {}) {
   const storage = getStorageLocal();
   _supporterPlanCache = null;
@@ -453,15 +452,26 @@ export async function storeSupporterHandoff(answer, now = Date.now(), { connect 
     return { plan: 'supporter', changed: before !== 'supporter' };
   }
   if (answer?.plan === 'free') {
-    await storage.set({ [_SUPPORTER_KEY]: { plan: 'free', checkedAt: now } });
+    const token = _hasLiveToken(answer, now) ? { token: answer.token, expiresAt: answer.expiresAt } : {};
+    await storage.set({ [_SUPPORTER_KEY]: { plan: 'free', ...token, checkedAt: now } });
     return { plan: 'free', changed: before !== 'free' };
   }
   throw new Error('Invalid Supporter handoff');
 }
 
+/**
+ * What this browser holds, from local storage only (no request): `account`
+ * when a live account token is stored, `supporter` when it was a Supporter's.
+ */
+export async function getAccountToken(now = Date.now()) {
+  const record = await _readSupporter();
+  const account = _hasLiveToken(record, now);
+  return { account, supporter: account && record.plan === 'supporter' };
+}
+
 /** Whether a live Supporter token is stored (no request). */
 export async function hasSupporterToken(now = Date.now()) {
-  return _hasLiveToken(await _readSupporter(), now);
+  return (await getAccountToken(now)).supporter;
 }
 
 /**
@@ -479,7 +489,7 @@ async function _markRefused(token, now) {
   } catch (_) { /* retried next time */ }
 }
 
-/** Header for Supporter-gated endpoints; empty without a live token. */
+/** Header for account endpoints; empty without a live token. */
 export async function supporterHeaders(now = Date.now()) {
   const record = await _readSupporter();
   return _hasLiveToken(record, now) ? { 'x-tsukeru-supporter': record.token } : {};
@@ -498,6 +508,7 @@ export async function getSupporterStatus(now = Date.now()) {
       ? { state: 'supporter', checkedAt: record.checkedAt, expiresAt: record.expiresAt }
       : { state: 'expired' };
   }
+  // A free account's token is renewed on the next website visit, so it stays connected meanwhile.
   if (record.plan === 'free') return { state: 'free', checkedAt: record.checkedAt };
   if (record.plan === 'expired') return { state: 'expired' };
   if (record.plan === 'disconnected') return { state: 'disconnected' };
@@ -512,6 +523,8 @@ export async function getSupporterPlan(now = Date.now(), { fresh = false } = {})
   const headers = await supporterHeaders(now);
   if (!headers['x-tsukeru-supporter']) return 'free';
   if (!fresh && _supporterPlanCache && now < _supporterPlanCache.until) return _supporterPlanCache.plan;
+  // Offline or failing: keep the last answer the website gave.
+  const lastPlan = async () => ((await _readSupporter())?.plan === 'supporter' ? 'supporter' : 'free');
   let response;
   try {
     response = await fetch(`${API_BASE_URL}/api/extension/plan`, {
@@ -522,19 +535,22 @@ export async function getSupporterPlan(now = Date.now(), { fresh = false } = {})
       cache: 'no-store',
     });
   } catch (_) {
-    return 'supporter'; // Offline: keep the last answer the website gave.
+    return lastPlan();
   }
   if (response.status === 401) {
     await _markRefused(headers['x-tsukeru-supporter'], now);
     return 'free';
   }
-  if (!response.ok) return 'supporter';
+  if (!response.ok) return lastPlan();
   const body = await response.json().catch(() => null);
   const plan = body?.plan === 'supporter' ? 'supporter' : 'free';
-  if (plan === 'free') {
-    // The subscription ended: the token no longer grants anything.
-    try { await getStorageLocal().set({ [_SUPPORTER_KEY]: { plan: 'free', checkedAt: now } }); } catch (_) { /* retried next time */ }
-  }
+  // An upgrade or a lapse: the same token keeps working at the new plan.
+  try {
+    const record = await _readSupporter();
+    if (record?.token === headers['x-tsukeru-supporter'] && record.plan !== plan) {
+      await getStorageLocal().set({ [_SUPPORTER_KEY]: { ...record, plan } });
+    }
+  } catch (_) { /* retried next time */ }
   _supporterPlanCache = { plan, until: now + _SUPPORTER_PLAN_TTL_MS };
   return plan;
 }
@@ -621,11 +637,10 @@ async function _getExtNonceForFurigana() {
 }
 
 // Low-level API fetch — sends raw textContent and returns { processedHTML }.
-export async function fetchFromAPI(textContent, settings, tabUrl) {
+export async function fetchFromAPI(textContent, settings) {
   const apiUrl = API_BASE_URL;
   const endpoints = [`${apiUrl}/api/extension/furigana`, `${apiUrl}/furigana/html`];
   let lastError = null;
-  const backendWebsiteUrl = getBackendWebsiteUrl(tabUrl);
 
   let nonceResult = await _getExtNonceForFurigana();
   let nonce = nonceResult.nonce;
@@ -652,8 +667,6 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
         fd.append('jlpt_level', '5');
         fd.append('furigana_type', settings.furiganaType || DEFAULT_SETTINGS.furiganaType);
         fd.append('raw_text', textContent);
-        // Never leak local filesystem paths or other non-web URLs to the backend.
-        fd.append('website_url', backendWebsiteUrl);
         fd.append('csrf_token', '');
         // Include nonce when available; backend verifies if present, ignores if absent
         // until EXT_REQUIRE_NONCE=true is deployed server-side.
@@ -726,10 +739,6 @@ export async function fetchFromAPI(textContent, settings, tabUrl) {
   }
 
   throw lastError || new Error('API request failed');
-}
-
-function getBackendWebsiteUrl(tabUrl = '') {
-  return /^https?:\/\//i.test(tabUrl) ? tabUrl : '';
 }
 
 function extractElementInnerHtmlById(htmlText, id) {
@@ -1207,7 +1216,7 @@ export async function handlePlayAudioDirect(word, reading) {
   return handlePlayAudio(word, reading);
 }
 
-/** Supporter sentence audio for one plain Japanese sentence, as a data URL. */
+/** Account sentence audio for one plain Japanese sentence, as a data URL. */
 export async function fetchSentenceAudio(text) {
   return fetchSupporterAudio('/api/extension/tts', { text: String(text || '').trim() });
 }
@@ -1233,14 +1242,15 @@ function cleanExplanation(value) {
 }
 
 /**
- * Explain one sentence in the display language, for Supporters. Throws with
- * `code` supporter_required (no token, or the token was refused), daily_limit,
+ * Explain one sentence in the display language, for a connected account.
+ * Throws with `code` account_required (no token, or the token was refused),
+ * daily_limit (a Supporter's day), free_daily_limit (a free account's week),
  * not_available, rate_limited, or explain_unavailable.
  */
 export async function fetchSentenceExplanation(text, language) {
   const headers = await supporterHeaders();
   const fail = (code, status) => Object.assign(new Error('Sentence explanation failed'), { code, status });
-  if (!headers['x-tsukeru-supporter']) throw fail('supporter_required');
+  if (!headers['x-tsukeru-supporter']) throw fail('account_required');
   const response = await fetch(`${API_BASE_URL}/api/extension/explain`, {
     method: 'POST',
     headers: { ..._extensionHeaders(), ...headers, 'Content-Type': 'application/json' },
@@ -1266,10 +1276,10 @@ export async function fetchSentenceExplanation(text, language) {
   if (!response.ok || body?.ok !== true) {
     if (response.status === 401) {
       await _markRefused(headers['x-tsukeru-supporter'], Date.now());
-      throw fail('supporter_required', 401);
+      throw fail('account_required', 401);
     }
     const code = typeof body?.error === 'string' ? body.error : 'explain_unavailable';
-    if (code === 'supporter_required') _supporterPlanCache = null;
+    if (code === 'supporter_required' || code === 'free_daily_limit') _supporterPlanCache = null;
     throw fail(code, response.status);
   }
   const explanation = cleanExplanation(body.explanation);
@@ -1280,7 +1290,7 @@ export async function fetchSentenceExplanation(text, language) {
 
 const EXAMPLE_ID_RE = /^[0-9]{5}_[A-Za-z0-9_-]{1,100}$/;
 
-/** A TKGJE example's recorded reading, for Supporters (same failures as sentence audio). */
+/** A TKGJE example's recorded reading, for a connected account (same failures as sentence audio). */
 export async function fetchExampleAudio(exampleId) {
   if (typeof exampleId !== 'string' || !EXAMPLE_ID_RE.test(exampleId)) {
     const error = new Error('Invalid example');
@@ -1293,8 +1303,8 @@ export async function fetchExampleAudio(exampleId) {
 async function fetchSupporterAudio(path, body) {
   const headers = await supporterHeaders();
   if (!headers['x-tsukeru-supporter']) {
-    const error = new Error('Sentence audio needs a Supporter token');
-    error.code = 'supporter_required';
+    const error = new Error('Sentence audio needs an account token');
+    error.code = 'account_required';
     throw error;
   }
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -1313,9 +1323,9 @@ async function fetchSupporterAudio(path, body) {
     error.code = typeof body?.error === 'string' ? body.error : 'tts_unavailable';
     if (response.status === 401) {
       await _markRefused(headers['x-tsukeru-supporter'], Date.now());
-      error.code = 'supporter_required';
+      error.code = 'account_required';
     }
-    if (error.code === 'supporter_required') _supporterPlanCache = null;
+    if (error.code === 'supporter_required' || error.code === 'free_daily_limit') _supporterPlanCache = null;
     throw error;
   }
   const blob = await readBoundedResponseBlob(response, {
@@ -1429,8 +1439,9 @@ export async function lookupLocalizedDefinition(word, reading, readingType, uiLo
     const url = buildDefinitionUrl('/api/extension/ai-dictionary', args);
     url.searchParams.set('locale', locale);
     url.searchParams.set('cache_only', cacheOnly ? '1' : '0');
-    // A new entry counts against a Supporter's own allowance; cache-only stays anonymous.
-    const headers = cacheOnly ? {} : await supporterHeaders();
+    // A new entry counts against the account's own allowance. Cache-only stays
+    // anonymous, except for a free account, whose reply then shows its weekly count.
+    const headers = !cacheOnly || !(await hasSupporterToken()) ? await supporterHeaders() : {};
     const data = assertLocalizedDefinitionPayload(await requestExtensionJson(url, { operation: 'dictionary', headers }), locale);
     if (['je_localized_cache', 'je_localized_generated'].includes(data.source)) await localizedCacheSet(key, data);
     return data;

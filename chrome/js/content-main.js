@@ -227,7 +227,6 @@ async function applyFurigana(settings, { automatic = false } = {}) {
         const response = await sendFuriganaWithRateLimitRetry({
           textContent: batch.payload,
           settings,
-          tabUrl: window.location.href,
         }, 3, isValid, operation.controller.signal);
 
         if (!isValid()) return;

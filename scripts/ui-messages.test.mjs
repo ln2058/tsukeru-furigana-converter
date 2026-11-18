@@ -125,4 +125,19 @@ for (const browser of ['chrome', 'firefox']) {
     sandbox.renderPageSummary({ known: 0, markedKnown: 0 });
     assert.equal(note.hidden, true, 'there is no hidden-reading claim without known words');
   });
+
+  test(`${browser} a refusal offers sign-in without an account and Supporter past the free tries`, () => {
+    const { sandbox, t } = loadMessages(browser, 'en');
+    const messages = sandbox.TsukeruUiMessages;
+    assert.equal(messages.refusalOffer('account_required'), 'connect');
+    for (const code of ['free_daily_limit', 'free_capacity', 'supporter_required']) {
+      assert.equal(messages.refusalOffer(code), 'pricing', code);
+    }
+    // A Supporter's own limit or an outage has nothing to sell.
+    for (const code of ['monthly_limit', 'daily_limit', 'tts_unavailable', 'not_available', undefined, 'toString']) {
+      assert.equal(messages.refusalOffer(code), null, String(code));
+    }
+    assert.match(messages.sentenceAudioMessage('account_required', t), /Sign in to try sentence audio for free/);
+    assert.match(messages.explainMessage('free_daily_limit', t), /this week's free explanations/);
+  });
 }

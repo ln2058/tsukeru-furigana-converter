@@ -25,7 +25,7 @@ Failure Modes:
 Security Notes:
 - Delegates external network traffic to `bg-api` only.
 - Audio proxy messages accept only HTTPS www.ezfurigana.com URLs on the default port.
-- Supporter token handoff messages are accepted only from this extension's script on the website; the popup may only read the plan.
+- Account token handoff messages are accepted only from this extension's script on the website; the popup may only read the plan.
 - Automatic furigana is decided from the tab address the browser reports for a top-level page, never from a URL the page sends.
 - Avoid logging raw user page text in error paths.
 */
@@ -34,7 +34,7 @@ Security Notes:
 import {
   handleFuriganaRequest, lookupDefinition, lookupLocalizedDefinition, fetchExampleSentence, fetchKanjiBreakdown,
   handlePlayAudio, handleFetchProxyAudio, handleReportReadingError,
-  DEFAULT_SETTINGS, getRateLimitState, getSupporterPlan, getSupporterStatus, hasSupporterToken, storeSupporterHandoff, supporterRefreshDue,
+  DEFAULT_SETTINGS, getRateLimitState, getAccountToken, getSupporterPlan, getSupporterStatus, hasSupporterToken, storeSupporterHandoff, supporterRefreshDue,
   fetchSentenceAudio, fetchExampleAudio, fetchSentenceExplanation,
 } from './js/bg-api.js';
 import { handleWordsMessage, isEzfuriganaSender, isWordsAction, refreshWordBadge } from './js/bg-words.js';
@@ -246,7 +246,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // Supporter token handoff: only this extension's script on the website may set it.
+  // Account token handoff: only this extension's script on the website may set it.
   if (message?.action === 'supporterRefreshDue' || message?.action === 'supporterHandoff') {
     if (!isEzfuriganaSender(sender)) {
       sendResponse({ success: false, error: 'Not allowed' });
@@ -260,7 +260,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // A recorded TKGJE example in the dictionary popup (Supporter audio).
+  // A recorded TKGJE example in the dictionary popup (account audio).
   if (message?.action === 'playExample') {
     if (sender.id !== chrome.runtime.id) return false;
     if (typeof message.exampleId !== 'string' || !/^[0-9]{5}_[A-Za-z0-9_-]{1,100}$/.test(message.exampleId)) {
@@ -298,7 +298,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // "Explain" in the dictionary popup (Supporters): one sentence, in the display language.
+  // "Explain" in the dictionary popup (connected accounts): one sentence, in the display language.
   if (message?.action === 'explainSentence') {
     if (sender.id !== chrome.runtime.id) return false;
     if (typeof message.text !== 'string' || !message.text.trim() || Array.from(message.text).length > 120) {
@@ -311,11 +311,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // Whether to tag "Play sentence" as a Supporter feature; never sends the token.
+  // Whether an account (`account`) or a Supporter (`supporter`) is connected,
+  // for first-use notices and sign-in prompts; never sends the token.
   if (message?.action === 'hasSupporterToken') {
     if (sender.id !== chrome.runtime.id) return false;
-    hasSupporterToken()
-      .then((supporter) => sendResponse({ success: true, supporter }))
+    getAccountToken()
+      .then(({ account, supporter }) => sendResponse({ success: true, account, supporter }))
       .catch(() => sendResponse({ success: false }));
     return true;
   }

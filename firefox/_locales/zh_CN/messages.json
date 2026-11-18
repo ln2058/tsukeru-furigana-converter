@@ -330,9 +330,6 @@
   "content_play_example": {
     "message": "播放例句"
   },
-  "content_supporter_tag": {
-    "message": "支持者"
-  },
   "content_play_sentence": {
     "message": "朗读句子"
   },
@@ -341,6 +338,15 @@
   },
   "content_sentence_audio_supporter": {
     "message": "句子朗读是支持者专享功能。以支持者身份登录 ezfurigana.com 即可使用。"
+  },
+  "content_sentence_audio_sign_in": {
+    "message": "登录即可免费试用句子朗读。"
+  },
+  "content_sentence_audio_free_used": {
+    "message": "本周的免费句子朗读已用完。支持者可以继续收听。"
+  },
+  "content_sentence_audio_free_pool": {
+    "message": "今天的免费句子朗读已全部用完。请明天再试，或成为支持者继续收听。"
   },
   "content_explain": {
     "message": "解析"
@@ -357,11 +363,20 @@
   "content_explain_notice": {
     "message": "为了生成解析，这句话会发送给 OpenAI，OpenAI 可能会用它来改进模型。"
   },
+  "content_sentence_audio_notice": {
+    "message": "为了生成音频，这句话将发送给 ElevenLabs。"
+  },
   "content_explain_ai_note": {
     "message": "由 AI 生成，可能有错误。"
   },
   "content_explain_supporter": {
     "message": "句子解析是支持者专享功能。请以支持者身份登录 ezfurigana.com 后使用。"
+  },
+  "content_explain_sign_in": {
+    "message": "登录即可免费试用句子解析。"
+  },
+  "content_explain_free_used": {
+    "message": "本周的免费句子解析已用完。支持者每天可以使用更多次。"
   },
   "content_explain_limit": {
     "message": "今天的句子解析次数已用完，明天会重置。"
@@ -770,7 +785,7 @@
     "message": "今天的词典翻译次数已用完，明天再来查看中文释义吧。"
   },
   "dictionary_translation_supporter": {
-    "message": "今天的免费词典翻译次数已用完。支持者每天可翻译更多单词。"
+    "message": "本周的免费词典翻译已用完。支持者每天可以翻译更多单词。"
   },
   "dictionary_translation_pending": {
     "message": "翻译正在准备中，暂时显示英文释义。"
@@ -782,7 +797,7 @@
     "message": "英文"
   },
   "dictionary_translations_left": {
-    "message": "今天还剩 $1 次"
+    "message": "本周还剩 $1 次"
   },
   "dictionary_translation_supporter_daily": {
     "message": "支持者每天可获得 $1 条新翻译。"
@@ -911,7 +926,7 @@
     "message": "EZFurigana 账号"
   },
   "supporter_state_none": {
-    "message": "连接 EZFurigana 支持者账号后，即可使用句子朗读，每天还能获得更多词典翻译次数。"
+    "message": "连接免费账号即可试用句子朗读和解析。支持者可以使用更多。"
   },
   "supporter_connect": {
     "message": "连接账号"
@@ -929,16 +944,19 @@
     "message": "管理账号"
   },
   "supporter_state_free": {
-    "message": "已连接免费账号。句子朗读是支持者专享功能。"
+    "message": "已连接免费账号。每周可以试用几次句子朗读和解析。"
   },
   "supporter_become": {
     "message": "成为支持者"
+  },
+  "supporter_sign_in": {
+    "message": "登录"
   },
   "supporter_state_expired": {
     "message": "支持者账号连接已过期。打开一次 EZFurigana 即可重新连接。"
   },
   "supporter_state_disconnected": {
-    "message": "已断开与 EZFurigana 账号的连接。重新连接即可继续使用支持者权益。"
+    "message": "已断开与 EZFurigana 账号的连接。重新连接即可在 Tsukeru 中使用你的账号。"
   },
   "supporter_reconnect": {
     "message": "重新连接"
@@ -947,6 +965,6 @@
     "message": "Tsukeru 已连接到你的支持者账号，现在可以使用句子朗读。"
   },
   "supporter_connected_free_toast": {
-    "message": "Tsukeru 已连接到此免费账号，因此无法使用句子朗读。"
+    "message": "Tsukeru 已连接到你的免费账号。每周可以试用几次句子朗读和解析。"
   }
 }

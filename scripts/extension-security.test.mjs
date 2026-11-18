@@ -83,8 +83,8 @@ function sentenceRouter(browser) {
   const sandbox = {
     URL, isWordsAction: () => false, isVocabAction: () => false,
     chrome: { runtime: { id: 'tsukeru', onMessage: { addListener(fn) { listener = fn; } } } },
-    fetchSentenceAudio: async () => { const error = new Error('no token'); error.code = 'supporter_required'; throw error; },
-    hasSupporterToken: async () => false,
+    fetchSentenceAudio: async () => { const error = new Error('no token'); error.code = 'account_required'; throw error; },
+    getAccountToken: async () => ({ account: false, supporter: false }),
   };
   const source = read(browser, 'background.js');
   const start = source.indexOf('chrome.runtime.onMessage.addListener');
@@ -100,8 +100,8 @@ for (const browser of ['chrome', 'firefox']) {
     const popup = { id: 'tsukeru', url: 'chrome-extension://tsukeru/popup.html' };
     const page = { id: 'tsukeru', tab: { id: 4 } };
     for (const sender of [popup, page]) {
-      assert.deepEqual(await send({ action: 'playSentence', text: '天気がいい。' }, sender), { success: false, error: 'supporter_required' });
-      assert.deepEqual(await send({ action: 'hasSupporterToken' }, sender), { success: true, supporter: false });
+      assert.deepEqual(await send({ action: 'playSentence', text: '天気がいい。' }, sender), { success: false, error: 'account_required' });
+      assert.deepEqual(await send({ action: 'hasSupporterToken' }, sender), { success: true, account: false, supporter: false });
     }
     assert.equal(await send({ action: 'playSentence', text: '天気がいい。' }, { id: 'other', tab: { id: 4 } }), 'no answer');
   });

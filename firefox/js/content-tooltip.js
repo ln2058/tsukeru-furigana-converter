@@ -12,9 +12,10 @@ Inputs:
 Outputs:
 - Tooltip rendering updates with Japanese language tags for words/readings/examples, checked-word and Learning/Known requests to the background store, and report payload messages.
 - The card layout shared with the EZFurigana website: frequency badge, pitch-marked reading, form line with conjugation labels, Meaning / Kanji tabs, and a Kanji tab that loads on first open with stroke-order diagrams and KanjiVG attribution.
-- A "Play sentence" line showing the sentence around the clicked word (Supporter audio), tagged "Supporter" when this browser holds no Supporter token, with "Explain" to its right: the sentence explained in the display language (Supporters), opened below the line.
-- A play button, like the word's, at the end of each TKGJE example with a recorded reading (Supporter audio, refused the same way as Play sentence).
-- In ja/ko/zh-CN/zh-TW, translation controls at the top of the Meaning tab: View translation with the new translations a guest has left today, an AI translation / English switch once translated, and a Supporter line when none are left. Supporters' translations start without a click.
+- A "Play sentence" line showing the sentence around the clicked word (account audio: a free account's weekly tries or a Supporter's), with "Explain" to its right: the sentence explained in the display language (connected accounts), opened below the line.
+- A play button, like the word's, at the end of each TKGJE example with a recorded reading (account audio, refused the same way as Play sentence).
+- Refusals as toasts: a browser with no account connected is invited to sign in for free (Connect), and a free account past its tries is offered Supporter (pricing).
+- In ja/ko/zh-CN/zh-TW, translation controls at the top of the Meaning tab: View translation with the new translations a guest or free account has left this week, an AI translation / English switch once translated, and a Supporter line when none are left. Supporters' translations start without a click.
 - `tsukeru-learning`, `tsukeru-known`, and `tsukeru-revealed` classes and Study/known-reading attributes on the page.
 - `openTooltipForWord` opens the tooltip on a word named by the extension popup's Words in this text (`openWordTooltip`).
 - A `pageWordsChanged` runtime notice once furigana insertions pause (at most every few seconds while they continue), so an open popup re-lists the page's words.
@@ -23,10 +24,11 @@ Side Effects:
 - Creates/removes tooltip DOM on the root element, scroll/resize/Escape listeners that re-place or close it, and disclosure state.
 - A click on a word opens its popup instead of the page's own click; inside a link, a modifier click, Enter, or a second click while that link's word is open goes to the link instead.
 - Places the tooltip with the placement rules shared with EZFurigana (a bottom sheet at 600 px wide or less) and marks the clicked word with `tsukeru-active-word` while it is open.
+- Dragging the header (not the headword or its buttons) moves the tooltip on desktop; a moved tooltip stays where it was dropped, kept on screen, and no longer follows or closes with its word. The next word opens beside it again.
 - Registers tooltip and report surfaces with content-ui to follow the saved UI theme.
 - Opening the dictionary on a kanji word, or revealing it in Study mode, adds it to Learning (a known word stays known).
-- Play sentence sends the plain sentence around the open word (at most 120 characters) to the background for Supporter audio and shows a toast when it is refused.
-- Explain sends the same sentence and the display language to the background for a Supporter explanation, after a one-time notice that the sentence goes to OpenAI (remembered as `explainNoticeSeen` in local storage); a browser without a Supporter token gets a toast instead and sends nothing. The explanation is kept with the word in My Words (and synced with EZFurigana), as on the website.
+- Play sentence sends the plain sentence around the open word (at most 120 characters) to the background for account audio and shows a toast when it is refused. The first play waits for a one-time notice that the sentence goes to ElevenLabs (remembered as `sentenceAudioNoticeSeen` in local storage, shared with the popup); a browser without an account token skips the notice, since nothing is sent.
+- Explain sends the same sentence and the display language to the background for an explanation, after a one-time notice that the sentence goes to OpenAI (remembered as `explainNoticeSeen` in local storage); a browser without an account token gets the sign-in toast instead and sends nothing. The explanation is kept with the word in My Words (and synced with EZFurigana), as on the website.
 - Excludes tooltip-owned metadata from word capture and word-state marks.
 
 Failure Modes:
@@ -37,6 +39,7 @@ Failure Modes:
 
 Security Notes:
 - Escapes/sanitizes rendered content; AI ruby and sentence explanations use DOM text nodes. Only trusted clicks can generate translations: a reader's click on View translation, or, for a Supporter, the trusted click that opened the word.
+- Toast links go only to fixed EZFurigana pages (account Connect or pricing), never to page input.
 - Stroke diagrams are built with DOM APIs from paths re-checked against SVG path syntax; tier, accent, and inflection values are matched against fixed allowlists before rendering.
 - Report opening/submission requires trusted clicks; word, reading, and context are held in isolated-script state rather than read back from page fields.
 - Avoids direct third-party media fetches from page context.
@@ -279,6 +282,8 @@ async function showDefinitionTooltip(ruby, wordInfo, point = null, { trusted = f
   tooltip._activeWordInfo = wordInfo;
   tooltip._placementSide = '';
   tooltip._anchorIndex = 0;
+  // A newly opened word is placed beside it, even after a move.
+  tooltip._moved = false;
   ruby.classList?.add('tsukeru-active-word');
   tooltip.innerHTML = getTooltipLoadingHtml(wordInfo);
 
@@ -324,6 +329,7 @@ function ensureDictionaryTooltip() {
   if (existing) {
     dictionaryTooltip = existing;
     applyTsukeruUiTheme(existing);
+    bindTooltipDrag(existing);
     return existing;
   }
   dictionaryTooltip = document.createElement('div');
@@ -334,6 +340,7 @@ function ensureDictionaryTooltip() {
   // Mounted on <html> so a transform or filter on the page's <body> cannot
   // offset or clip the fixed-position tooltip.
   (document.documentElement || document.body).appendChild(dictionaryTooltip);
+  bindTooltipDrag(dictionaryTooltip);
   if (typeof ResizeObserver === 'function') {
     // Content that loads or expands re-places the tooltip on its chosen side.
     new ResizeObserver(() => scheduleTooltipReposition()).observe(dictionaryTooltip);
@@ -352,6 +359,7 @@ function hideDefinitionTooltip() {
     dictionaryTooltip._activeRuby = null;
     dictionaryTooltip._activeWordInfo = null;
     dictionaryTooltip._placementSide = '';
+    dictionaryTooltip._moved = false;
   }
 }
 
@@ -439,6 +447,92 @@ function computeTooltipPlacement(input) {
   };
 }
 
+/** Where a tooltip the reader dragged goes, kept inside the viewport (identical to EZFurigana's). */
+function clampTooltipPosition(input) {
+  const margin = Number.isFinite(input?.margin) ? input.margin : 12;
+  const { size, viewport } = input;
+  return {
+    left: Math.round(clampNumber(input.left, margin, viewport.width - margin - size.width)),
+    top: Math.round(clampNumber(input.top, margin, viewport.height - margin - size.height)),
+  };
+}
+
+// A tooltip dragged by its header stays where it was dropped: scrolls,
+// resizes, and content growth only keep it on screen (website docs/dictionary-popup.md).
+const TOOLTIP_DRAG_THRESHOLD = 4;
+const TOOLTIP_VIEWPORT_MARGIN = 12;
+
+function isTooltipDragHandle(tooltip, event) {
+  if (event.button !== 0 || !event.isPrimary) return false;
+  if (!tooltip.classList.contains('show') || tooltip.classList.contains('tsukeru-sheet')) return false;
+  const target = event.target;
+  if (!target || typeof target.closest !== 'function') return false;
+  // Controls keep their clicks, and the headword stays selectable.
+  if (target.closest('button, a, input, select, textarea, [role="button"], [role="tab"], .tooltip-word-label')) return false;
+  const header = tooltip.querySelector('.tsukeru-header-row');
+  return Boolean(header) && event.clientY <= header.getBoundingClientRect().bottom;
+}
+
+function placeMovedTooltip(tooltip, left, top) {
+  const rect = tooltip.getBoundingClientRect();
+  const position = clampTooltipPosition({
+    left,
+    top,
+    size: { width: rect.width, height: rect.height },
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    margin: TOOLTIP_VIEWPORT_MARGIN,
+  });
+  tooltip.style.left = `${position.left}px`;
+  tooltip.style.top = `${position.top}px`;
+  tooltip.style.transform = 'none';
+}
+
+// Per script context, so a reloaded extension binds its own listeners.
+const dragBoundTooltips = new WeakSet();
+
+function bindTooltipDrag(tooltip) {
+  if (!tooltip || dragBoundTooltips.has(tooltip)) return;
+  dragBoundTooltips.add(tooltip);
+  let drag = null;
+  tooltip.addEventListener('pointerdown', (event) => {
+    if (!event.isTrusted || !isTooltipDragHandle(tooltip, event)) return;
+    const rect = tooltip.getBoundingClientRect();
+    drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top, moving: false };
+    try {
+      tooltip.setPointerCapture(event.pointerId);
+    } catch (_) {
+      // The pointer is already gone; the move simply ends.
+    }
+    // Keep the page from starting its own drag or selection.
+    event.preventDefault();
+    event.stopPropagation();
+  });
+  tooltip.addEventListener('pointermove', (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    const dx = event.clientX - drag.x;
+    const dy = event.clientY - drag.y;
+    if (!drag.moving) {
+      if (Math.hypot(dx, dy) < TOOLTIP_DRAG_THRESHOLD) return;
+      drag.moving = true;
+      tooltip._moved = true;
+      tooltip.classList.add('tsukeru-dragging');
+      // Away from its word, the tooltip may use the whole viewport.
+      tooltip.style.setProperty('--tsukeru-tooltip-max-height', `${Math.max(0, window.innerHeight - TOOLTIP_VIEWPORT_MARGIN * 2)}px`);
+      tooltip.style.setProperty('--tsukeru-tooltip-max-width', `${Math.max(0, window.innerWidth - TOOLTIP_VIEWPORT_MARGIN * 2)}px`);
+    }
+    event.stopPropagation();
+    placeMovedTooltip(tooltip, drag.left + dx, drag.top + dy);
+  });
+  const endDrag = (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    drag = null;
+    tooltip.classList.remove('tsukeru-dragging');
+  };
+  tooltip.addEventListener('pointerup', endDrag);
+  tooltip.addEventListener('pointercancel', endDrag);
+  tooltip.addEventListener('lostpointercapture', endDrag);
+}
+
 function isTooltipSheetLayout() {
   return Boolean(window.matchMedia?.('(max-width: 600px)').matches);
 }
@@ -453,6 +547,15 @@ function positionTooltip(ruby, tooltip, point = null) {
     tooltip.style.top = '';
     tooltip.style.removeProperty('--tsukeru-tooltip-max-height');
     tooltip.style.removeProperty('--tsukeru-tooltip-max-width');
+    tooltip._moved = false;
+    return;
+  }
+  if (tooltip._moved) {
+    // Where the reader dropped it, kept on screen; it no longer follows the word.
+    tooltip.style.setProperty('--tsukeru-tooltip-max-height', `${Math.max(0, window.innerHeight - TOOLTIP_VIEWPORT_MARGIN * 2)}px`);
+    tooltip.style.setProperty('--tsukeru-tooltip-max-width', `${Math.max(0, window.innerWidth - TOOLTIP_VIEWPORT_MARGIN * 2)}px`);
+    const rect = tooltip.getBoundingClientRect();
+    placeMovedTooltip(tooltip, rect.left, rect.top);
     return;
   }
   if (ruby.isConnected === false) {
@@ -516,7 +619,6 @@ function addTooltipInteractionHandlers(reportInfo = null) {
       if (!e.isTrusted) return;
       speakSentence(sentenceBtn);
     };
-    refreshSupporterTag(tooltip);
   }
 
   const explainBtn = tooltip.querySelector('.tsukeru-explain-btn');
@@ -696,10 +798,6 @@ function renderTooltipReadingWithPitch(reading, accentValue) {
   return `<span class="tsukeru-pitch" title="${escapeHtml(title)}" aria-label="${escapeHtml(`${reading} ${title}`)}">${spans}</span>`;
 }
 
-// Whether this browser holds a Supporter token (null until asked). It only
-// shows or hides the "Supporter" tag; the backend decides who gets audio.
-let sentenceAudioSupporter = null;
-
 /** "Play sentence" as the sentence it reads, the clicked word marked; empty without one. */
 function renderTooltipSentenceLine(sentence, word) {
   if (!sentence) return '';
@@ -711,7 +809,6 @@ function renderTooltipSentenceLine(sentence, word) {
     ? escapeHtml(sentence)
     : `${lead}${escapeHtml(sentence.slice(from, at))}<mark class="tsukeru-sentence-word">${escapeHtml(word)}</mark>${escapeHtml(sentence.slice(at + word.length))}`;
   const label = t('content_play_sentence', undefined, 'Play sentence');
-  const tagHidden = sentenceAudioSupporter === false ? '' : ' tsukeru-hidden';
   const explainLabel = t('content_explain_sentence', undefined, 'Explain this sentence');
   return `
       <div class="tsukeru-sentence-row">
@@ -719,16 +816,10 @@ function renderTooltipSentenceLine(sentence, word) {
           title="${escapeHtml(label)}" aria-label="${escapeHtml(`${label}: ${sentence}`)}">
           <svg class="tsukeru-sentence-icon" width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4v12l10-6z" fill="currentColor"/></svg>
           <span class="tsukeru-sentence-text" lang="ja">${text}</span>
-          <span class="tsukeru-supporter-tag${tagHidden}">${escapeHtml(t('content_supporter_tag', undefined, 'Supporter'))}</span>
       </button>
       <button type="button" class="tsukeru-explain-btn" title="${escapeHtml(explainLabel)}"
           aria-label="${escapeHtml(explainLabel)}" aria-expanded="false">${escapeHtml(t('content_explain', undefined, 'Explain'))}</button>
       </div>`;
-}
-
-function showSupporterTag(tooltip, supporter) {
-  sentenceAudioSupporter = supporter;
-  tooltip?.querySelector('.tsukeru-supporter-tag')?.classList.toggle('tsukeru-hidden', supporter);
 }
 
 /** Below the sentence line: Explain's notice and where the explanation opens. */
@@ -739,18 +830,6 @@ function renderTooltipExplainPanel(sentence) {
           <div class="tsukeru-explain-notice tsukeru-hidden" role="status"></div>
           <div class="tsukeru-explain-result tsukeru-hidden" aria-live="polite"></div>
       </div>`;
-}
-
-/** Ask the background (local storage only, no request) whether to show the tag. */
-function refreshSupporterTag(tooltip) {
-  try {
-    chrome.runtime.sendMessage({ action: 'hasSupporterToken' }, (response) => {
-      if (chrome.runtime.lastError || !response?.success) return;
-      showSupporterTag(tooltip, response.supporter === true);
-    });
-  } catch (_) {
-    // Extension reloaded under the page: leave the tag as it is.
-  }
 }
 
 /** The clicked text when it differs from the headword: [Form] 食べなかった · negative · past. */
@@ -1291,14 +1370,50 @@ function sentenceAudioMessage(code) {
   return TsukeruUiMessages.sentenceAudioMessage(code, t);
 }
 
-/** Read the sentence shown on the "Play sentence" line with Supporter audio. */
-function speakSentence(buttonElement) {
+/** A refusal's toast link: sign in for free (Connect), or become a Supporter. */
+function refusalLink(code, placement) {
+  const offer = TsukeruUiMessages.refusalOffer(code);
+  if (offer === 'connect') {
+    return { href: TsukeruI18n.websiteUrl('/account?tsukeru=connect'), label: t('supporter_sign_in', undefined, 'Sign in') };
+  }
+  if (offer === 'pricing') {
+    return {
+      href: TsukeruI18n.websiteUrl(`/pricing?from=tsukeru&placement=${placement}`),
+      label: t('supporter_become', undefined, 'Become a Supporter'),
+    };
+  }
+  return null;
+}
+
+/** Show why sentence audio or Explain gave nothing, with the next step when there is one. */
+function showRefusal(message, code, placement) {
+  const link = refusalLink(code, placement);
+  showToast(message, link ? { type: 'info', duration: 9000, link } : { type: 'error' });
+}
+
+// Shared with the popup's My Words, which shows the same notice.
+const SENTENCE_AUDIO_NOTICE_KEY = 'sentenceAudioNoticeSeen';
+
+/** Read the sentence shown on the "Play sentence" line with account audio, after the first-use notice. */
+async function speakSentence(buttonElement) {
   const sentence = buttonElement.dataset.sentence || '';
-  if (!sentence) return;
+  if (!sentence || buttonElement.classList.contains('speaking')) return;
+  const notice = dictionaryTooltip?.querySelector('.tsukeru-explain-notice');
+  if (notice && !(await noticeSeen(SENTENCE_AUDIO_NOTICE_KEY))) {
+    // Without an account token nothing is sent, so the notice is not shown either.
+    const token = await askBackground({ action: 'hasSupporterToken' });
+    if (!token?.success || token.account === true) {
+      await confirmNotice(notice, SENTENCE_AUDIO_NOTICE_KEY, t(
+        'content_sentence_audio_notice',
+        undefined,
+        'This sentence will be sent to ElevenLabs to make the audio.'
+      ));
+    }
+  }
   playSupporterAudio(buttonElement, { action: 'playSentence', text: sentence });
 }
 
-/** Play a Supporter clip (a sentence, or a recorded example) and explain a refusal. */
+/** Play an account clip (a sentence, or a recorded example) and explain a refusal. */
 function playSupporterAudio(buttonElement, message) {
   if (buttonElement.classList.contains('speaking')) return;
   buttonElement.classList.add('speaking');
@@ -1307,11 +1422,9 @@ function playSupporterAudio(buttonElement, message) {
     // Reject non-audio data URLs to prevent polyglot injection via compromised backend.
     if (!response?.success || typeof response.dataUrl !== 'string' || !response.dataUrl.startsWith('data:audio/')) {
       done();
-      if (response?.error === 'supporter_required') showSupporterTag(dictionaryTooltip, false);
-      showToast(sentenceAudioMessage(response?.error), { type: response?.error === 'supporter_required' ? 'info' : 'error' });
+      showRefusal(sentenceAudioMessage(response?.error), response?.error, 'extension_sentence_audio');
       return;
     }
-    showSupporterTag(dictionaryTooltip, true);
     const audio = new Audio(response.dataUrl);
     audio.onended = done;
     audio.onerror = done;
@@ -1319,7 +1432,7 @@ function playSupporterAudio(buttonElement, message) {
   });
 }
 
-// ── Explain (Supporters) ──────────────────────────────────────────────────────
+// ── Explain (connected accounts) ──────────────────────────────────────────────
 
 const EXPLAIN_NOTICE_KEY = 'explainNoticeSeen';
 const MAX_SHOWN_EXPLANATIONS = 30;
@@ -1328,7 +1441,7 @@ const shownExplanations = new Map();
 // The display language as the tag EZFurigana keeps explanations under.
 const EXPLANATION_LOCALE_TAGS = { en: 'en', ja: 'ja', ko: 'ko', 'zh-CN': 'zh', 'zh-TW': 'zh-Hant' };
 
-/** Keep a Supporter's explanation with the open word in My Words; the background validates it. */
+/** Keep an explanation with the open word in My Words; the background validates it. */
 function keepExplanation(element, sentence, explanation, language) {
   const identity = wordIdentityOf(element);
   const locale = EXPLANATION_LOCALE_TAGS[language];
@@ -1384,35 +1497,28 @@ function renderTooltipExplanation(box, explanation, language) {
   box.classList.remove('tsukeru-hidden');
 }
 
-async function explainNoticeSeen() {
+async function noticeSeen(key) {
   try {
-    const stored = await chrome.storage.local.get({ [EXPLAIN_NOTICE_KEY]: false });
-    return stored[EXPLAIN_NOTICE_KEY] === true;
+    const stored = await chrome.storage.local.get({ [key]: false });
+    return stored[key] === true;
   } catch (_) {
     return false;
   }
 }
 
-/** The first-use notice with its Continue button; resolves when it is pressed. */
-function confirmExplainNotice(notice) {
+/** A first-use notice (`message`) with its Continue button; resolves when it is pressed and remembers `key`. */
+function confirmNotice(notice, key, message) {
   return new Promise((resolve) => {
     const proceed = explainTextElement('button', 'tsukeru-explain-continue', t('content_explain_continue', undefined, 'Continue'));
     proceed.type = 'button';
     proceed.onclick = (event) => {
       event.stopPropagation();
       if (!event.isTrusted) return;
-      chrome.storage.local.set({ [EXPLAIN_NOTICE_KEY]: true }).catch(() => {});
+      chrome.storage.local.set({ [key]: true }).catch(() => {});
       notice.classList.add('tsukeru-hidden');
       resolve();
     };
-    notice.replaceChildren(
-      explainTextElement('p', '', t(
-        'content_explain_notice',
-        undefined,
-        'This sentence will be sent to OpenAI to write the explanation, and OpenAI may use it to improve its models.'
-      )),
-      proceed,
-    );
+    notice.replaceChildren(explainTextElement('p', '', message), proceed);
     notice.classList.remove('tsukeru-hidden');
   });
 }
@@ -1447,28 +1553,20 @@ function bindSentenceExplain(tooltip, button) {
       button.setAttribute('aria-expanded', 'true');
       return;
     }
-    const refuse = (code) => {
-      if (code !== 'supporter_required') {
-        showToast(TsukeruUiMessages.explainMessage(code, t), { type: 'error' });
-        return;
-      }
-      showSupporterTag(dictionaryTooltip, false);
-      showToast(TsukeruUiMessages.explainMessage(code, t), {
-        type: 'info',
-        duration: 9000,
-        link: {
-          href: TsukeruI18n.websiteUrl('/pricing?from=tsukeru&placement=extension_explain'),
-          label: t('supporter_become', undefined, 'Become a Supporter'),
-        },
-      });
-    };
-    // Without a Supporter token nothing is sent, so the notice is not shown either.
+    const refuse = (code) => showRefusal(TsukeruUiMessages.explainMessage(code, t), code, 'extension_explain');
+    // Without an account token nothing is sent, so the notice is not shown either.
     const token = await askBackground({ action: 'hasSupporterToken' });
-    if (token?.success && token.supporter !== true) {
-      refuse('supporter_required');
+    if (token?.success && token.account !== true) {
+      refuse('account_required');
       return;
     }
-    if (!(await explainNoticeSeen())) await confirmExplainNotice(notice);
+    if (!(await noticeSeen(EXPLAIN_NOTICE_KEY))) {
+      await confirmNotice(notice, EXPLAIN_NOTICE_KEY, t(
+        'content_explain_notice',
+        undefined,
+        'This sentence will be sent to OpenAI to write the explanation, and OpenAI may use it to improve its models.'
+      ));
+    }
     button.disabled = true;
     const idle = button.textContent;
     button.textContent = t('content_explain_working', undefined, 'Explaining…');
@@ -1479,12 +1577,11 @@ function bindSentenceExplain(tooltip, button) {
       refuse(response?.error);
       return;
     }
-    // Only Supporters get explanations, and theirs are kept with the word.
+    // Explanations are kept with the word, as on the website.
     if (wordElement) keepExplanation(wordElement, sentence, response.explanation, language);
     shownExplanations.delete(key);
     shownExplanations.set(key, response.explanation);
     while (shownExplanations.size > MAX_SHOWN_EXPLANATIONS) shownExplanations.delete(shownExplanations.keys().next().value);
-    showSupporterTag(dictionaryTooltip, true);
     if (panel.isConnected) {
       open(result, button, response.explanation);
       return;
@@ -2422,7 +2519,7 @@ function isCurrentTranslation(state) {
     && TsukeruI18n.language() === state.locale;
 }
 
-/** New translations a guest has left today; Supporters never see a count. */
+/** New translations a guest or free account has left this week; Supporters never see a count. */
 function translationsLeft(state) {
   return !state.supporter && Number.isInteger(state.remaining) && state.remaining >= 0 ? state.remaining : null;
 }
@@ -2448,7 +2545,7 @@ function translationNote(text, upsell) {
 function translationsLeftLabel(count) {
   const left = document.createElement('span');
   left.className = 'tsukeru-translation-left';
-  left.textContent = t('dictionary_translations_left', [String(count)], `${count} left today`);
+  left.textContent = t('dictionary_translations_left', [String(count)], `${count} left this week`);
   return left;
 }
 
@@ -2499,7 +2596,7 @@ function drawTranslationControls(state) {
     controls.append(view.group);
     focus = view.focus;
   } else if (left === 0) {
-    // The day's free translations are used up: no button, just what Supporter adds.
+    // The week's free translations are used up: no button, just what Supporter adds.
     const text = state.supporterDaily
       ? t('dictionary_translation_supporter_daily', [String(state.supporterDaily)], `Supporters get ${state.supporterDaily} new translations a day.`)
       : TsukeruUiMessages.dictionaryTranslationMessage('plan_limit', t);

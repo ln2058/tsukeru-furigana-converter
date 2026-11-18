@@ -1,6 +1,6 @@
 /*
 Module: content-sync
-Purpose: Keep My Words and the vocabulary estimate in step with EZFurigana while one of its pages is open: send the words changed in the extension (and the chosen level and reading evidence) to the page, then hand the page's full record list and estimate to the background. Also collect a signed-in Supporter's extension token for the background.
+Purpose: Keep My Words and the vocabulary estimate in step with EZFurigana while one of its pages is open: send the words changed in the extension (and the chosen level and reading evidence) to the page, then hand the page's full record list and estimate to the background. Also collect the signed-in account's extension token (free or Supporter) for the background.
 
 Inputs:
 - Window messages from the EZFurigana page on this origin (ready with its store id, changed, snapshot, and supporter once checkout has activated Supporter).
@@ -10,7 +10,7 @@ Inputs:
 Outputs:
 - Hello and push messages posted to this window for the page's sync module.
 - `wordsSyncStart` and `wordsSyncFinish` runtime messages to the background store.
-- `supporterRefreshDue` and `supporterHandoff` runtime messages with the website's Supporter answer.
+- `supporterRefreshDue` and `supporterHandoff` runtime messages with the website's account answer (plan and token).
 
 Side Effects:
 - Adds one window message listener and one storage change listener on EZFurigana pages only.
@@ -26,7 +26,7 @@ Security Notes:
 - Runs only on https://www.ezfurigana.com pages (manifest match) and posts only to that origin.
 - Word sync carries only words, readings, states, schedule times, and short sentences from the reader's lists, plus the chosen level and counts per difficulty; nothing is sent to a server.
 - Only a SHA-256 digest of the CSRF cookie is kept (tab session storage) to notice an account change; the cookie itself is never stored or posted.
-- The Supporter token goes straight to the background and is never posted to the page window.
+- The account token goes straight to the background and is never posted to the page window.
 */
 (function startWordSync() {
   if (window.location.origin !== 'https://www.ezfurigana.com') return;
@@ -239,7 +239,7 @@ Security Notes:
     if (!stored?.success || (!stored.changed && !asked) || typeof showToast !== 'function') return;
     const message = stored.plan === 'supporter'
       ? TsukeruI18n.t('supporter_connected_toast', undefined, 'Tsukeru is connected to your Supporter account. Sentence audio is on.')
-      : TsukeruI18n.t('supporter_connected_free_toast', undefined, 'Tsukeru is connected. This account is on the Free plan, so sentence audio stays off.');
+      : TsukeruI18n.t('supporter_connected_free_toast', undefined, 'Tsukeru is connected to your free account. You can try sentence audio and explanations a few times a week.');
     showToast(message, { type: 'info', duration: 7000 });
   }
 

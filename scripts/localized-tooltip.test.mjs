@@ -110,12 +110,12 @@ for (const browser of ['chrome', 'firefox']) {
     assert.equal(f.requests.length, 2, 'switching between already loaded entries stays local');
   });
 
-  test(`${browser} guests see what is left today; Supporters see no count`, async () => {
+  test(`${browser} guests and free accounts see what is left this week; Supporters see no count`, async () => {
     const f = fixture(browser);
     f.start();
     f.requests[0].callback(notCached({ remaining: 2, supporter_daily: 200 }));
     await tick();
-    assert.equal(f.tooltip.querySelector('.tsukeru-translation-left').textContent, '2 left today');
+    assert.equal(f.tooltip.querySelector('.tsukeru-translation-left').textContent, '2 left this week');
     f.button().events.click(click(true));
     assert.equal(f.tooltip.querySelector('.tsukeru-translation-left'), null, 'no count while translating');
 
@@ -124,7 +124,7 @@ for (const browser of ['chrome', 'firefox']) {
     spent.requests[0].callback(notCached({ remaining: 0, supporter_daily: 200 }));
     await tick();
     assert.equal(spent.button(), null, 'nothing to click once none are left');
-    assert.equal(spent.tooltip.querySelector('.tsukeru-translation-left').textContent, '0 left today');
+    assert.equal(spent.tooltip.querySelector('.tsukeru-translation-left').textContent, '0 left this week');
     assert.match(spent.tooltip.textContent, /Supporters get 200 new translations a day\./);
     assert.equal(spent.tooltip.querySelector('.tsukeru-translation-upsell').href, 'https://www.ezfurigana.com/ko/pricing?from=tsukeru&placement=extension_translation');
   });
@@ -200,7 +200,7 @@ for (const browser of ['chrome', 'firefox']) {
       const link = f.tooltip.querySelector('.tsukeru-translation-upsell');
       assert.equal(Boolean(link), offers, reason);
       if (offers) {
-        assert.match(f.tooltip.textContent, /You've used today's free dictionary translations\. Supporters get more each day\./);
+        assert.match(f.tooltip.textContent, /You've used this week's free dictionary translations\. Supporters get more each day\./);
         assert.equal(link.href, 'https://www.ezfurigana.com/ko/pricing?from=tsukeru&placement=extension_translation');
         assert.equal(link.rel, 'noopener noreferrer');
         assert.equal(f.button(), null);

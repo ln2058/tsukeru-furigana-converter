@@ -1,4 +1,4 @@
-// Purpose: Check that both browser copies place the dictionary tooltip by the cases shared with EZFurigana.
+// Purpose: Check that both browser copies place the dictionary tooltip by the cases shared with EZFurigana, and keep a dragged one on screen.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -28,5 +28,19 @@ for (const browser of ['chrome', 'firefox']) {
         assert.ok(result.top >= rect.bottom || bottom <= rect.top, `${name}: never covers the word`);
       }
     }
+  });
+}
+
+for (const browser of ['chrome', 'firefox']) {
+  test(`${browser} a dragged tooltip stays inside the viewport, as on EZFurigana`, () => {
+    const url = new URL(`../${browser}/js/content-tooltip.js`, import.meta.url);
+    const sandbox = { console, URL };
+    vm.runInNewContext(readFileSync(url, 'utf8'), sandbox, { filename: url.pathname });
+    const size = { width: 320, height: 240 };
+    const viewport = { width: 1000, height: 700 };
+    assert.deepEqual({ ...sandbox.clampTooltipPosition({ left: 300.4, top: 200.6, size, viewport }) }, { left: 300, top: 201 });
+    assert.deepEqual({ ...sandbox.clampTooltipPosition({ left: -50, top: 900, size, viewport }) }, { left: 12, top: 448 });
+    // Taller than the viewport: the top stays reachable.
+    assert.equal(sandbox.clampTooltipPosition({ left: 0, top: 50, size: { width: 320, height: 900 }, viewport }).top, 12);
   });
 }

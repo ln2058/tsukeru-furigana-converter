@@ -330,9 +330,6 @@
   "content_play_example": {
     "message": "예문 재생"
   },
-  "content_supporter_tag": {
-    "message": "서포터"
-  },
   "content_play_sentence": {
     "message": "문장 읽기"
   },
@@ -341,6 +338,15 @@
   },
   "content_sentence_audio_supporter": {
     "message": "문장 읽기는 서포터 전용 기능입니다. ezfurigana.com에 서포터로 로그인하면 사용할 수 있습니다."
+  },
+  "content_sentence_audio_sign_in": {
+    "message": "로그인하면 문장 읽기를 무료로 체험할 수 있습니다."
+  },
+  "content_sentence_audio_free_used": {
+    "message": "이번 주 무료 문장 읽기를 모두 사용했습니다. 서포터는 계속 들을 수 있습니다."
+  },
+  "content_sentence_audio_free_pool": {
+    "message": "오늘의 무료 문장 읽기가 모두 소진되었습니다. 내일 다시 시도하거나 서포터가 되어 계속 들어 보세요."
   },
   "content_explain": {
     "message": "설명"
@@ -357,11 +363,20 @@
   "content_explain_notice": {
     "message": "설명을 작성하기 위해 이 문장을 OpenAI로 보냅니다. OpenAI가 모델 개선에 사용할 수 있습니다."
   },
+  "content_sentence_audio_notice": {
+    "message": "음성을 만들기 위해 이 문장을 ElevenLabs로 보냅니다."
+  },
   "content_explain_ai_note": {
     "message": "AI가 작성한 설명입니다. 오류가 있을 수 있습니다."
   },
   "content_explain_supporter": {
     "message": "문장 설명은 서포터 전용 기능입니다. ezfurigana.com에 서포터로 로그인하면 사용할 수 있습니다."
+  },
+  "content_explain_sign_in": {
+    "message": "로그인하면 문장 설명을 무료로 체험할 수 있습니다."
+  },
+  "content_explain_free_used": {
+    "message": "이번 주 무료 설명을 모두 사용했습니다. 서포터는 매일 더 많이 이용할 수 있습니다."
   },
   "content_explain_limit": {
     "message": "오늘의 설명 횟수를 모두 사용했습니다. 내일 다시 이용할 수 있습니다."
@@ -770,7 +785,7 @@
     "message": "오늘 사전 번역을 모두 사용했습니다. 내일까지는 영어로 표시합니다."
   },
   "dictionary_translation_supporter": {
-    "message": "오늘 무료 사전 번역을 모두 사용했습니다. 서포터는 매일 더 많은 단어를 번역할 수 있습니다."
+    "message": "이번 주 무료 사전 번역을 모두 사용했습니다. 서포터는 매일 더 많은 단어를 번역할 수 있습니다."
   },
   "dictionary_translation_pending": {
     "message": "번역을 준비 중이어서 영어로 표시합니다."
@@ -782,7 +797,7 @@
     "message": "영어"
   },
   "dictionary_translations_left": {
-    "message": "오늘 $1회 남음"
+    "message": "이번 주 $1회 남음"
   },
   "dictionary_translation_supporter_daily": {
     "message": "서포터는 하루에 새 번역을 $1개까지 받을 수 있습니다."
@@ -911,7 +926,7 @@
     "message": "EZFurigana 계정"
   },
   "supporter_state_none": {
-    "message": "서포터 계정을 연결하면 문장 읽기를 사용할 수 있고, 사전 번역도 매일 더 많이 이용할 수 있습니다."
+    "message": "무료 계정을 연결하면 문장 읽기와 설명을 체험할 수 있습니다. 서포터는 훨씬 더 많이 이용할 수 있습니다."
   },
   "supporter_connect": {
     "message": "계정 연결"
@@ -929,16 +944,19 @@
     "message": "계정 관리"
   },
   "supporter_state_free": {
-    "message": "무료 계정으로 연결되어 있습니다. 문장 읽기는 서포터 전용 기능입니다."
+    "message": "무료 계정으로 연결되어 있습니다. 문장 읽기와 설명을 매주 몇 번 체험할 수 있습니다."
   },
   "supporter_become": {
     "message": "서포터 되기"
+  },
+  "supporter_sign_in": {
+    "message": "로그인"
   },
   "supporter_state_expired": {
     "message": "서포터 연결이 만료되었습니다. EZFurigana를 한 번 열면 다시 연결됩니다."
   },
   "supporter_state_disconnected": {
-    "message": "EZFurigana 계정과의 연결이 해제되었습니다. 서포터 혜택을 사용하려면 다시 연결하세요."
+    "message": "EZFurigana 계정과의 연결이 해제되었습니다. Tsukeru에서 계정을 사용하려면 다시 연결하세요."
   },
   "supporter_reconnect": {
     "message": "다시 연결"
@@ -947,6 +965,6 @@
     "message": "Tsukeru가 서포터 계정에 연결되었습니다. 문장 읽기를 사용할 수 있습니다."
   },
   "supporter_connected_free_toast": {
-    "message": "Tsukeru가 연결되었습니다. 이 계정은 무료 플랜이라 문장 읽기를 사용할 수 없습니다."
+    "message": "Tsukeru가 무료 계정에 연결되었습니다. 문장 읽기와 설명을 매주 몇 번 체험할 수 있습니다."
   }
 }

@@ -330,9 +330,6 @@
   "content_play_example": {
     "message": "播放例句"
   },
-  "content_supporter_tag": {
-    "message": "支持者"
-  },
   "content_play_sentence": {
     "message": "朗讀句子"
   },
@@ -341,6 +338,15 @@
   },
   "content_sentence_audio_supporter": {
     "message": "句子朗讀是支持者專屬功能。以支持者身分登入 ezfurigana.com 即可使用。"
+  },
+  "content_sentence_audio_sign_in": {
+    "message": "登入即可免費試用句子朗讀。"
+  },
+  "content_sentence_audio_free_used": {
+    "message": "本週的免費句子朗讀已用完。支持者可以繼續收聽。"
+  },
+  "content_sentence_audio_free_pool": {
+    "message": "今天的免費句子朗讀已全部用完。請明天再試，或成為支持者繼續收聽。"
   },
   "content_explain": {
     "message": "解說"
@@ -357,11 +363,20 @@
   "content_explain_notice": {
     "message": "為了產生解說，這句話會傳送給 OpenAI，OpenAI 可能會用它來改進模型。"
   },
+  "content_sentence_audio_notice": {
+    "message": "為了產生音訊，這句話會傳送給 ElevenLabs。"
+  },
   "content_explain_ai_note": {
     "message": "由 AI 產生，可能有錯誤。"
   },
   "content_explain_supporter": {
     "message": "句子解說是支持者專屬功能。以支持者身分登入 ezfurigana.com 即可使用。"
+  },
+  "content_explain_sign_in": {
+    "message": "登入即可免費試用句子解說。"
+  },
+  "content_explain_free_used": {
+    "message": "本週的免費解說已用完。支持者每天可以使用更多次。"
   },
   "content_explain_limit": {
     "message": "今天的解說次數已用完，明天會重新計算。"
@@ -770,7 +785,7 @@
     "message": "今天的字典翻譯已用完，明天之前先顯示英文釋義。"
   },
   "dictionary_translation_supporter": {
-    "message": "今天的免費字典翻譯已用完。支持者每天可以翻譯更多單字。"
+    "message": "本週的免費字典翻譯已用完。支持者每天可以翻譯更多單字。"
   },
   "dictionary_translation_pending": {
     "message": "翻譯正在準備中，暫時顯示英文釋義。"
@@ -782,7 +797,7 @@
     "message": "英文"
   },
   "dictionary_translations_left": {
-    "message": "今天還剩 $1 次"
+    "message": "本週還剩 $1 次"
   },
   "dictionary_translation_supporter_daily": {
     "message": "支持者每天可取得 $1 則新翻譯。"
@@ -911,7 +926,7 @@
     "message": "EZFurigana 帳戶"
   },
   "supporter_state_none": {
-    "message": "連結支持者帳戶即可使用句子朗讀，每天也能使用更多字典翻譯。"
+    "message": "連結免費帳戶即可試用句子朗讀和解說。支持者可以使用更多。"
   },
   "supporter_connect": {
     "message": "連結帳戶"
@@ -929,16 +944,19 @@
     "message": "管理帳戶"
   },
   "supporter_state_free": {
-    "message": "目前以免費帳戶連結。句子朗讀是支持者專屬功能。"
+    "message": "目前以免費帳戶連結。每週可以試用幾次句子朗讀和解說。"
   },
   "supporter_become": {
     "message": "成為支持者"
+  },
+  "supporter_sign_in": {
+    "message": "登入"
   },
   "supporter_state_expired": {
     "message": "支持者連結已過期。開啟一次 EZFurigana 即可重新連結。"
   },
   "supporter_state_disconnected": {
-    "message": "已解除與 EZFurigana 帳戶的連結。若要使用支持者福利，請重新連結。"
+    "message": "已解除與 EZFurigana 帳戶的連結。若要在 Tsukeru 中使用你的帳戶，請重新連結。"
   },
   "supporter_reconnect": {
     "message": "重新連結"
@@ -947,6 +965,6 @@
     "message": "Tsukeru 已連結你的支持者帳戶，現在可以使用句子朗讀。"
   },
   "supporter_connected_free_toast": {
-    "message": "Tsukeru 已連結。此帳戶為免費方案，因此無法使用句子朗讀。"
+    "message": "Tsukeru 已連結你的免費帳戶。每週可以試用幾次句子朗讀和解說。"
   }
 }

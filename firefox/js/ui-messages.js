@@ -7,6 +7,7 @@ Inputs:
 
 Outputs:
 - Localized duration and error strings for popup and content-script UI.
+- For sentence audio and Explain refusals, the next step to offer: `connect` (sign in for free) or `pricing` (become a Supporter).
 
 Side Effects:
 - Exposes TsukeruUiMessages to both classic content scripts and the popup.
@@ -66,7 +67,7 @@ Security Notes:
     return t('content_toast_generic_error', undefined, 'Could not add furigana. Please try again.');
   }
 
-  // The day's new translations for this plan are used up; Supporter offers more.
+  // The new translations for this plan are used up (a week for guests and free accounts); Supporter offers more.
   const SUPPORTER_TRANSLATION_REASONS = new Set(['plan_limit', 'anonymous_budget']);
 
   function dictionaryTranslationOffersSupporter(reason) {
@@ -75,7 +76,7 @@ Security Notes:
 
   function dictionaryTranslationMessage(reason, t) {
     if (dictionaryTranslationOffersSupporter(reason)) {
-      return t('dictionary_translation_supporter', undefined, "You've used today's free dictionary translations. Supporters get more each day.");
+      return t('dictionary_translation_supporter', undefined, "You've used this week's free dictionary translations. Supporters get more each day.");
     }
     // Only a Supporter's own spent day says so; busy or service-wide limits are just unavailable.
     if (reason === 'daily_limit') {
@@ -87,8 +88,32 @@ Security Notes:
     return t('dictionary_translation_unavailable', undefined, 'Translation unavailable. Showing English.');
   }
 
-  // Why Supporter sentence audio did not play (the dictionary popup and My Words).
+  // The next step a refusal offers: sign in for free, or become a Supporter.
+  const OFFERS = {
+    account_required: 'connect',
+    free_daily_limit: 'pricing',
+    free_capacity: 'pricing',
+    supporter_required: 'pricing',
+  };
+
+  /** `connect`, `pricing`, or null for a sentence audio or Explain refusal code. */
+  function refusalOffer(code) {
+    return Object.hasOwn(OFFERS, code) ? OFFERS[code] : null;
+  }
+
+  // Why sentence audio did not play (the dictionary popup and My Words).
   function sentenceAudioMessage(code, t) {
+    if (code === 'account_required') {
+      return t('content_sentence_audio_sign_in', undefined, 'Sign in to try sentence audio for free.');
+    }
+    // free_daily_limit is the code for a free account's spent week.
+    if (code === 'free_daily_limit') {
+      return t('content_sentence_audio_free_used', undefined, "You've used this week's free sentence audio. Supporters can keep listening.");
+    }
+    if (code === 'free_capacity') {
+      return t('content_sentence_audio_free_pool', undefined, "Today's free sentence audio is used up. Try again tomorrow, or become a Supporter to keep listening.");
+    }
+    // Only an older backend still answers supporter_required.
     if (code === 'supporter_required') {
       return t('content_sentence_audio_supporter', undefined, 'Sentence audio is a Supporter feature. Sign in on ezfurigana.com as a Supporter to turn it on.');
     }
@@ -100,6 +125,12 @@ Security Notes:
 
   /** Why "Explain" gave no explanation, from its refusal code. */
   function explainMessage(code, t) {
+    if (code === 'account_required') {
+      return t('content_explain_sign_in', undefined, 'Sign in to try sentence explanations for free.');
+    }
+    if (code === 'free_daily_limit') {
+      return t('content_explain_free_used', undefined, "You've used this week's free explanations. Supporters get more every day.");
+    }
     if (code === 'supporter_required') {
       return t('content_explain_supporter', undefined, 'Sentence explanations are a Supporter feature. Sign in on ezfurigana.com as a Supporter to turn them on.');
     }
@@ -114,6 +145,6 @@ Security Notes:
 
   globalThis.TsukeruUiMessages = {
     formatDuration, errorMessage, dictionaryTranslationMessage, dictionaryTranslationOffersSupporter,
-    sentenceAudioMessage, explainMessage,
+    sentenceAudioMessage, explainMessage, refusalOffer,
   };
 })();

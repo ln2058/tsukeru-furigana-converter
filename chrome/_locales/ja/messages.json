@@ -330,9 +330,6 @@
   "content_play_example": {
     "message": "例文を再生"
   },
-  "content_supporter_tag": {
-    "message": "サポーター"
-  },
   "content_play_sentence": {
     "message": "文を読み上げる"
   },
@@ -341,6 +338,15 @@
   },
   "content_sentence_audio_supporter": {
     "message": "文の読み上げはサポーター限定の機能です。ezfurigana.com にサポーターとしてログインすると使えます。"
+  },
+  "content_sentence_audio_sign_in": {
+    "message": "ログインすると、文の読み上げを無料で試せます。"
+  },
+  "content_sentence_audio_free_used": {
+    "message": "今週の無料の読み上げを使い切りました。サポーターなら引き続き聞けます。"
+  },
+  "content_sentence_audio_free_pool": {
+    "message": "今日の無料の読み上げ枠はなくなりました。明日もう一度お試しいただくか、サポーターになると引き続き聞けます。"
   },
   "content_explain": {
     "message": "解説"
@@ -357,11 +363,20 @@
   "content_explain_notice": {
     "message": "解説を作成するため、この文をOpenAIに送信します。OpenAIがモデルの改善に利用する場合があります。"
   },
+  "content_sentence_audio_notice": {
+    "message": "音声を作成するため、この文をElevenLabsに送信します。"
+  },
   "content_explain_ai_note": {
     "message": "AIが作成した解説です。誤りを含むことがあります。"
   },
   "content_explain_supporter": {
     "message": "文の解説はサポーター限定の機能です。ezfurigana.com にサポーターとしてログインすると使えます。"
+  },
+  "content_explain_sign_in": {
+    "message": "ログインすると、文の解説を無料で試せます。"
+  },
+  "content_explain_free_used": {
+    "message": "今週の無料の解説を使い切りました。サポーターなら毎日もっと使えます。"
   },
   "content_explain_limit": {
     "message": "今日の解説の回数を使い切りました。明日またご利用いただけます。"
@@ -770,7 +785,7 @@
     "message": "今日の辞書の翻訳を使い切りました。明日までは英語で表示します。"
   },
   "dictionary_translation_supporter": {
-    "message": "今日の辞書の無料翻訳を使い切りました。サポーターなら、毎日もっと多くの単語を翻訳できます。"
+    "message": "今週の辞書の無料翻訳を使い切りました。サポーターなら、毎日もっと多くの単語を翻訳できます。"
   },
   "dictionary_translation_pending": {
     "message": "翻訳を準備中です。英語で表示します。"
@@ -782,7 +797,7 @@
     "message": "英語"
   },
   "dictionary_translations_left": {
-    "message": "今日はあと$1回"
+    "message": "今週はあと$1回"
   },
   "dictionary_translation_supporter_daily": {
     "message": "サポーターは毎日$1回まで新しく翻訳できます。"
@@ -911,7 +926,7 @@
     "message": "EZFuriganaアカウント"
   },
   "supporter_state_none": {
-    "message": "サポーターのアカウントと連携すると、文の読み上げが使えるようになり、毎日翻訳できる辞書の単語も増えます。"
+    "message": "無料アカウントと連携すると、文の読み上げと解説を試せます。サポーターならもっと多く使えます。"
   },
   "supporter_connect": {
     "message": "アカウントを連携"
@@ -929,16 +944,19 @@
     "message": "アカウントを管理"
   },
   "supporter_state_free": {
-    "message": "無料アカウントで連携中です。文の読み上げはサポーター限定の機能です。"
+    "message": "無料アカウントで連携中です。文の読み上げと解説を毎週数回試せます。"
   },
   "supporter_become": {
     "message": "サポーターになる"
+  },
+  "supporter_sign_in": {
+    "message": "ログイン"
   },
   "supporter_state_expired": {
     "message": "サポーターの連携が切れました。EZFuriganaを一度開くと再連携されます。"
   },
   "supporter_state_disconnected": {
-    "message": "EZFuriganaのアカウントとの連携を解除しました。サポーター特典を使うには、もう一度連携してください。"
+    "message": "EZFuriganaのアカウントとの連携を解除しました。Tsukeruでアカウントを使うには、もう一度連携してください。"
   },
   "supporter_reconnect": {
     "message": "再連携"
@@ -947,6 +965,6 @@
     "message": "Tsukeruがサポーターのアカウントと連携しました。文の読み上げが使えます。"
   },
   "supporter_connected_free_toast": {
-    "message": "Tsukeruと連携しました。このアカウントは無料プランのため、文の読み上げは使えません。"
+    "message": "Tsukeruが無料アカウントと連携しました。文の読み上げと解説を毎週数回試せます。"
   }
 }

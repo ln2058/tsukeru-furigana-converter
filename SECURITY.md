@@ -52,7 +52,7 @@ My Words records use `chrome.storage.local`. They include words, readings, state
 
 Tsukeru sends only the data needed for the requested feature:
 
-- Japanese text and the current HTTP(S) page URL for furigana processing. Local-file URLs and filesystem paths are excluded.
+- Japanese text for furigana processing. Page URLs and filesystem paths are not sent.
 - Words and readings for dictionary, example, kanji, and audio requests.
 - Words and readings for missing-definition lookups during CSV export.
 - The captured word, reading, and context, plus the optional correction, when a reading report is submitted.

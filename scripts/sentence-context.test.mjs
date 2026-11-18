@@ -17,13 +17,12 @@ function load(browser) {
     return reading ? { reading, id: node.getAttribute('data-id') || '' } : null;
   };
   vm.runInNewContext(`${tooltip.slice(start, end)}\nglobalThis.blockTextAround = blockTextAround;`, sandbox);
-  const lineStart = tooltip.indexOf('let sentenceAudioSupporter');
-  const lineEnd = tooltip.indexOf('\nfunction showSupporterTag');
+  const lineStart = tooltip.indexOf('/** "Play sentence" as the sentence it reads');
+  const lineEnd = tooltip.indexOf('\n/** Below the sentence line');
   sandbox.escapeHtml = (text) => String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   sandbox.t = (_key, _subs, fallback) => fallback;
   vm.runInNewContext(`${tooltip.slice(lineStart, lineEnd)}
-globalThis.renderLine = renderTooltipSentenceLine;
-globalThis.setSupporter = (value) => { sentenceAudioSupporter = value; };`, sandbox);
+globalThis.renderLine = renderTooltipSentenceLine;`, sandbox);
   return sandbox;
 }
 
@@ -41,7 +40,7 @@ function el(tagName, children = [], attrs = {}) {
 }
 
 for (const browser of ['chrome', 'firefox']) {
-  const { TsukeruWords: Words, blockTextAround, renderLine, setSupporter } = load(browser);
+  const { TsukeruWords: Words, blockTextAround, renderLine } = load(browser);
 
   test(`${browser} picks only the sentence holding the word`, () => {
     const lines = 'ウィキペディアへようこそ\nウィキペディアは誰でも編集できるフリー百科事典です\n1,526,611本の記事をあなたと';
@@ -90,20 +89,16 @@ for (const browser of ['chrome', 'firefox']) {
     });
   });
 
-  test(`${browser} shows the sentence it will read, tagged Supporter only for known Free browsers`, () => {
+  test(`${browser} shows the sentence it will read`, () => {
     assert.equal(renderLine('', '傘'), '', 'no line without a sentence');
     const html = renderLine('「傘」を<b>持って</b>行こう。', '傘');
     assert.ok(html.includes('data-sentence="「傘」を&lt;b>持って&lt;/b>行こう。"'));
     assert.ok(html.includes('「<mark class="tsukeru-sentence-word">傘</mark>」を&lt;b>'));
-    assert.ok(html.includes('tsukeru-supporter-tag tsukeru-hidden'), 'tag hidden until the plan is known');
     // A word late in a long sentence stays visible; the whole sentence is still played.
     const long = `${'あ'.repeat(40)}傘を持って行こう。`;
     const late = renderLine(long, '傘');
     assert.ok(late.includes(`>…${'あ'.repeat(10)}<mark class="tsukeru-sentence-word">傘</mark>`));
     assert.ok(late.includes(`data-sentence="${long}"`));
-    setSupporter(false);
-    assert.ok(!renderLine('傘を持って行こう。', '傘').includes('tsukeru-hidden'));
-    setSupporter(true);
-    assert.ok(renderLine('傘を持って行こう。', '傘').includes('tsukeru-supporter-tag tsukeru-hidden'));
+    assert.ok(!html.includes('tsukeru-supporter-tag'), 'everyone can try it, so no Supporter tag');
   });
 }

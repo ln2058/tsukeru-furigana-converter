@@ -58,6 +58,7 @@ function loadApi(browserName, route, { cacheLimit = 200, storage = null, manifes
       storeSupporterHandoff,
       supporterHeaders,
       hasSupporterToken,
+      getAccountToken,
       supporterRefreshDue,
       getSupporterPlan,
       getSupporterStatus,
@@ -129,7 +130,7 @@ for (const browserName of ['chrome', 'firefox']) {
     const again = await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
     assert.equal(again.changed, false, 'later visits stay quiet');
     assert.deepEqual({ ...(await api.getSupporterStatus(now)) }, { state: 'supporter', checkedAt: now, expiresAt });
-    assert.equal(await api.hasSupporterToken(now), true, 'tags the sentence line without a request');
+    assert.equal(await api.hasSupporterToken(now), true, 'known without a request');
     assert.equal(await api.supporterRefreshDue(now), false, 'checked at most daily');
     assert.equal(await api.supporterRefreshDue(now + 86_400_000), true);
     assert.equal(await api.getSupporterPlan(now), 'supporter');
@@ -155,7 +156,7 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(reconnected.changed, true, 'reconnecting is confirmed');
   });
 
-  test(`${browserName} sentence audio needs a Supporter token and reports refusals by code`, async () => {
+  test(`${browserName} sentence audio needs an account token and reports refusals by code`, async () => {
     const now = Date.now();
     const expiresAt = Math.floor(now / 1000) + 3 * 86_400;
     const token = `v2.${'e'.repeat(32)}.0.${expiresAt}.${'f'.repeat(64)}`;
@@ -166,7 +167,7 @@ for (const browserName of ['chrome', 'firefox']) {
     ];
     const { api, calls } = loadApi(browserName, queuedRoute(routes), { storage });
 
-    await assert.rejects(api.fetchSentenceAudio('今日はいい天気ですね。'), { code: 'supporter_required' });
+    await assert.rejects(api.fetchSentenceAudio('今日はいい天気ですね。'), { code: 'account_required' });
     assert.equal(calls.length, 0, 'no request without a token');
 
     await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
@@ -178,12 +179,12 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.deepEqual(JSON.parse(call.options.body), { text: '今日はいい天気ですね。' });
 
     // A rejected live token was disconnected; only Connect hands over a new one.
-    await assert.rejects(api.fetchSentenceAudio('今日はいい天気ですね。'), { code: 'supporter_required' });
+    await assert.rejects(api.fetchSentenceAudio('今日はいい天気ですね。'), { code: 'account_required' });
     assert.equal(storage.values.tsukeruSupporter.plan, 'disconnected');
     assert.equal(storage.values.tsukeruSupporter.token, undefined);
   });
 
-  test(`${browserName} explains sentences only with a Supporter token, as bounded plain text`, async () => {
+  test(`${browserName} explains sentences only with an account token, as bounded plain text`, async () => {
     const now = Date.now();
     const expiresAt = Math.floor(now / 1000) + 3 * 86_400;
     const token = `v2.${'e'.repeat(32)}.0.${expiresAt}.${'f'.repeat(64)}`;
@@ -205,7 +206,7 @@ for (const browserName of ['chrome', 'firefox']) {
     ];
     const { api, calls } = loadApi(browserName, queuedRoute(routes), { storage });
 
-    await assert.rejects(api.fetchSentenceExplanation('今日はいい天気ですね。', 'ko'), { code: 'supporter_required' });
+    await assert.rejects(api.fetchSentenceExplanation('今日はいい天気ですね。', 'ko'), { code: 'account_required' });
     assert.equal(calls.length, 0, 'no request without a token');
 
     await api.storeSupporterHandoff({ plan: 'supporter', token, expiresAt }, now);
@@ -226,7 +227,7 @@ for (const browserName of ['chrome', 'firefox']) {
     await assert.rejects(api.fetchSentenceExplanation('今日はいい天気ですね。', 'fr'), { code: 'daily_limit', status: 429 });
     assert.equal(JSON.parse(calls.at(-1).options.body).locale, 'en', 'unknown languages ask for English');
     // A rejected live token was disconnected; only Connect hands over a new one.
-    await assert.rejects(api.fetchSentenceExplanation('今日はいい天気ですね。', 'en'), { code: 'supporter_required' });
+    await assert.rejects(api.fetchSentenceExplanation('今日はいい天気ですね。', 'en'), { code: 'account_required' });
     assert.equal(storage.values.tsukeruSupporter.plan, 'disconnected');
   });
 
@@ -273,18 +274,34 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(await api.supporterRefreshDue(now), true);
   });
 
-  test(`${browserName} records a Free answer without a token and drops expired tokens`, async () => {
+  test(`${browserName} keeps a free account's token, and an older Free answer without one`, async () => {
     const now = Date.now();
     const storage = memoryStorage();
-    const { api, calls } = loadApi(browserName, queuedRoute([]), { storage });
+    const routes = [response(200, { ok: true, plan: 'free' }), response(200, { ok: true, plan: 'supporter' })];
+    const { api, calls } = loadApi(browserName, queuedRoute(routes), { storage });
 
+    // An older website answered Free without a token: ask again on the next visit.
     await api.storeSupporterHandoff({ plan: 'free', token: 'ignored' }, now);
     assert.deepEqual({ ...storage.values.tsukeruSupporter }, { plan: 'free', checkedAt: now });
+    assert.deepEqual({ ...(await api.supporterHeaders(now)) }, {});
+    assert.equal(await api.supporterRefreshDue(now + 30_000), true);
+    assert.equal(await api.getSupporterPlan(now), 'free');
+
+    const freeExpiresAt = Math.floor(now / 1000) + 3 * 86_400;
+    const freeToken = `v2.${'a'.repeat(32)}.0.${freeExpiresAt}.${'b'.repeat(64)}`;
+    await api.storeSupporterHandoff({ plan: 'free', token: freeToken, expiresAt: freeExpiresAt }, now);
+    assert.deepEqual({ ...(await api.getAccountToken(now)) }, { account: true, supporter: false });
+    assert.equal(await api.hasSupporterToken(now), false);
+    assert.deepEqual({ ...(await api.supporterHeaders(now)) }, { 'x-tsukeru-supporter': freeToken });
     assert.deepEqual({ ...(await api.getSupporterStatus(now)) }, { state: 'free', checkedAt: now });
-    // Asked again on the next visit, so an upgrade or account switch shows up at once.
+    // Asked again on the next visit, after checking the account has not disconnected this browser.
     assert.equal(await api.supporterRefreshDue(now + 30_000), false);
     assert.equal(await api.supporterRefreshDue(now + 60_000), true);
-    assert.equal(await api.getSupporterPlan(now), 'free');
+    // An upgrade keeps the same token and now shows as Supporter.
+    assert.equal(await api.getSupporterPlan(now + 60_000, { fresh: true }), 'supporter');
+    assert.equal(storage.values.tsukeruSupporter.plan, 'supporter');
+    assert.equal(storage.values.tsukeruSupporter.token, freeToken);
+    assert.equal(calls.length, 2);
 
     const expiresAt = Math.floor(now / 1000) + 60;
     const token = `v2.${'c'.repeat(32)}.0.${expiresAt}.${'d'.repeat(64)}`;
@@ -293,7 +310,7 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(await api.getSupporterPlan(now + 61_000), 'free');
     assert.equal(await api.supporterRefreshDue(now + 61_000), true);
     assert.deepEqual({ ...(await api.getSupporterStatus(now + 61_000)) }, { state: 'expired' });
-    assert.equal(calls.length, 0, 'no request without a live token');
+    assert.equal(calls.length, 2, 'no request without a live token');
   });
 
   test(`${browserName} furigana requests carry a day ID that is replaced each UTC day`, async () => {
@@ -701,7 +718,7 @@ for (const browserName of ['chrome', 'firefox']) {
     await assert.rejects(() => fixture.api.lookupLocalizedDefinition('本', '', '', 'fr'));
   });
 
-  test(`${browserName} sends the Supporter token only with localized lookups that may create an entry`, async () => {
+  test(`${browserName} sends a Supporter's token only with localized lookups that may create an entry, a free account's with all`, async () => {
     const now = Date.now();
     const expiresAt = Math.floor(now / 1000) + 3 * 86_400;
     const token = `v2.${'9'.repeat(32)}.3.${expiresAt}.${'8'.repeat(64)}`;
@@ -715,6 +732,12 @@ for (const browserName of ['chrome', 'firefox']) {
     const lookups = fixture.calls.filter(({ url }) => url.includes('/api/extension/ai-dictionary'));
     assert.deepEqual(lookups.map(({ options }) => options.headers['x-tsukeru-supporter']), [undefined, token]);
     assert.ok(lookups.every(({ options }) => options.credentials === 'omit'));
+
+    // A free account's cache-only lookups carry its token too, so the reply shows its weekly count.
+    await fixture.api.storeSupporterHandoff({ plan: 'free', token, expiresAt }, now);
+    await fixture.api.lookupLocalizedDefinition('傘', '', '', 'ko', { cacheOnly: true });
+    const freeLookup = fixture.calls.filter(({ url }) => url.includes('/api/extension/ai-dictionary')).at(-1);
+    assert.equal(freeLookup.options.headers['x-tsukeru-supporter'], token);
   });
 
   test(`${browserName} coalesces matching requests but separates cache-only from generation and never caches denials`, async () => {

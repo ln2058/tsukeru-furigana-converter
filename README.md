@@ -26,8 +26,8 @@ Version **4.5.2** opens account links in the popup's language and counts weekly 
 - Choose a minimum JLPT level and adjust reading size, colour, weight, and display style.
 - Look up annotated words for definitions, parts of speech, JLPT level, word frequency, pitch accent, example sentences, and audio. The Kanji tab shows each character's readings, details, and stroke order. English entries prefer TKGJE data and fall back to JMdict.
 - Read definitions in easy Japanese, Korean, or Traditional Chinese, with AI translation for untranslated entries within daily limits.
-- Play the word's sentence aloud with an EZFurigana Supporter account, in the tooltip or in My Words.
-- Explain the word's sentence in your display language with an EZFurigana Supporter account. The explanation is kept with the word in My Words.
+- Play the word's sentence aloud with an EZFurigana account, in the tooltip or in My Words. Free accounts can try it a few times a week; Supporters get much more.
+- Explain the word's sentence in your display language with an EZFurigana account (a few times a week on a free account). The explanation is kept with the word in My Words.
 - Add furigana automatically on sites you choose in Settings.
 - Browse **Words in this text** and jump back to a word on the page. Numbers with the same counter are grouped together, such as 2024年 and 1998年 under 〜年.
 - Keep **Learning** and **Known** lists in My Words, see how many words are due, and review them on EZFurigana.
@@ -71,7 +71,7 @@ Open a page on [EZFurigana](https://www.ezfurigana.com) to sync My Words with th
 
 The website manages review schedules. After it merges the extension's changes, the extension adopts the website's word list and schedule. Words removed on the website are removed from the extension too. Changes you make in the extension while a sync is running are kept for the next exchange.
 
-When you are signed in on EZFurigana, the page also connects the extension to your account, and the site confirms the first time. Settings shows the connection and plan. Supporters get a token that the extension keeps in local storage and sends with plan checks, sentence audio, sentence explanations, and new dictionary translations; the server checks the current plan on each use. If the connection expires, **Reconnect** renews it.
+When you are signed in on EZFurigana, the page also connects the extension to your account, and the site confirms the first time. Settings shows the connection and plan. The account (free or Supporter) gets a token that the extension keeps in local storage and sends with plan checks, sentence audio, sentence explanations, and dictionary translations that may create a new entry (a free account's other translation lookups too, so its weekly count shows); the server checks the current plan on each use. If the connection expires, **Reconnect** renews it.
 
 ## Local HTML files
 
@@ -83,14 +83,14 @@ For Chrome and Edge, open the extension's details page and enable **Allow access
 
 Tsukeru contains no advertising or third-party analytics code.
 
-Settings, including the sites with automatic furigana, are kept in browser sync storage and are not sent to EZFurigana. My Words uses `chrome.storage.local` for words, readings, Learning or Known states, review times, short example sentences with their readings, a Supporter's sentence explanations, and details such as definitions and parts of speech. Furigana results are cached in IndexedDB, and service cooldowns use local browser storage.
+Settings, including the sites with automatic furigana, are kept in browser sync storage and are not sent to EZFurigana. My Words uses `chrome.storage.local` for words, readings, Learning or Known states, review times, short example sentences with their readings, sentence explanations, and details such as definitions and parts of speech. Furigana results are cached in IndexedDB, and service cooldowns use local browser storage.
 
 The extension sends data to EZFurigana when a feature requires it:
 
-- Japanese text and the current HTTP(S) page URL when you apply furigana. Local-file URLs are excluded. These requests include a random ID that changes every UTC day and another that changes every week, so EZFurigana can count daily and weekly users, and your browser's language (just the language, such as `en`), so it can see which languages readers use; there is no lasting install ID.
+- Japanese text when you apply furigana (never the page address). These requests include a random ID that changes every UTC day and another that changes every week, so EZFurigana can count daily and weekly users, and your browser's language (just the language, such as `en`), so it can see which languages readers use; there is no lasting install ID.
 - A word and its reading for dictionary, example, kanji, or audio requests.
-- The sentence you choose to play, with your Supporter token, for sentence audio.
-- The sentence you choose to explain and your display language, with your Supporter token. EZFurigana sends that sentence to OpenAI to write the explanation.
+- The sentence you choose to play, with your account token, for sentence audio. EZFurigana sends that sentence to ElevenLabs to make the audio; the first time, Tsukeru says so and waits for Continue.
+- The sentence you choose to explain and your display language, with your account token. EZFurigana sends that sentence to OpenAI to write the explanation.
 - Words and readings when CSV export needs to look up missing definitions.
 - The captured word, reading, and context, plus any correction you enter, when you submit a reading report.
 - Word records exchanged with an open EZFurigana page during sync, as described above.

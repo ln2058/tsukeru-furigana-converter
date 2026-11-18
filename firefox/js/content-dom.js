@@ -7,6 +7,7 @@ Inputs:
 
 Outputs:
 - Batched marker payloads, injected ruby wrappers, complete-unit metadata, and extracted vocab/context data.
+- Words inside a page's own ruby become word wrappers without a second reading; the page's readings stay as they are.
 
 Side Effects:
 - Mutates page DOM, attributes, classes, and inline CSS variables.
@@ -23,6 +24,7 @@ Security Notes:
 - Enforces strict allowlist sanitization before HTML insertion.
 - Escapes quotes as well as markup delimiters for HTML text and quoted attributes.
 - Excludes sensitive/non-text targets from processing.
+- Never treats a page's ruby readings (rt, rp, rtc) as text, and leaves text already inside an analysis word (such as EZFurigana results) alone.
 */
 // ============================================================================
 // content-dom.js — DOM utilities, text node collection, observers, HTML cleaning
@@ -291,8 +293,20 @@ const EXCLUDED_TEXT_PARENT_TAGS = [
   'script', 'style', 'noscript', 'iframe', 'object', 'embed',
   'canvas', 'svg', 'code', 'pre', 'textarea', 'input', 'button',
   'select', 'option', 'math', 'time', 'data', 'var', 'kbd',
-  'samp', 'rt', 'rp', 'ruby'
+  'samp', 'rt', 'rp', 'rtc'
 ];
+
+/**
+ * Whether text under `parent` must be left alone because of ruby: a page's
+ * reading (rt, rp, rtc), or a ruby that already belongs to an analysis word.
+ * The base text of a page's own ruby is ordinary text.
+ */
+function isExcludedRubyText(parent) {
+  if (parent.closest?.('rt, rp, rtc')) return true;
+  const ruby = parent.closest?.('ruby');
+  if (!ruby) return false;
+  return Boolean(ruby.closest?.('.analysis-word, .srt-word') || resolveAnalysisWordElement(ruby));
+}
 
 // Site-specific configuration
 const SITE_CONFIGS = {
@@ -389,7 +403,13 @@ function getDocumentProcessingRoot() {
   return document.body || document.documentElement || null;
 }
 
-function sanitizeHtmlFragment(html) {
+/**
+ * The backend HTML as a sanitized fragment. With `pageRuby` (the text sits in
+ * the base of a page's own ruby) readings are dropped, word rubies become spans
+ * with the same metadata, and other rubies are flattened, so the page's reading
+ * is the only one and no ruby is nested in another.
+ */
+function sanitizeHtmlFragment(html, { pageRuby = false } = {}) {
   const fragment = document.createDocumentFragment();
   if (typeof html !== 'string' || !html) return fragment;
 
@@ -414,7 +434,9 @@ function sanitizeHtmlFragment(html) {
 
     const nodeTag = getElementTagNameLower(node);
 
-    if (!allowedTags.has(nodeTag)) {
+    if (pageRuby && (nodeTag === 'rt' || nodeTag === 'rp')) return;
+
+    if (!allowedTags.has(nodeTag) || (pageRuby && nodeTag === 'ruby' && !hasAnalysisMetadata(node))) {
       const frag = document.createDocumentFragment();
       for (const child of Array.from(node.childNodes || [])) sanitizeNode(child, frag);
       parent.appendChild(frag);
@@ -428,7 +450,7 @@ function sanitizeHtmlFragment(html) {
       return;
     }
 
-    const clean = document.createElement(nodeTag);
+    const clean = document.createElement(pageRuby && nodeTag === 'ruby' ? 'span' : nodeTag);
     for (const attr of Array.from(node.attributes)) {
       if (isAllowedAttribute(attr.name)) {
         clean.setAttribute(attr.name, attr.value);
@@ -536,7 +558,7 @@ function isProcessableTextNode(node, { visibilityCache = null } = {}) {
   if (EXCLUDED_TEXT_PARENT_TAGS.includes(tag)) return false;
   if (parent.closest?.('code, pre')) return false;
 
-  if (parent.closest('ruby')) return false;
+  if (isExcludedRubyText(parent)) return false;
   if (parent.isContentEditable || parent.hasAttribute('contenteditable')) return false;
   if (parent.closest('[data-no-furigana]')) return false;
   if (parent.closest('[data-tsukeru-wrapper="1"]')) return false;
@@ -603,7 +625,8 @@ function isStructurallyProcessableTextNode(node) {
   if (parent.closest?.('head, template, meta, title, [hidden], [aria-hidden="true"], noscript, script, style')) {
     return false;
   }
-  if (parent.closest?.('ruby, [data-tsukeru-wrapper="1"], [data-no-furigana]')) return false;
+  if (parent.closest?.('[data-tsukeru-wrapper="1"], [data-no-furigana]')) return false;
+  if (isExcludedRubyText(parent)) return false;
   if (parent.isContentEditable || parent.hasAttribute?.('contenteditable')) return false;
   if (isExtensionOwnedElement(parent)) return false;
 
@@ -1103,7 +1126,7 @@ const RUN_BREAK_TAGS = new Set([
   'br', 'hr', 'img', 'picture', 'video', 'audio', 'label', 'dialog', 'template',
 ]);
 const MAX_RUN_WALK_STEPS = 32;
-const RUN_READING_TAGS = new Set(['rt', 'rp']);
+const RUN_READING_TAGS = new Set(['rt', 'rp', 'rtc']);
 const RUN_SPACE_RE = /\s/;
 
 function isRunBreak(node) {
@@ -1113,13 +1136,15 @@ function isRunBreak(node) {
 /**
  * Whether text node `node` directly follows text node `previous` on the same
  * line, with only inline tags between them: no other text, not even a
- * space, and no block, line break, image, or excluded element.
+ * space, and no block, line break, image, or excluded element. A page's ruby
+ * readings are passed over, so ruby bases join the text around them.
  */
 function continuesInlineRun(previous, node) {
   if (!previous?.parentNode || !node?.parentNode || previous === node) return false;
   let current = previous;
   for (let steps = 0; steps < MAX_RUN_WALK_STEPS; steps += 1) {
-    if (current !== previous && current.nodeType === Node.ELEMENT_NODE && current.firstChild) {
+    const reading = current.nodeType === Node.ELEMENT_NODE && RUN_READING_TAGS.has(getElementTagNameLower(current));
+    if (current !== previous && current.nodeType === Node.ELEMENT_NODE && current.firstChild && !reading) {
       current = current.firstChild;
     } else {
       while (!current.nextSibling) {
@@ -1130,6 +1155,7 @@ function continuesInlineRun(previous, node) {
       current = current.nextSibling;
     }
     if (current === node) return true;
+    if (current.nodeType === Node.ELEMENT_NODE && RUN_READING_TAGS.has(getElementTagNameLower(current))) continue;
     if (current.nodeType === Node.TEXT_NODE || isRunBreak(current)) return false;
   }
   return false;
@@ -1432,7 +1458,6 @@ async function processOversizedNode(batch, settings, operation, {
     const response = await sendFuriganaWithRateLimitRetry({
       textContent: `${segment.marker}${segment.text}`,
       settings,
-      tabUrl: window.location.href,
     }, 3, isOperationCurrent, signal);
     if (!isOperationCurrent()) return { inserted: 0, skipped: 0, cancelled: true };
 
@@ -1513,7 +1538,7 @@ function replaceTextNodeWithHtml(node, html, { markCaption = false, expectedText
   const parent = node.parentNode;
   const originalText = node.textContent || '';
   if (expectedText !== undefined && originalText !== expectedText) return false;
-  const fragment = sanitizeHtmlFragment(html || originalText);
+  const fragment = sanitizeHtmlFragment(html || originalText, { pageRuby: Boolean(parent.closest?.('ruby')) });
 
   const wrapper = document.createElement('span');
   wrapper.setAttribute('data-tsukeru-wrapper', '1');
@@ -2283,7 +2308,6 @@ async function drainLongPageQueue(settings, container, generation) {
       const response = await sendFuriganaWithRateLimitRetry({
         textContent: batch.payload,
         settings,
-        tabUrl: window.location.href,
       }, 3, () => isDynamicOperationCurrent(operation), operation.controller.signal);
       if (!isDynamicOperationCurrent(operation)) return;
       result = await applyBatchResult(
@@ -2369,7 +2393,6 @@ async function drainDynamicQueue(settings, container, generation) {
         const response = await sendFuriganaWithRateLimitRetry({
           textContent: batch.payload,
           settings,
-          tabUrl: window.location.href,
         }, 3, () => isDynamicOperationCurrent(operation), operation.controller.signal);
         if (!isDynamicOperationCurrent(operation)) return;
         await applyBatchResult(
@@ -2550,7 +2573,6 @@ async function processYoutubeCaptions(settings, generation) {
         const response = await sendFuriganaWithRateLimitRetry({
           textContent: batch.payload,
           settings,
-          tabUrl: window.location.href,
         }, 3, () => isYoutubeCaptionOperationCurrent(operation), operation.controller.signal);
         if (!isYoutubeCaptionOperationCurrent(operation)) return;
         await applyBatchResult(

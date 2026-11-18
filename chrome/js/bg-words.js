@@ -3,7 +3,7 @@ Module: bg-words
 Purpose: Own the My Words store in the background: load and persist word records, move the retired saved-word list into Learning, answer word requests from content scripts and the popup, run the EZFurigana sync exchange, and keep the toolbar badge showing how many words are due for review.
 
 Inputs:
-- Word messages from content scripts and the popup (capture, state, definition, a Supporter's sentence explanation, removal, listing).
+- Word messages from content scripts and the popup (capture, state, definition, a sentence explanation, removal, listing).
 - Sync messages from the content script on EZFurigana pages (outbox request and the page's record snapshot, each with the vocabulary estimate part that bg-vocab owns).
 - `chrome.storage.local` word records, removals, sync metadata, and the retired `vocabulary` list.
 
