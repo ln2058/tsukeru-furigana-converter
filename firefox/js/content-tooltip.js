@@ -4,6 +4,7 @@ Purpose: Manage the instrument-styled dictionary tooltip, lazy enrichment, word 
 
 Inputs:
 - Pointer/selection events, wrapper metadata, reading-aware background lookup/audio responses, and the shared lazy-state coordinator.
+- Shown readings follow the furigana type (hiragana, katakana, romaji); word audio, the browser voice, and sentence readings use kana: the hiragana lookup reading, or the shown reading in hiragana.
 - Word states from the background store, word storage changes, and My Words display settings (Study mode, hidden readings on known words).
 - The shared i18n catalog and content-ui language and theme helper for extension-owned surfaces.
 - The dictionary popup size preference (`popupSize` in sync storage) and the clicked point and line boxes of the word.
@@ -1097,6 +1098,8 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
 
   const headerWordInfo = normalized.headerPos ? { ...wordInfo, pos: normalized.headerPos } : wordInfo;
   const readingText = String(wordInfo.reading || normalized.reading || '');
+  // The shown reading follows the furigana type; word audio needs the hiragana lookup reading.
+  const audioReading = String(wordInfo.lookupReading || readingText);
   const displayWord = wordInfo.word;
   let html = renderTooltipHeaderHtml(headerWordInfo, `
     <button type="button" class="tooltip-close tsukeru-tooltip-close" aria-label="${escapeHtml(t('content_close', undefined, 'Close'))}">&times;</button>
@@ -1108,7 +1111,7 @@ function renderDefinitionTooltip(tooltip, wordInfo, data) {
           <div class="tooltip-reading-actions tsukeru-reading-actions">
               <button type="button" class="tooltip-audio-btn tsukeru-tooltip-speaker"
                   aria-label="${escapeHtml(t('content_play_pronunciation', undefined, 'Play pronunciation'))}"
-                  data-reading="${escapeHtml(readingText)}"
+                  data-reading="${escapeHtml(audioReading)}"
                   data-word="${escapeHtml(displayWord)}"
                   title="${escapeHtml(t('content_play_pronunciation', undefined, 'Play pronunciation'))}">
                   <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -1340,28 +1343,30 @@ async function lookupDefinition(word, lookupReading = '', readingType = '') {
 function speakWord(word, reading, buttonElement) {
   if (!word) return;
   if (buttonElement) buttonElement.classList.add('speaking');
+  // The browser voice reads kana as written; kanji it may misread.
+  const spoken = isKanaReading(reading) ? reading : word;
 
   chrome.runtime.sendMessage({ action: 'playAudio', word, reading }, (response) => {
     if (!response?.success || !response.dataUrl) {
       if (buttonElement) buttonElement.classList.remove('speaking');
-      fallbackTTS(word, buttonElement);
+      fallbackTTS(spoken, buttonElement);
       return;
     }
     // Reject non-audio data URLs to prevent polyglot injection via compromised backend.
     if (!response.dataUrl.startsWith('data:audio/')) {
       if (buttonElement) buttonElement.classList.remove('speaking');
-      fallbackTTS(word, buttonElement);
+      fallbackTTS(spoken, buttonElement);
       return;
     }
     const audio = new Audio(response.dataUrl);
     audio.onended = () => { if (buttonElement) buttonElement.classList.remove('speaking'); };
     audio.onerror = () => {
       if (buttonElement) buttonElement.classList.remove('speaking');
-      fallbackTTS(word, buttonElement);
+      fallbackTTS(spoken, buttonElement);
     };
     audio.play().catch(() => {
       if (buttonElement) buttonElement.classList.remove('speaking');
-      fallbackTTS(word, buttonElement);
+      fallbackTTS(spoken, buttonElement);
     });
   });
 }
@@ -1595,10 +1600,10 @@ function bindSentenceExplain(tooltip, button) {
   };
 }
 
-function fallbackTTS(word, buttonElement) {
+function fallbackTTS(text, buttonElement) {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(word);
+    const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'ja-JP';
     utterance.rate = 0.9;
     utterance.pitch = 1.0;
@@ -2153,11 +2158,29 @@ function wordSentenceWithReadings(element, word) {
   }
 }
 
+const KANA_READING_RE = /^[ぁ-ゖァ-ヺー]+$/;
+
+function isKanaReading(value) {
+  return KANA_READING_RE.test(String(value || ''));
+}
+
+/**
+ * A page word's reading in hiragana, as in hiragana furigana, or ''. A romaji
+ * reading has no kana form on the page, except an uninflected word's, which is
+ * its lookup reading.
+ */
+function sentenceKanaReading(info) {
+  const shown = kata2hira(String(info.surfaceReading || '').trim());
+  if (isKanaReading(shown)) return shown;
+  const lookup = String(info.lookupReading || '').trim();
+  return info.surface && info.surface === info.dictForm && isKanaReading(lookup) ? lookup : '';
+}
+
 /** A page word's reading and identity for its sentence span, or null for words without one. */
 function sentenceWordOf(node) {
   if (!isAnalysisWordElement(node) || resolveAnalysisWordElement(node) !== node) return null;
   const info = getAnalysisWordData(node);
-  const reading = String(info.surfaceReading || '').trim();
+  const reading = sentenceKanaReading(info);
   if (!reading) return null;
   return {
     reading,
