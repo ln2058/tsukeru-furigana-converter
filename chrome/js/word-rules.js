@@ -37,7 +37,7 @@ Security Notes:
   const DAY_MS = 24 * 60 * 60 * 1000;
   // Imported saved words fall due this many a day, like the website.
   const IMPORT_DUE_PER_DAY = 20;
-  // Words in one EZFurigana review session (SESSION_WORDS in its my-words.js).
+  // Words in one EZFurigana review session (REVIEW_SESSION_WORDS in its word-progress.js).
   const SESSION_WORDS = 7;
   const DAY_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 

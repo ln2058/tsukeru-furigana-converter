@@ -625,11 +625,13 @@ function renderStrip(summary) {
   const due = summary?.due || 0;
   const learning = summary?.learning || 0;
   const known = summary?.known || 0;
+  // The words one EZFurigana session asks about, not the whole backlog (as the toolbar badge).
+  const session = Math.min(due, wordRules()?.SESSION_WORDS || 7);
   if (title) {
     if (due > 0) {
-      title.textContent = due === 1
+      title.textContent = session === 1
         ? t('review_due_one', undefined, '1 word to review')
-        : t('review_due_many', [String(due)], `${due} words to review`);
+        : t('review_due_many', [String(session)], `${session} words to review`);
     } else if (learning > 0) {
       title.textContent = t('review_caught_up', undefined, 'All caught up');
     } else {
