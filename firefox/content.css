@@ -815,6 +815,26 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 .tsukeru-toast__dismiss:hover,
 .tsukeru-toast__dismiss:focus-visible { color: var(--tsukeru-toast-accent) !important; }
 .tsukeru-toast__dismiss:focus-visible { outline: 2px solid var(--tsukeru-toast-accent) !important; outline-offset: 2px !important; }
+.tsukeru-toast__action {
+  all: unset !important;
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 28px !important;
+  height: 28px !important;
+  border: 1px solid var(--tsukeru-border) !important;
+  border-radius: 3px !important;
+  background: var(--tsukeru-surface) !important;
+  color: var(--tsukeru-secondary) !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+  font: 600 12px/1 var(--tsukeru-sans) !important;
+}
+.tsukeru-toast__action svg { width: 14px !important; height: 14px !important; }
+.tsukeru-toast__action:hover,
+.tsukeru-toast__action:focus-visible { border-color: var(--tsukeru-toast-accent) !important; background: var(--tsukeru-surface-hover) !important; color: var(--tsukeru-toast-accent) !important; }
+.tsukeru-toast__action:focus-visible { outline: 2px solid var(--tsukeru-toast-accent) !important; outline-offset: 2px !important; }
 
 /* Injected report dialog and feedback stay full-border, never side-rail cards. */
 .tsukeru-content-report-modal { position: fixed !important; inset: 0 !important; z-index: 2147483647 !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 16px !important; background: rgba(16, 17, 18, .62) !important; font-family: var(--tsukeru-sans) !important; box-sizing: border-box !important; }

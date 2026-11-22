@@ -188,7 +188,8 @@ function showToast(message, options = {}) {
     persistent = false,
     // { href, label }: an EZFurigana link built by the extension, never page input.
     link = null,
-    // [{ text, label, onClick }]: small buttons defined by the extension; a click runs onClick, then closes the toast.
+    // [{ icon: { path, viewBox, flip }, text, label, onClick }]: small buttons defined by the extension (a pixel
+    // icon from extension constants, or short text); a click runs onClick, then closes the toast.
     actions = [],
   } = options;
 
@@ -235,18 +236,24 @@ function showToast(message, options = {}) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'tsukeru-toast__action';
-    button.textContent = String(action?.text ?? '');
+    if (action?.icon?.path) {
+      const ns = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(ns, 'svg');
+      svg.setAttribute('viewBox', String(action.icon.viewBox || '0 0 9 8'));
+      svg.setAttribute('fill', 'currentColor');
+      svg.setAttribute('shape-rendering', 'crispEdges');
+      svg.setAttribute('aria-hidden', 'true');
+      svg.setAttribute('focusable', 'false');
+      const path = document.createElementNS(ns, 'path');
+      path.setAttribute('d', String(action.icon.path));
+      if (action.icon.flip) path.setAttribute('transform', String(action.icon.flip));
+      svg.appendChild(path);
+      button.appendChild(svg);
+    } else {
+      button.textContent = String(action?.text ?? '');
+    }
     button.title = String(action?.label ?? '');
     button.setAttribute('aria-label', button.title);
-    button.style.setProperty('flex', '0 0 auto', 'important');
-    button.style.setProperty('background', 'transparent', 'important');
-    button.style.setProperty('border', '1px solid currentColor', 'important');
-    button.style.setProperty('border-radius', '6px', 'important');
-    button.style.setProperty('color', 'inherit', 'important');
-    button.style.setProperty('cursor', 'pointer', 'important');
-    button.style.setProperty('font', 'inherit', 'important');
-    button.style.setProperty('line-height', '1', 'important');
-    button.style.setProperty('padding', '4px 8px', 'important');
     button.addEventListener('click', (event) => {
       if (!event.isTrusted) return;
       if (typeof action?.onClick === 'function') action.onClick();

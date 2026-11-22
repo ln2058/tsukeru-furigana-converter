@@ -129,12 +129,14 @@ Security Notes:
     stop();
     if (typeof showToast !== 'function') return;
     const vote = (kind) => () => { void send({ action: 'discoverVote', kind }); };
+    // The popup's solid pixel thumb (7 x 7); upside down for the dislike.
+    const thumb = { path: 'M3 0h1v1H3zM2 1h2v2H2zM0 3h1v4H0zM2 3h5v3H2zM2 6h4v1H2z', viewBox: '0 0 7 7' };
     showToast(TsukeruI18n.t('discover_finished_toast', undefined, 'Read to the end. Nice work!'), {
       type: 'info',
       duration: 10000,
       actions: [
-        { text: '👍', label: TsukeruI18n.t('discover_vote_up', undefined, 'I enjoyed it'), onClick: vote('liked') },
-        { text: '👎', label: TsukeruI18n.t('discover_vote_down', undefined, 'Not for me'), onClick: vote('disliked') },
+        { icon: thumb, label: TsukeruI18n.t('discover_vote_up', undefined, 'I enjoyed it'), onClick: vote('liked') },
+        { icon: { ...thumb, flip: 'matrix(1 0 0 -1 0 7)' }, label: TsukeruI18n.t('discover_vote_down', undefined, 'Not for me'), onClick: vote('disliked') },
       ],
     });
   }

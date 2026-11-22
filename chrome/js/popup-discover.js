@@ -215,14 +215,33 @@ function thumbnail(article) {
   return frame;
 }
 
+// A solid pixel thumb (7 x 7, drawn at 14 px so each pixel is 2 x 2); the dislike button draws it upside down.
+const THUMB_PATH = 'M3 0h1v1H3zM2 1h2v2H2zM0 3h1v4H0zM2 3h5v3H2zM2 6h4v1H2z';
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function thumbIcon(down) {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 7 7');
+  svg.setAttribute('fill', 'currentColor');
+  svg.setAttribute('shape-rendering', 'crispEdges');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('d', THUMB_PATH);
+  if (down) path.setAttribute('transform', 'matrix(1 0 0 -1 0 7)');
+  svg.append(path);
+  return svg;
+}
+
 const STREAK_BANDS = [[31, '31+'], [8, '8-30'], [4, '4-7'], [2, '2-3'], [1, '1']];
 const streakBand = (count) => (STREAK_BANDS.find(([least]) => count >= least) || [0, '0'])[1];
 
-function voteButton(article, kind, text, label, dims, onVote) {
+function voteButton(article, kind, label, dims, onVote) {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'discover-card-vote';
-  button.textContent = text;
+  button.dataset.kind = kind;
+  button.append(thumbIcon(kind === 'disliked'));
   button.title = label;
   button.setAttribute('aria-label', label);
   const value = kind === 'liked' ? 1 : -1;
@@ -246,11 +265,10 @@ function votes(article, dims) {
       button.setAttribute('aria-pressed', String(voteOf(history, article.id) === value));
     }
   };
-  const up = voteButton(article, 'liked', '👍', t('discover_vote_up', undefined, 'I enjoyed it'), dims, refresh);
-  up.dataset.kind = 'liked';
-  const down = voteButton(article, 'disliked', '👎', t('discover_vote_down', undefined, 'Not for me'), dims, refresh);
-  down.dataset.kind = 'disliked';
-  box.append(up, down);
+  box.append(
+    voteButton(article, 'liked', t('discover_vote_up', undefined, 'I enjoyed it'), dims, refresh),
+    voteButton(article, 'disliked', t('discover_vote_down', undefined, 'Not for me'), dims, refresh),
+  );
   return box;
 }
 
