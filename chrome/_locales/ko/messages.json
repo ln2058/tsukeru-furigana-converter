@@ -1128,5 +1128,14 @@
   },
   "discover_finished_toast": {
     "message": "끝까지 읽었어요. 오늘 연속 기록에 포함돼요."
+  },
+  "discover_recent": {
+    "message": "최근 읽은 글"
+  },
+  "discover_vote_up": {
+    "message": "재미있었어요"
+  },
+  "discover_vote_down": {
+    "message": "제 취향은 아니에요"
   }
 }

@@ -8,18 +8,20 @@ Inputs:
 
 Outputs:
 - `discoverProgress` messages: the article's measured length on this page, the characters credited as read, whether its end was reached, and the active time. Only totals are sent, never text.
-- One short toast when the visit first counts as finished.
+- One short toast when the visit first counts as finished, with like and dislike buttons (`discoverVote`).
+- `discoverMissing` once when the article cannot be found on the page.
 
 Side Effects:
 - On a Discover tab only: one IntersectionObserver over the article's paragraphs, passive activity listeners on the window, and a one-second timer, all stopped when the visit is finished, after three hours, or when the page goes away.
 
 Failure Modes:
-- Pages where the article cannot be found are not measured; the visit then never counts as finished.
+- Pages where the article cannot be found are not measured (and are reported, without any page detail); the visit then never counts as finished.
 - A background restart or a closed extension context drops the progress not yet sent.
 
 Security Notes:
 - Does nothing on tabs the popup did not open from Discover; the background decides from the tab, not from the page.
-- Reads page text only to find the article; nothing from the page leaves this script except character counts and a flag.
+- Reads page text only to find the article; nothing from the page leaves this script except character counts and flags.
+- The vote buttons act only on trusted clicks (`showToast` checks), and the background accepts a vote only for this tab's finished visit.
 */
 (function startDiscoverReading() {
   if (window.top !== window || window.__TSUKERU_DISCOVER_READING__) return;
@@ -125,9 +127,16 @@ Security Notes:
   function celebrate() {
     finished = true;
     stop();
-    if (typeof showToast === 'function') {
-      showToast(TsukeruI18n.t('discover_finished_toast', undefined, 'Read to the end. Nice work!'), { type: 'info', duration: 4000 });
-    }
+    if (typeof showToast !== 'function') return;
+    const vote = (kind) => () => { void send({ action: 'discoverVote', kind }); };
+    showToast(TsukeruI18n.t('discover_finished_toast', undefined, 'Read to the end. Nice work!'), {
+      type: 'info',
+      duration: 10000,
+      actions: [
+        { text: '👍', label: TsukeruI18n.t('discover_vote_up', undefined, 'I enjoyed it'), onClick: vote('liked') },
+        { text: '👎', label: TsukeruI18n.t('discover_vote_down', undefined, 'Not for me'), onClick: vote('disliked') },
+      ],
+    });
   }
 
   function tick() {
@@ -201,6 +210,8 @@ Security Notes:
         return;
       }
     }
+    // Only the page the article was opened on: later pages may be other parts of the site.
+    if (!visit.later) void send({ action: 'discoverMissing' });
   }
 
   void start();

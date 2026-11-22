@@ -1,12 +1,12 @@
 /*
 Module: discover-rank
-Purpose: Learn what this reader likes in Discover and pick the day's articles: a reading history (shown, opened, skimmed, finished, hidden per article), a decaying Beta profile per category, site, style and length, a day-seeded Thompson-sampled daily set with an exploration slot and variety caps, the reason shown on each pick, and the streak that joins EZFurigana's review days with reading days.
+Purpose: Learn what this reader likes in Discover and pick the day's articles: a reading history (shown, opened, skimmed, finished, hidden per article, and the reader's like or dislike of a finished one), a decaying Beta profile per category, site, style and length, a day-seeded Thompson-sampled daily set with an exploration slot and variety caps, the reason shown on each pick, and the streak that joins EZFurigana's review days with reading days.
 
 Inputs:
 - Feed articles (from `discover`), the reader's coverage and learning-word counts per article, the stored history, the anonymous crowd counts, the day key, and the time.
 
 Outputs:
-- The next history, a profile, scores, the daily set ({ id, reason } picks), the full-feed order, and streak figures.
+- The next history, a profile, scores, the daily set ({ id, reason } picks), the full-feed order, the recently read articles, and streak figures.
 
 Side Effects:
 - None; bg-discover stores the history and the popup stores the day's set.
@@ -38,6 +38,8 @@ const OUTCOMES = Object.freeze({
   finished: { rank: 3, reward: 1, weight: 1 },
   hidden: { rank: 4, reward: 0, weight: 2 },
 });
+// A vote on a finished article: liked counts as a full reward twice over; disliked as almost none.
+const VOTES = Object.freeze({ 1: { reward: 1, weight: 2 }, [-1]: { reward: 0.1, weight: 1.5 } });
 const FAMILIES = Object.freeze([['c', 0.45], ['s', 0.25], ['y', 0.15], ['l', 0.15]]);
 const PER_CATEGORY = 2;
 const PER_SOURCE = 2;
@@ -78,10 +80,11 @@ function normalizeEntry(entry) {
   if (!entry || typeof entry !== 'object' || !OUTCOMES[entry.o] || !Number.isFinite(entry.t)) return null;
   const features = Array.isArray(entry.f) ? entry.f.slice(0, 4).map((value) => (typeof value === 'string' ? value.slice(0, 40) : '')) : [];
   while (features.length < 4) features.push('');
-  return { o: entry.o, t: entry.t, f: features };
+  const vote = entry.o === 'finished' && (entry.v === 1 || entry.v === -1) ? entry.v : 0;
+  return vote ? { o: entry.o, t: entry.t, f: features, v: vote } : { o: entry.o, t: entry.t, f: features };
 }
 
-/** The stored history ({ [articleId]: { o: outcome, t: time, f: features } }) with bad entries dropped. */
+/** The stored history ({ [articleId]: { o: outcome, t: time, f: features, v?: 1 | -1 } }) with bad entries dropped. */
 export function normalizeHistory(history) {
   const entries = Object.entries(history && typeof history === 'object' ? history : {})
     .filter(([id]) => ID_RE.test(id))
@@ -113,13 +116,37 @@ export function noteOutcome(history, article, outcome, now) {
   return normalizeHistory(current);
 }
 
+/** The history after the reader liked (1) or disliked (-1) a finished article; 0 takes the vote back. Others are unchanged. */
+export function noteVote(history, id, vote) {
+  const current = normalizeHistory(history);
+  const entry = current[id];
+  if (!entry || entry.o !== 'finished' || ![1, -1, 0].includes(vote)) return current;
+  const { v, ...rest } = entry;
+  current[id] = vote ? { ...rest, v: vote } : rest;
+  return current;
+}
+
+/** The reader's vote on an article (1, -1), or 0. */
+export function voteOf(history, id) {
+  return normalizeHistory(history)[id]?.v || 0;
+}
+
+/** The IDs of the latest finished articles, newest first. */
+export function recentReads(history, { limit = 5, exclude = [] } = {}) {
+  const skip = new Set(exclude);
+  return Object.entries(normalizeHistory(history))
+    .filter(([id, entry]) => entry.o === 'finished' && !skip.has(id))
+    .slice(0, limit)
+    .map(([id]) => id);
+}
+
 /** The decaying Beta profile: per feature `${family}:${value}`, its { a, b, n } and the reader's mean reward. */
 export function buildProfile(history, now) {
   const entries = Object.values(normalizeHistory(history));
   let rewardSum = 0;
   let weightSum = 0;
   const counted = entries.map((entry) => {
-    const outcome = OUTCOMES[entry.o];
+    const outcome = (entry.v && VOTES[entry.v]) || OUTCOMES[entry.o];
     const decay = 0.5 ** (Math.max(0, now - entry.t) / (HALF_LIFE_DAYS * DAY_MS));
     const weight = outcome.weight * decay;
     rewardSum += weight * outcome.reward;
@@ -209,6 +236,13 @@ export function crowdRate(crowd) {
   return (finished + 1) / (opened + 3);
 }
 
+/** Other readers' share of likes among their votes, smoothed: 1/2 with none. */
+export function crowdLikeRate(crowd) {
+  const liked = Math.max(0, Number(crowd?.liked) || 0);
+  const disliked = Math.max(0, Number(crowd?.disliked) || 0);
+  return (liked + 1) / (liked + disliked + 2);
+}
+
 function freshness(article, now) {
   const published = Date.parse(article?.published_at || '');
   if (!Number.isFinite(published)) return 0;
@@ -217,7 +251,7 @@ function freshness(article, now) {
 
 /**
  * One entry's score ({ article, pct, learning }): interest, how well its level suits the reader
- * (neutral without a level), learning words, the crowd's finish rate and freshness.
+ * (neutral without a level), learning words, the crowd's finish and like rates, and freshness.
  */
 export function scoreEntry(entry, profile, { now, random = null, draws } = {}) {
   const fit = typeof entry.pct === 'number' ? fitScore(entry.pct) : 0.5;
@@ -225,6 +259,7 @@ export function scoreEntry(entry, profile, { now, random = null, draws } = {}) {
     + 0.6 * fit
     + 0.05 * Math.min(entry.learning || 0, 5)
     + 0.4 * (crowdRate(entry.article.crowd) - 1 / 3)
+    + 0.3 * (crowdLikeRate(entry.article.crowd) - 1 / 2)
     + 0.15 * freshness(entry.article, now);
 }
 

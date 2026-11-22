@@ -1128,5 +1128,14 @@
   },
   "discover_finished_toast": {
     "message": "最後まで読みました。今日の連続記録に入ります。"
+  },
+  "discover_recent": {
+    "message": "最近読んだ記事"
+  },
+  "discover_vote_up": {
+    "message": "楽しめた"
+  },
+  "discover_vote_down": {
+    "message": "合わなかった"
   }
 }

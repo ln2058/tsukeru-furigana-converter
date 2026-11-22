@@ -4,7 +4,7 @@ Purpose: Route extension events and messages between popup/content scripts and b
 
 Inputs:
 - Shared UI catalogs, uiLocale storage changes, runtime install, command, and context menu events.
-- Message actions and payloads from popup/content scripts, including My Words, the vocabulary estimate, EZFurigana sync actions, the Discover feed, and Discover reading (visits, progress and the popup's notes, via `bg-discover`).
+- Message actions and payloads from popup/content scripts, including My Words, the vocabulary estimate, EZFurigana sync actions, the Discover feed, and Discover reading (visits, progress, votes, articles not found and the popup's notes, via `bg-discover`).
 - Browser startup and tab activation, which refresh the review badge.
 
 Outputs:
@@ -39,7 +39,7 @@ import {
   DEFAULT_SETTINGS, getRateLimitState, getAccountToken, getSupporterPlan, getSupporterStatus, hasSupporterToken, storeSupporterHandoff, supporterRefreshDue,
   fetchSentenceAudio, fetchExampleAudio, fetchSentenceExplanation, fetchDiscoverFeed, discoverArticle,
 } from './js/bg-api.js';
-import { discoverVisitFor, noteDiscoverEvent, noteDiscoverProgress, startDiscoverVisit } from './js/bg-discover.js';
+import { discoverVisitFor, missingFromTab, noteDiscoverEvent, noteDiscoverProgress, startDiscoverVisit, voteFromTab } from './js/bg-discover.js';
 import { handleWordsMessage, isEzfuriganaSender, isWordsAction, refreshWordBadge } from './js/bg-words.js';
 import { handleVocabMessage, isVocabAction } from './js/bg-vocab.js';
 import { isAutoSite } from './js/auto-sites.js';
@@ -309,7 +309,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const tab = article ? await chrome.tabs.create({ url: article.url, active: true }) : null;
         if (!tab?.id) return false;
         await grantDiscoverTab(tab.id);
-        await startDiscoverVisit(tab.id, article).catch(() => {});
+        await startDiscoverVisit(tab.id, article, Date.now(), message.dims).catch(() => {});
         return true;
       })
       .then((opened) => sendResponse({ success: opened }))
@@ -317,10 +317,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // The popup showed, hid or unhid a Discover article, or reset what Discover learned.
+  // The popup showed, hid, unhid or voted on a Discover article, or noted a use of the tab (counted anonymously).
   if (message?.action === 'discoverNote') {
     if (sender.id !== chrome.runtime.id || sender.tab) return false;
-    noteDiscoverEvent(message.id, message.kind)
+    noteDiscoverEvent(message.id, message.kind, Date.now(), message.dims)
       .then((noted) => sendResponse({ success: noted }))
       .catch(() => sendResponse({ success: false }));
     return true;
@@ -333,6 +333,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       ? discoverVisitFor(sender.tab).then((visit) => ({ success: Boolean(visit), visit }))
       : noteDiscoverProgress(sender.tab, message).then((outcome) => ({ success: Boolean(outcome), outcome }));
     work.then(sendResponse).catch(() => sendResponse({ success: false }));
+    return true;
+  }
+
+  // The content script on a tab opened from Discover: the reader's vote on the finished article, or that the article was not found on the page.
+  if (message?.action === 'discoverVote' || message?.action === 'discoverMissing') {
+    if (sender.id !== chrome.runtime.id || !sender.tab || sender.frameId !== 0) return false;
+    const work = message.action === 'discoverVote' ? voteFromTab(sender.tab, message.kind) : missingFromTab(sender.tab);
+    work.then((done) => sendResponse({ success: Boolean(done) })).catch(() => sendResponse({ success: false }));
     return true;
   }
 

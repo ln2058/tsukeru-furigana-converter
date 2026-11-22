@@ -1128,5 +1128,14 @@
   },
   "discover_finished_toast": {
     "message": "Read to the end. Today counts toward your streak."
+  },
+  "discover_recent": {
+    "message": "Recently read"
+  },
+  "discover_vote_up": {
+    "message": "I enjoyed it"
+  },
+  "discover_vote_down": {
+    "message": "Not for me"
   }
 }

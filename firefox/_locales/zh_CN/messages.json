@@ -1128,5 +1128,14 @@
   },
   "discover_finished_toast": {
     "message": "已读完。今天计入连续记录。"
+  },
+  "discover_recent": {
+    "message": "最近读过"
+  },
+  "discover_vote_up": {
+    "message": "喜欢"
+  },
+  "discover_vote_down": {
+    "message": "不感兴趣"
   }
 }

@@ -1,12 +1,12 @@
 /*
 Module: discover
-Purpose: Check the Discover feed, turn each article's word list into the page-word shape, give each card picture's address, and filter and order articles for the popup's Discover tab.
+Purpose: Check the Discover feed, turn each article's word list into the page-word shape, give each card picture's address, filter and order articles for the popup's Discover tab, and describe a chosen article for the anonymous success counters.
 
 Inputs:
 - Feed bodies from EZFurigana's Discover endpoint (or the bundled prototype sample), the reader's coverage figure and learning-word count per article, the stored hidden/read record, and the chosen filters.
 
 Outputs:
-- A checked feed, raw page-style word lists, card picture addresses on EZFurigana, filtered and ordered article lists, and the next hidden/read record.
+- A checked feed, raw page-style word lists, card picture addresses on EZFurigana, filtered and ordered article lists, the next hidden/read record, and a counter's dimensions (where an article was chosen, its place, category, level, pick reason and known band).
 
 Side Effects:
 - None; the popup stores the hidden/read record in chrome.storage.local.
@@ -102,6 +102,8 @@ function normalizeArticle(entry) {
       shown: count(entry.crowd?.shown),
       opened: count(entry.crowd?.opened),
       finished: count(entry.crowd?.finished),
+      liked: count(entry.crowd?.liked),
+      disliked: count(entry.crowd?.disliked),
     },
     words,
   };
@@ -119,6 +121,41 @@ export function normalizeDiscoverFeed(body) {
     articles.push(article);
   }
   return { version: 1, prototype: body.prototype === true, articles };
+}
+
+const STAT_VIEWS = new Set(['today', 'all', 'recent']);
+const STAT_REASONS = new Set(['category', 'source', 'crowd', 'level', 'explore']);
+
+/** How much of the article the reader knows, as the counters' band ('none' without a level). */
+export function knownBand(pct) {
+  if (typeof pct !== 'number' || !Number.isFinite(pct)) return 'none';
+  if (pct < 70) return 'lt70';
+  if (pct < 85) return '70-84';
+  if (pct < 95) return '85-94';
+  return '95+';
+}
+
+/** A place in a list (0-based) as the counters' position: 1-5, then 6-15 and 16+. */
+export function positionBand(index) {
+  const place = Math.floor(Number(index)) + 1;
+  if (!(place >= 1)) return '1';
+  if (place <= 5) return String(place);
+  return place <= 15 ? '6-15' : '16+';
+}
+
+/**
+ * The dimensions a success counter carries for an article: where it was chosen (`view`), its place there,
+ * its category and level, why it was picked, and how much of it the reader knows. Only these fixed values.
+ */
+export function statDims(article, { view = 'all', index = 0, reason = null, pct = null } = {}) {
+  return {
+    view: STAT_VIEWS.has(view) ? view : 'all',
+    position: positionBand(index),
+    category: DISCOVER_CATEGORIES.includes(article?.category) ? article.category : 'none',
+    level: DISCOVER_LEVELS.includes(article?.jlpt) ? article.jlpt : 'none',
+    reason: STAT_REASONS.has(reason?.kind) ? reason.kind : 'none',
+    known: knownBand(pct),
+  };
 }
 
 /** The address of an article's card picture, or '' when it has none. */

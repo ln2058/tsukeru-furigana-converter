@@ -565,6 +565,14 @@ a.vocab-action-btn { display: inline-flex; align-items: center; text-decoration:
 .discover-card[data-read="true"] .discover-card-title { color: var(--muted); font-weight: 600; }
 .discover-card-hide { position: absolute; top: 5px; right: 5px; display: grid; width: 22px; height: 22px; place-items: center; margin: 0; padding: 0; border: 1px solid transparent; border-radius: 3px; background: transparent; color: var(--muted); font-size: 15px; line-height: 1; }
 .discover-card-hide:hover { border-color: var(--border); background: var(--surface-hover); color: var(--text); }
+.discover-card-votes { position: absolute; right: 5px; bottom: 5px; display: grid; gap: 2px; }
+.discover-card-vote { display: grid; width: 22px; height: 22px; place-items: center; margin: 0; padding: 0; border: 1px solid transparent; border-radius: 3px; background: transparent; font-size: 12px; line-height: 1; opacity: .55; filter: grayscale(1); transition: opacity .14s ease, filter .14s ease; }
+.discover-card-vote:hover { border-color: var(--border); background: var(--surface-hover); opacity: 1; filter: none; }
+.discover-card-vote[aria-pressed="true"] { border-color: var(--border); background: var(--surface-hover); opacity: 1; filter: none; }
+.discover-recent { margin-top: 6px; }
+.discover-recent[hidden] { display: none; }
+.discover-recent-title { margin: 0; padding: 8px 12px 0; color: var(--muted); font-size: 11px; font-weight: 700; }
+.discover-list-recent { padding-top: 6px; }
 .discover-card-reason { color: var(--blue-readable); font-size: 10px; font-weight: 600; line-height: 1.3; }
 .discover-card-outcome { padding: 1px 5px; border-radius: 2px; background: color-mix(in srgb, var(--success) 18%, var(--surface)); color: var(--success); font-size: 9px; font-weight: 700; }
 .discover-card[data-outcome="skimmed"] .discover-card-outcome { background: var(--surface-hover); color: var(--muted); }

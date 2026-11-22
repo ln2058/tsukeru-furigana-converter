@@ -8,7 +8,7 @@ Inputs:
 - UI theme from sync storage and storage changes; extension-owned surface elements.
 
 Outputs:
-- Dismissible, locally styled toast elements (optionally with one EZFurigana link the extension built) and structured rate-limit toast IDs.
+- Dismissible, locally styled toast elements (optionally with one EZFurigana link the extension built, or a few small extension-defined action buttons) and structured rate-limit toast IDs.
 - Language and light/dark theme attributes on extension-owned UI surfaces only.
 
 Side Effects:
@@ -24,6 +24,7 @@ Failure Modes:
 
 Security Notes:
 - Toast text is assigned via textContent only.
+- Toast action buttons run their callback only for trusted (user) clicks, so the page cannot press them.
 - Validates light/dark values and never adds theme attributes to the host document.
 */
 
@@ -187,6 +188,8 @@ function showToast(message, options = {}) {
     persistent = false,
     // { href, label }: an EZFurigana link built by the extension, never page input.
     link = null,
+    // [{ text, label, onClick }]: small buttons defined by the extension; a click runs onClick, then closes the toast.
+    actions = [],
   } = options;
 
   const toastId = ++_toastId;
@@ -227,6 +230,29 @@ function showToast(message, options = {}) {
     anchor.style.setProperty('text-decoration', 'underline', 'important');
     anchor.style.setProperty('white-space', 'nowrap', 'important');
     toast.appendChild(anchor);
+  }
+  for (const action of Array.isArray(actions) ? actions.slice(0, 3) : []) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'tsukeru-toast__action';
+    button.textContent = String(action?.text ?? '');
+    button.title = String(action?.label ?? '');
+    button.setAttribute('aria-label', button.title);
+    button.style.setProperty('flex', '0 0 auto', 'important');
+    button.style.setProperty('background', 'transparent', 'important');
+    button.style.setProperty('border', '1px solid currentColor', 'important');
+    button.style.setProperty('border-radius', '6px', 'important');
+    button.style.setProperty('color', 'inherit', 'important');
+    button.style.setProperty('cursor', 'pointer', 'important');
+    button.style.setProperty('font', 'inherit', 'important');
+    button.style.setProperty('line-height', '1', 'important');
+    button.style.setProperty('padding', '4px 8px', 'important');
+    button.addEventListener('click', (event) => {
+      if (!event.isTrusted) return;
+      if (typeof action?.onClick === 'function') action.onClick();
+      dismissToast(toastId);
+    });
+    toast.appendChild(button);
   }
   toast.appendChild(closeButton);
 

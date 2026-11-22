@@ -1,19 +1,19 @@
 /*
 Module: bg-discover
-Purpose: Own Discover's reading state in the background: the reading visit of each tab opened from Discover (its pages and how much was read), the reader's history that the ranker learns from, the days an article was read to the end (which join the My Words streak), the website's last streak, and the queue of anonymous counts sent to EZFurigana.
+Purpose: Own Discover's reading state in the background: the reading visit of each tab opened from Discover (its pages and how much was read), the reader's history that the ranker learns from (with their likes and dislikes), the days an article was read to the end (which join the My Words streak), the website's last streak, the days Discover was opened, and the queue of anonymous counts and success counters sent to EZFurigana.
 
 Inputs:
-- Articles opened from the popup, `discoverSession` and `discoverProgress` messages from the content script on those tabs, `discoverNote` messages from the popup (shown, hidden, unhidden, reset), and the website's streak from the EZFurigana sync.
+- Articles opened from the popup (with where they were chosen), `discoverSession`, `discoverProgress`, `discoverVote` and `discoverMissing` messages from the content script on those tabs, `discoverNote` messages from the popup (shown, hidden, unhidden, liked, disliked, unvoted, tab, daily_done, all_viewed, reset), and the website's streak from the EZFurigana sync.
 - The stored Discover feed (`bg-api`), for the article behind an ID.
 
 Outputs:
 - The article's start and end snippets and length for the tab's content script; the visit's outcome.
 - Reading days for the EZFurigana sync push.
-- Batched `{ id, kind }` counts (`shown`, `opened`, `finished`) posted through `bg-api`.
+- Batched `{ id, kind }` counts (`shown`, `opened`, `finished`, `liked`, `disliked`, `hidden`, `not_found`) and `{ name, dims }` success counters posted through `bg-api`.
 
 Side Effects:
-- `chrome.storage.session`: `discoverVisits` (per tab: article ID, page totals, active time), dropped after three hours or when replaced.
-- `chrome.storage.local`: `discoverHistory` (per article: outcome, time, category, site, style, length), `discoverReadDays`, `discoverSiteStreak`, and `discoverCrowd` (the unsent counts and today's already-counted ones).
+- `chrome.storage.session`: `discoverVisits` (per tab: article ID, page totals, active time, the counters' dimensions), dropped after three hours or when replaced.
+- `chrome.storage.local`: `discoverHistory` (per article: outcome, time, category, site, style, length, vote), `discoverReadDays`, `discoverOpenDays`, `discoverSiteStreak`, and `discoverCrowd` (the unsent counts and counters, and today's already-counted ones).
 
 Failure Modes:
 - Storage failures reject the request; the next one reads storage again. A failed count post keeps the counts for the next try, bounded.
@@ -21,10 +21,11 @@ Failure Modes:
 
 Security Notes:
 - Only this extension's content scripts and popup reach these handlers (checked in background.js); a page cannot report reading for itself.
-- Page addresses are kept only in session storage, to tell an article's pages apart; nothing with an address, title or reading history leaves the browser. The counts carry only an article ID and a kind, without cookies or any identifier.
+- Page addresses are kept only in session storage, to tell an article's pages apart; nothing with an address, title or reading history leaves the browser. The counts carry only an article ID and a kind, and the counters only a fixed name and short fixed dimension values (the backend keeps only its allowlisted ones), without cookies or any identifier.
 */
 import './discover-reading.js';
-import { articleFeatures, calendarDay, noteOutcome, normalizeHistory, DISCOVER_HISTORY_KEY } from './discover-rank.js';
+import { articleFeatures, calendarDay, noteOutcome, noteVote, normalizeHistory, DISCOVER_HISTORY_KEY } from './discover-rank.js';
+import { statDims } from './discover.js';
 import { discoverArticle, postDiscoverEvents } from './bg-api.js';
 
 const Reading = globalThis.TsukeruDiscoverReading;
@@ -33,6 +34,7 @@ const VISITS_KEY = 'discoverVisits';
 const READ_DAYS_KEY = 'discoverReadDays';
 const SITE_STREAK_KEY = 'discoverSiteStreak';
 const CROWD_KEY = 'discoverCrowd';
+const OPEN_DAYS_KEY = 'discoverOpenDays';
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const VISIT_MS = 3 * 60 * 60 * 1000;
@@ -43,6 +45,9 @@ const MAX_QUEUE = 200;
 const MAX_POST = 40;
 const FLUSH_GAP_MS = 60 * 1000;
 const RANK = { opened: 1, skimmed: 2, finished: 3 };
+const DIM_KEYS = new Set(['view', 'position', 'category', 'level', 'reason', 'known', 'streak', 'reader_level']);
+const DIM_VALUE_RE = /^[A-Za-z0-9_+-]{1,24}$/;
+const VOTE_KINDS = { liked: 1, disliked: -1, unvoted: 0 };
 
 let queue = Promise.resolve();
 
@@ -89,24 +94,40 @@ async function noteReadDay(now) {
   await chrome.storage.local.set({ [READ_DAYS_KEY]: kept });
 }
 
-// ── Anonymous counts ─────────────────────────────────────────────────────────
+// ── Anonymous counts and success counters ────────────────────────────────────
 
-/** Queue one count, at most once a day per article and kind. */
-async function queueCount(id, kind, now) {
+/** The counter dimensions a sender gave, keeping only known keys with short plain values. */
+function cleanDims(dims) {
+  if (!dims || typeof dims !== 'object') return {};
+  return Object.fromEntries(Object.entries(dims)
+    .filter(([key, value]) => DIM_KEYS.has(key) && typeof value === 'string' && DIM_VALUE_RE.test(value)));
+}
+
+/** Queue items; with `onceKey`, only the first time today. False when already counted. */
+async function enqueue(items, now, onceKey = '') {
   const day = calendarDay(now);
   const stored = await read('local', CROWD_KEY, {});
   const counted = stored.day === day && Array.isArray(stored.counted) ? stored.counted : [];
-  const key = `${kind}:${id}`;
-  if (counted.includes(key)) return;
+  if (onceKey && counted.includes(onceKey)) return false;
   const pending = Array.isArray(stored.queue) ? stored.queue : [];
   await chrome.storage.local.set({
     [CROWD_KEY]: {
       day,
-      counted: [...counted, key].slice(-MAX_QUEUE * 2),
-      queue: [...pending, { id, kind }].slice(-MAX_QUEUE),
+      counted: onceKey ? [...counted, onceKey].slice(-MAX_QUEUE * 2) : counted,
+      queue: [...pending, ...items].slice(-MAX_QUEUE),
       sentAt: Number(stored.sentAt) || 0,
     },
   });
+  return true;
+}
+
+/** Queue one count, with its success counter, at most once a day per article and kind. */
+function queueCount(id, kind, now, dims = null) {
+  return enqueue([{ id, kind }, ...(dims ? [{ name: kind, dims }] : [])], now, `${kind}:${id}`);
+}
+
+function queueStat(name, now, dims = {}, onceKey = '') {
+  return enqueue([{ name, dims }], now, onceKey);
 }
 
 /** Post the queued counts, at most once a minute; unsent ones stay for the next try. */
@@ -118,7 +139,10 @@ async function flushCounts(now) {
     await chrome.storage.local.set({ [CROWD_KEY]: { ...stored, sentAt: now } });
     return pending.slice(0, MAX_POST);
   });
-  if (!batch || !(await postDiscoverEvents(batch))) return;
+  if (!batch) return;
+  const events = batch.filter((item) => typeof item?.id === 'string' && typeof item.kind === 'string');
+  const stats = batch.filter((item) => typeof item?.name === 'string').map(({ name, dims }) => ({ name, dims: cleanDims(dims) }));
+  if (!(await postDiscoverEvents(events, stats))) return;
   await serial(async () => {
     const latest = await read('local', CROWD_KEY, {});
     const rest = (Array.isArray(latest.queue) ? latest.queue : []).slice(batch.length);
@@ -132,8 +156,9 @@ function flushSoon(now) {
 
 // ── Visits ───────────────────────────────────────────────────────────────────
 
-/** A tab opened `article` from Discover: start its visit and count the open. */
-export function startDiscoverVisit(tabId, article, now = Date.now()) {
+/** A tab opened `article` from Discover (`dims`: where the popup showed it): start its visit and count the open. */
+export function startDiscoverVisit(tabId, article, now = Date.now(), dims = null) {
+  const counted = { ...statDims(article), ...cleanDims(dims) };
   return serial(async () => {
     const visits = liveVisits(await read('session', VISITS_KEY, {}), now);
     delete visits[tabId];
@@ -147,10 +172,11 @@ export function startDiscoverVisit(tabId, article, now = Date.now()) {
       at: now,
       pages: {},
       outcome: 'opened',
+      dims: counted,
     };
     await chrome.storage.session.set({ [VISITS_KEY]: visits });
     await updateHistory(article, 'opened', now);
-    await queueCount(article.id, 'opened', now);
+    await queueCount(article.id, 'opened', now, counted);
   }).finally(() => flushSoon(now));
 }
 
@@ -209,11 +235,57 @@ export function noteDiscoverProgress(tab, progress, now = Date.now()) {
       await updateHistory({ id: visit.id, ...featureArticle(visit.features) }, outcome, now);
       if (outcome === 'finished') {
         await noteReadDay(now);
-        await queueCount(visit.id, 'finished', now);
+        await queueCount(visit.id, 'finished', now, cleanDims(visit.dims));
       }
     }
     return visits[tab.id].outcome;
   }).finally(() => flushSoon(now));
+}
+
+/** The reader liked or disliked the article on `tab` after finishing it (the toast's buttons). */
+export function voteFromTab(tab, kind, now = Date.now()) {
+  if (!(kind in VOTE_KINDS) || kind === 'unvoted') return Promise.resolve(false);
+  return serial(async () => {
+    const visit = liveVisits(await read('session', VISITS_KEY, {}), now)[tab?.id];
+    if (!visit || visit.outcome !== 'finished') return false;
+    return applyVote(visit.id, kind, cleanDims(visit.dims), now);
+  }).finally(() => flushSoon(now));
+}
+
+/** The article on `tab` could not be found on its page: count it once per visit. */
+export function missingFromTab(tab, now = Date.now()) {
+  return serial(async () => {
+    const visits = liveVisits(await read('session', VISITS_KEY, {}), now);
+    const visit = visits[tab?.id];
+    if (!visit || visit.missing) return false;
+    visits[tab.id] = { ...visit, missing: true };
+    await chrome.storage.session.set({ [VISITS_KEY]: visits });
+    const category = cleanDims(visit.dims).category;
+    await queueCount(visit.id, 'not_found', now, category ? { category } : {});
+    return true;
+  }).finally(() => flushSoon(now));
+}
+
+async function applyVote(id, kind, dims, now) {
+  const history = await read('local', DISCOVER_HISTORY_KEY, {});
+  if (normalizeHistory(history)[id]?.o !== 'finished') return false;
+  await chrome.storage.local.set({ [DISCOVER_HISTORY_KEY]: noteVote(history, id, VOTE_KINDS[kind]) });
+  if (kind !== 'unvoted') await queueCount(id, kind, now, dims);
+  return true;
+}
+
+/** Note today as a day Discover was opened; how many of the last 14 days it was, as the counters' band. */
+async function noteOpenDay(now) {
+  const today = calendarDay(now);
+  const since = calendarDay(now - 13 * 24 * 60 * 60 * 1000);
+  const stored = await read('local', OPEN_DAYS_KEY, []);
+  const days = [...new Set([...(Array.isArray(stored) ? stored : []), today])]
+    .filter((day) => typeof day === 'string' && DAY_RE.test(day) && day >= since && day <= today)
+    .sort();
+  await chrome.storage.local.set({ [OPEN_DAYS_KEY]: days });
+  if (days.length >= 8) return '8+';
+  if (days.length >= 4) return '4-7';
+  return days.length >= 2 ? '2-3' : '1';
 }
 
 // The history keeps features, not articles; this shapes them back for `noteOutcome`.
@@ -223,17 +295,40 @@ function featureArticle([category, source, style]) {
 
 // ── Popup notes ──────────────────────────────────────────────────────────────
 
-/** The popup showed, hid or unhid an article, or reset what Discover learned. */
-export function noteDiscoverEvent(id, kind, now = Date.now()) {
+/**
+ * The popup showed, hid, unhid, liked or disliked an article (`dims`: where it showed it), or the reader
+ * opened the tab, read all of today's picks, opened the full list or reset what Discover learned.
+ */
+export function noteDiscoverEvent(id, kind, now = Date.now(), dims = null) {
+  const given = cleanDims(dims);
   if (kind === 'reset') {
-    return serial(() => chrome.storage.local.set({ [DISCOVER_HISTORY_KEY]: {} })).then(() => true);
+    return serial(async () => {
+      await chrome.storage.local.set({ [DISCOVER_HISTORY_KEY]: {} });
+      await queueStat('reset', now);
+    }).then(() => true).finally(() => flushSoon(now));
   }
-  if (!ID_RE.test(String(id)) || !['shown', 'hidden', 'unhidden'].includes(kind)) return Promise.resolve(false);
+  if (kind === 'tab') {
+    return serial(async () => {
+      const days14 = await noteOpenDay(now);
+      await queueStat('tab_opened', now);
+      const { streak, reader_level: readerLevel } = given;
+      await queueStat('reader_day', now, { days14, ...(streak ? { streak } : {}), ...(readerLevel ? { reader_level: readerLevel } : {}) }, 'reader_day');
+      return true;
+    }).finally(() => flushSoon(now));
+  }
+  if (kind === 'daily_done' || kind === 'all_viewed') {
+    return serial(() => queueStat(kind, now, {}, kind === 'daily_done' ? 'daily_done' : '')).then(() => true).finally(() => flushSoon(now));
+  }
+  if (!ID_RE.test(String(id))) return Promise.resolve(false);
+  if (kind in VOTE_KINDS) {
+    return serial(() => applyVote(id, kind, given, now)).finally(() => flushSoon(now));
+  }
+  if (!['shown', 'hidden', 'unhidden'].includes(kind)) return Promise.resolve(false);
   return serial(async () => {
     const article = kind === 'unhidden' ? { id } : await discoverArticle(id, now);
     if (!article) return false;
     await updateHistory(article, kind, now);
-    if (kind === 'shown') await queueCount(id, 'shown', now);
+    if (kind !== 'unhidden') await queueCount(id, kind, now, { ...statDims(article), ...given });
     return true;
   }).finally(() => flushSoon(now));
 }

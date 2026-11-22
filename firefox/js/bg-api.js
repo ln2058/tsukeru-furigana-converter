@@ -15,8 +15,8 @@ Side Effects:
 - Persists only validated cooldown metadata, the current UTC day's and ISO week's random IDs, and the website's account token answer (a free account's or a Supporter's) through extension-local storage; backend quotas remain authoritative. A token refused before its expiry marks this browser disconnected, and the website does not reconnect it until the popup's Connect.
 - Shares logical dictionary lookups and bounds completed in-memory dictionary results.
 - Reads/writes furigana fragments and successful localized dictionary entries through `bg-cache`.
-- Keeps the last Discover feed for an hour in `chrome.storage.session`.
-- Posts Discover's anonymous counts (`{ id, kind }` lists from `bg-discover`) to /api/extension/discover/events.
+- Keeps the last Discover feed and its version tag in `chrome.storage.session`: used for an hour, then sent back with the tag, and kept another hour when the backend says it has not changed.
+- Posts Discover's anonymous counts (`{ id, kind }` lists) and success counters (`{ name, dims }` lists from `bg-discover`) to /api/extension/discover/events.
 
 Failure Modes:
 - Network/API failures, malformed responses, nonce retry exhaustion, and rate-limit rejections.
@@ -569,15 +569,23 @@ const MAX_DISCOVER_RESPONSE_CHARS = 4 * 1024 * 1024;
 // sample stands in. Remove the sample and this fallback before release.
 const DISCOVER_SAMPLE_PATH = 'discover-sample.json';
 
-async function readDiscoverCache(now) {
+async function readDiscoverCacheEntry() {
   try {
     const cached = (await chrome.storage.session.get(DISCOVER_CACHE_KEY))[DISCOVER_CACHE_KEY];
-    if (!cached || !(cached.at <= now) || now - cached.at >= DISCOVER_CACHE_MS) return null;
-    return normalizeDiscoverFeed(cached.feed);
+    return cached && typeof cached === 'object' ? cached : null;
   } catch (_) {
     return null;
   }
 }
+
+async function readDiscoverCache(now) {
+  const cached = await readDiscoverCacheEntry();
+  if (!cached || !(cached.at <= now) || now - cached.at >= DISCOVER_CACHE_MS) return null;
+  return normalizeDiscoverFeed(cached.feed);
+}
+
+// The feed's version tag: a short quoted digest, as the backend sends it.
+const DISCOVER_TAG_RE = /^(W\/)?"[0-9a-f]{8,64}"$/;
 
 async function readDiscoverResponse(response) {
   if (!response.ok) return null;
@@ -590,20 +598,35 @@ async function readDiscoverResponse(response) {
   }
 }
 
-/** The Discover feed: the stored copy for an hour, else the backend's, else (prototype) the bundled sample. */
+/**
+ * The Discover feed: the stored copy for an hour, else the backend's, else (prototype) the bundled sample.
+ * After the hour the stored copy's tag goes with the request; when the backend answers that it has not
+ * changed (304), the stored copy is kept for another hour without downloading it again.
+ */
 export async function fetchDiscoverFeed(now = Date.now()) {
   const cached = await readDiscoverCache(now);
   if (cached) return cached;
+  const stale = await readDiscoverCacheEntry();
+  const staleFeed = stale && DISCOVER_TAG_RE.test(String(stale.tag)) ? normalizeDiscoverFeed(stale.feed) : null;
   let feed = null;
+  let tag = '';
   try {
-    feed = await readDiscoverResponse(await fetch(`${API_BASE_URL}/api/extension/discover`, {
+    const response = await fetch(`${API_BASE_URL}/api/extension/discover`, {
       method: 'GET',
-      headers: _extensionHeaders(),
+      headers: staleFeed ? { ..._extensionHeaders(), 'If-None-Match': stale.tag } : _extensionHeaders(),
       credentials: 'omit',
       mode: 'cors',
       cache: 'no-store',
       redirect: 'error',
-    }));
+    });
+    if (response.status === 304 && staleFeed) {
+      feed = staleFeed;
+      tag = stale.tag;
+    } else {
+      feed = await readDiscoverResponse(response);
+      const sent = response.headers?.get?.('etag') || '';
+      tag = feed && DISCOVER_TAG_RE.test(sent) ? sent : '';
+    }
   } catch (_) {
     feed = null;
   }
@@ -616,7 +639,7 @@ export async function fetchDiscoverFeed(now = Date.now()) {
   }
   if (!feed) throw Object.assign(new Error('Discover feed unavailable'), { code: 'discover_unavailable' });
   try {
-    await chrome.storage.session.set({ [DISCOVER_CACHE_KEY]: { at: now, feed } });
+    await chrome.storage.session.set({ [DISCOVER_CACHE_KEY]: { at: now, feed, tag } });
   } catch (_) { /* Fetched again next time. */ }
   return feed;
 }
@@ -635,17 +658,18 @@ export async function discoverArticleUrl(id, now = Date.now()) {
 const DISCOVER_EVENTS_TIMEOUT_MS = 10000;
 
 /**
- * Post anonymous Discover counts ([{ id, kind }]). No cookies, account token or session ID
- * go with them. True when the server took them (or refused them for good), false to try again later.
+ * Post anonymous Discover counts ([{ id, kind }]) and success counters ([{ name, dims }]). No cookies,
+ * account token or session ID go with them. True when the server took them (or refused them for good),
+ * false to try again later.
  */
-export async function postDiscoverEvents(events) {
+export async function postDiscoverEvents(events, stats = []) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DISCOVER_EVENTS_TIMEOUT_MS);
   try {
     const response = await fetch(`${API_BASE_URL}/api/extension/discover/events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ events }),
+      body: JSON.stringify(stats.length ? { events, stats } : { events }),
       credentials: 'omit',
       mode: 'cors',
       cache: 'no-store',

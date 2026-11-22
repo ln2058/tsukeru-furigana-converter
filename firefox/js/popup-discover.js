@@ -1,12 +1,12 @@
 /*
 Module: popup-discover
-Purpose: Show the Discover tab: today's picks (about five articles chosen for this reader, with why each was picked, how many are read and the reading streak), and one tap away the full feed filtered by level and category. Each card has its picture (or a tile in its category's colour), its JLPT tag, how much of it the reader knows, and how many of their learning words it has.
+Purpose: Show the Discover tab: today's picks (about five articles chosen for this reader, with why each was picked, how many are read and the reading streak), the last few articles read to the end, and one tap away the full feed filtered by level and category. Each card has its picture (or a tile in its category's colour), its JLPT tag, how much of it the reader knows, and how many of their learning words it has; a finished article's card has like and dislike buttons.
 
 Inputs:
 - The Discover feed from the background (`discoverFeed`), the reader's word states (`wordsGetStates`), the vocabulary estimate (`vocabGet`), the stored hidden/opened record, reading history, today's picks, reading days and the website's streak, and popup clicks and scrolling.
 
 Outputs:
-- Today's picks or the filter chips and article list, loaded a page at a time as the list scrolls; `discoverOpen` requests for a chosen article; `discoverNote` messages (picks shown, an article hidden, a reset of what Discover learned).
+- Today's picks and recently read articles, or the filter chips and article list, loaded a page at a time as the list scrolls; `discoverOpen` requests for a chosen article, with where it was shown; `discoverNote` messages (picks shown, an article hidden, liked or disliked, the tab opened, all picks read, the full list opened, a reset of what Discover learned), each with the fixed dimensions of the anonymous success counters.
 - A mark on the Discover tab when a new day's picks are waiting.
 
 Side Effects:
@@ -19,7 +19,7 @@ Failure Modes:
 
 Security Notes:
 - Article text is inserted with textContent only. The background opens articles by ID from its stored feed; the popup's own fallback opens only that same feed's https address.
-- Word states, the reader's level and what Discover learned stay on this device; coverage and picks are worked out here.
+- Word states, the reader's level and what Discover learned stay on this device; coverage and picks are worked out here. Counter notes carry only fixed bands (where and in which place a card was shown, its category, level, pick reason and known band; the streak and level bands), never words, titles or addresses.
 - Card pictures load only from EZFurigana's picture path, without cookies or a referrer; the article's own site is not contacted until the reader opens the article.
 */
 import { t } from './popup-settings.js';
@@ -33,6 +33,7 @@ import {
   markArticle,
   normalizeDiscoverState,
   selectArticles,
+  statDims,
 } from './discover.js';
 import {
   DISCOVER_DAILY_KEY,
@@ -42,11 +43,15 @@ import {
   dailySet,
   normalizeDaily,
   normalizeHistory,
+  noteVote,
   pickDay,
   rankEntries,
+  recentReads,
+  voteOf,
 } from './discover-rank.js';
 
 const PAGE_SIZE = 15;
+const RECENT_SIZE = 5;
 // Written by bg-discover.
 const READ_DAYS_KEY = 'discoverReadDays';
 const SITE_STREAK_KEY = 'discoverSiteStreak';
@@ -62,6 +67,7 @@ let shown = [];
 let rendered = 0;
 let observer = null;
 let chooseLevel = () => {};
+let readerLevel = 'none';
 
 const byId = (id) => document.getElementById(id);
 
@@ -204,7 +210,48 @@ function thumbnail(article) {
   return frame;
 }
 
-function card({ article, pct, label, learning }, reason = null) {
+const STREAK_BANDS = [[31, '31+'], [8, '8-30'], [4, '4-7'], [2, '2-3'], [1, '1']];
+const streakBand = (count) => (STREAK_BANDS.find(([least]) => count >= least) || [0, '0'])[1];
+
+function voteButton(article, kind, text, label, dims, onVote) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'discover-card-vote';
+  button.textContent = text;
+  button.title = label;
+  button.setAttribute('aria-label', label);
+  const value = kind === 'liked' ? 1 : -1;
+  button.setAttribute('aria-pressed', String(voteOf(history, article.id) === value));
+  button.addEventListener('click', () => {
+    const next = voteOf(history, article.id) === value ? 0 : value;
+    history = noteVote(history, article.id, next);
+    void send({ action: 'discoverNote', id: article.id, kind: next ? kind : 'unvoted', dims });
+    onVote();
+  });
+  return button;
+}
+
+/** Like and dislike buttons for a finished article's card. */
+function votes(article, dims) {
+  const box = document.createElement('div');
+  box.className = 'discover-card-votes';
+  const refresh = () => {
+    for (const button of box.children) {
+      const value = button.dataset.kind === 'liked' ? 1 : -1;
+      button.setAttribute('aria-pressed', String(voteOf(history, article.id) === value));
+    }
+  };
+  const up = voteButton(article, 'liked', '👍', t('discover_vote_up', undefined, 'I enjoyed it'), dims, refresh);
+  up.dataset.kind = 'liked';
+  const down = voteButton(article, 'disliked', '👎', t('discover_vote_down', undefined, 'Not for me'), dims, refresh);
+  down.dataset.kind = 'disliked';
+  box.append(up, down);
+  return box;
+}
+
+/** `place`: where the card is shown ({ view, index }), for the anonymous counters. */
+function card({ article, pct, label, learning }, reason = null, place = { view: 'all', index: 0 }) {
+  const dims = statDims(article, { ...place, reason, pct });
   const item = document.createElement('li');
   item.className = 'discover-card';
   const outcome = outcomeOf(article.id);
@@ -218,7 +265,7 @@ function card({ article, pct, label, learning }, reason = null) {
   link.rel = 'noopener noreferrer';
   link.addEventListener('click', (event) => {
     event.preventDefault();
-    openArticle(article);
+    openArticle(article, dims);
   });
 
   const why = reasonText(reason);
@@ -265,7 +312,7 @@ function card({ article, pct, label, learning }, reason = null) {
   hide.addEventListener('click', () => {
     record = markArticle(record, article.id, 'hidden');
     saveRecord();
-    void send({ action: 'discoverNote', id: article.id, kind: 'hidden' });
+    void send({ action: 'discoverNote', id: article.id, kind: 'hidden', dims });
     item.remove();
     shown = shown.filter((entry) => entry.article.id !== article.id);
     rendered = Math.max(0, rendered - 1);
@@ -274,13 +321,14 @@ function card({ article, pct, label, learning }, reason = null) {
   });
 
   item.append(link, hide);
+  if (outcome === 'finished') item.append(votes(article, dims));
   return item;
 }
 
 function renderMore() {
   const list = byId('discoverList');
   const next = shown.slice(rendered, rendered + PAGE_SIZE);
-  list.append(...next.map((entry) => card(entry)));
+  list.append(...next.map((entry, offset) => card(entry, null, { view: 'all', index: rendered + offset })));
   rendered += next.length;
 }
 
@@ -316,19 +364,33 @@ function todayPicks() {
     .map((pick) => ({ entry: byArticle.get(pick.id), reason: pick.reason }));
 }
 
+/** The last few articles read to the end that are still in the feed, not hidden and not among today's picks. */
+function renderRecent(picks) {
+  const byArticle = new Map(entries.map((entry) => [entry.article.id, entry]));
+  const hidden = new Set(record.hidden);
+  const ids = recentReads(history, { limit: RECENT_SIZE * 3, exclude: picks.map(({ entry }) => entry.article.id) })
+    .filter((id) => byArticle.has(id) && !hidden.has(id))
+    .slice(0, RECENT_SIZE);
+  byId('discoverRecentList').replaceChildren(...ids.map((id, index) => card(byArticle.get(id), null, { view: 'recent', index })));
+  byId('discoverRecent').hidden = view !== 'today' || !ids.length;
+}
+
 function renderToday() {
   const picks = todayPicks();
   const read = picks.filter(({ entry }) => outcomeOf(entry.article.id) === 'finished').length;
-  byId('discoverProgress').textContent = picks.length && read >= picks.length
+  const done = picks.length > 0 && read >= picks.length;
+  byId('discoverProgress').textContent = done
     ? t('discover_today_done', undefined, 'All read. New picks tomorrow.')
     : t('discover_today_progress', [String(read), String(picks.length)], `${read} of ${picks.length} read`);
+  if (done) void send({ action: 'discoverNote', kind: 'daily_done' });
   renderStreak();
   const list = byId('discoverList');
-  list.replaceChildren(...picks.map(({ entry, reason }) => card(entry, reason)));
+  list.replaceChildren(...picks.map(({ entry, reason }, index) => card(entry, reason, { view: 'today', index })));
   list.hidden = !picks.length;
   shown = picks.map(({ entry }) => entry);
   rendered = shown.length;
   setStatus(picks.length ? null : 'today_empty');
+  renderRecent(picks);
 }
 
 function setView(next) {
@@ -342,16 +404,17 @@ function setView(next) {
   byId('discoverResetRow').hidden = today;
   if (today) renderToday();
   else {
+    byId('discoverRecent').hidden = true;
     renderFilters();
     renderList();
   }
   scrollToTop();
 }
 
-async function openArticle(article) {
+async function openArticle(article, dims) {
   record = markArticle(record, article.id, 'read');
   await chrome.storage.local.set({ [DISCOVER_STATE_KEY]: record }).catch(() => {});
-  const response = await send({ action: 'discoverOpen', id: article.id });
+  const response = await send({ action: 'discoverOpen', id: article.id, dims });
   if (response?.success) return;
   // The background could not open it: open the same feed address without automatic furigana.
   try {
@@ -378,7 +441,12 @@ async function ensureDaily(now) {
   if (daily?.picks.length) return;
   daily = { day, picks: dailySet(entries, history, { day, now, hidden: record.hidden }) };
   await chrome.storage.local.set({ [DISCOVER_DAILY_KEY]: daily }).catch(() => {});
-  for (const pick of daily.picks) void send({ action: 'discoverNote', id: pick.id, kind: 'shown' });
+  const byArticle = new Map(entries.map((entry) => [entry.article.id, entry]));
+  daily.picks.forEach((pick, index) => {
+    const entry = byArticle.get(pick.id);
+    const dims = entry ? statDims(entry.article, { view: 'today', index, reason: pick.reason, pct: entry.pct }) : null;
+    void send({ action: 'discoverNote', id: pick.id, kind: 'shown', dims });
+  });
 }
 
 async function load() {
@@ -405,6 +473,7 @@ async function load() {
     : null;
   // The known share needs a chosen level; before that, cards show only their JLPT tag.
   const hasLevel = Boolean(estimate?.level);
+  readerLevel = hasLevel ? estimate.level : 'none';
   entries = feed.articles.map((article) => {
     const words = coverageWordsOf(articleRawWords(article));
     const share = hasLevel ? pageKnownShare(words, states, estimate) : null;
@@ -412,6 +481,8 @@ async function load() {
     return { article, pct: share?.pct ?? null, label: share?.label ?? null, learning };
   });
   await ensureDaily(Date.now());
+  const streak = combinedStreak(lastStored[SITE_STREAK_KEY], lastStored[READ_DAYS_KEY], calendarDay(Date.now()));
+  void send({ action: 'discoverNote', kind: 'tab', dims: { streak: streakBand(streak.count), reader_level: readerLevel } });
   byId('discoverLevelNote').hidden = hasLevel;
   byId('discoverSampleNote').hidden = feed.prototype !== true;
   markTab(false);
@@ -453,7 +524,10 @@ export function initDiscover({ onChooseLevel } = {}) {
   if (typeof onChooseLevel === 'function') chooseLevel = onChooseLevel;
   byId('discoverRetry')?.addEventListener('click', () => { void showDiscover(); });
   byId('discoverLevelAction')?.addEventListener('click', () => chooseLevel());
-  byId('discoverViewToggle')?.addEventListener('click', () => setView(view === 'today' ? 'all' : 'today'));
+  byId('discoverViewToggle')?.addEventListener('click', () => {
+    if (view === 'today') void send({ action: 'discoverNote', kind: 'all_viewed' });
+    setView(view === 'today' ? 'all' : 'today');
+  });
   byId('discoverReset')?.addEventListener('click', () => { void resetLearning(); });
   void markNewDiscoverDay();
 }

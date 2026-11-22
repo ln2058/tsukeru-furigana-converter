@@ -221,6 +221,46 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.deepEqual(techPick.reason, { kind: 'category', category: 'tech' });
   });
 
+  test(`${browserName} a like or dislike of a finished article teaches more than finishing alone`, () => {
+    const lift = (vote) => {
+      let history = {};
+      for (let index = 0; index < 3; index += 1) {
+        const read = article(`v${index}`, { category: 'tech', source: { id: `site${index}`, name: 'x' } });
+        history = Rank.noteOutcome(history, read, 'finished', NOW);
+        history = Rank.noteVote(history, read.id, vote);
+        // The same reading of another category, without a vote.
+        history = Rank.noteOutcome(history, article(`w${index}`, { category: 'food_travel', source: { id: `site${index}`, name: 'x' } }), 'finished', NOW);
+      }
+      return Rank.interestLift(article('next', { category: 'tech', source: { id: 'new', name: 'x' } }), Rank.buildProfile(history, NOW));
+    };
+    assert.ok(lift(1) > lift(0), 'liked lifts tech above plain finishing');
+    assert.ok(lift(-1) < 0 && lift(-1) < lift(0), "disliked puts tech below the reader's usual");
+    // Only a finished article takes a vote; hiding it drops the vote.
+    const opened = Rank.noteOutcome({}, article('o1'), 'opened', NOW);
+    assert.equal(Rank.voteOf(Rank.noteVote(opened, 'o1', 1), 'o1'), 0);
+    let history = Rank.noteVote(Rank.noteOutcome({}, article('f1'), 'finished', NOW), 'f1', 1);
+    assert.equal(Rank.voteOf(history, 'f1'), 1);
+    assert.equal(Rank.voteOf(Rank.noteVote(history, 'f1', 0), 'f1'), 0);
+    history = Rank.noteOutcome(history, article('f1'), 'hidden', NOW + 1);
+    assert.equal(Rank.voteOf(history, 'f1'), 0);
+  });
+
+  test(`${browserName} recently read lists the latest finished articles`, () => {
+    let history = {};
+    ['r1', 'r2', 'r3'].forEach((id, index) => { history = Rank.noteOutcome(history, article(id), 'finished', NOW + index); });
+    history = Rank.noteOutcome(history, article('o1'), 'opened', NOW + 10);
+    assert.deepEqual(Rank.recentReads(history), ['r3', 'r2', 'r1']);
+    assert.deepEqual(Rank.recentReads(history, { limit: 2, exclude: ['r3'] }), ['r2', 'r1']);
+  });
+
+  test(`${browserName} counter dimensions carry only fixed bands`, async () => {
+    const Discover = await import(new URL(`../${browserName}/js/discover.js`, import.meta.url));
+    const dims = Discover.statDims(article('d1', { category: 'made_up', jlpt: 'N9' }), { view: 'elsewhere', index: 20, reason: { kind: 'secret' }, pct: 88 });
+    assert.deepEqual(dims, { view: 'all', position: '16+', category: 'none', level: 'none', reason: 'none', known: '85-94' });
+    assert.deepEqual(Discover.statDims(article('d2'), { view: 'today', index: 1, reason: { kind: 'explore' }, pct: null }),
+      { view: 'today', position: '2', category: 'science', level: 'N3', reason: 'explore', known: 'none' });
+  });
+
   test(`${browserName} the streak joins website review days with reading days`, () => {
     assert.deepEqual(Rank.combinedStreak({ count: 4, day: '2026-11-20' }, ['2026-11-21', '2026-11-22'], '2026-11-22'), { count: 6, today: true });
     // One missed day keeps it; reading days before the website's day add nothing.

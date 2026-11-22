@@ -1128,5 +1128,14 @@
   },
   "discover_finished_toast": {
     "message": "已讀完。今天計入連續紀錄。"
+  },
+  "discover_recent": {
+    "message": "最近讀過"
+  },
+  "discover_vote_up": {
+    "message": "喜歡"
+  },
+  "discover_vote_down": {
+    "message": "不感興趣"
   }
 }
