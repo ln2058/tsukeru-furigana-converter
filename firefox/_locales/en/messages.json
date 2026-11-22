@@ -1066,9 +1066,6 @@
   "discover_retry": {
     "message": "Try again"
   },
-  "discover_sample_note": {
-    "message": "Prototype: sample articles collected on 22 November."
-  },
   "discover_today": {
     "message": "Today's picks"
   },

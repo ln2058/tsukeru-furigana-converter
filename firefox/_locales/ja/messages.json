@@ -1066,9 +1066,6 @@
   "discover_retry": {
     "message": "再試行"
   },
-  "discover_sample_note": {
-    "message": "試作版：11月22日に集めたサンプル記事です。"
-  },
   "discover_today": {
     "message": "今日のおすすめ"
   },

@@ -3,7 +3,7 @@ Module: discover
 Purpose: Check the Discover feed, turn each article's word list into the page-word shape, give each card picture's address, filter and order articles for the popup's Discover tab, and describe a chosen article for the anonymous success counters.
 
 Inputs:
-- Feed bodies from EZFurigana's Discover endpoint (or the bundled prototype sample), the reader's coverage figure and learning-word count per article, the stored hidden/read record, and the chosen filters.
+- Feed bodies from EZFurigana's Discover endpoint, the reader's coverage figure and learning-word count per article, the stored hidden/read record, and the chosen filters.
 
 Outputs:
 - A checked feed, raw page-style word lists, card picture addresses on EZFurigana, filtered and ordered article lists, the next hidden/read record, and a counter's dimensions (where an article was chosen, its place, category, level, pick reason and known band).
@@ -120,7 +120,7 @@ export function normalizeDiscoverFeed(body) {
     seen.add(article.id);
     articles.push(article);
   }
-  return { version: 1, prototype: body.prototype === true, articles };
+  return { version: 1, articles };
 }
 
 const STAT_VIEWS = new Set(['today', 'all', 'recent']);

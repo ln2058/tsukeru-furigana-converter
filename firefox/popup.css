@@ -589,8 +589,6 @@ a.vocab-action-btn { display: inline-flex; align-items: center; text-decoration:
 .discover-view-row[hidden] { display: none; }
 .discover-reset { color: var(--muted); font-size: 10px; }
 .tab-btn.has-new::after { content: ""; position: absolute; top: 5px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--blue); }
-.discover-sample-note { margin: 4px 12px 12px; color: var(--muted); font-size: 10px; line-height: 1.4; text-align: center; }
-.discover-sample-note[hidden] { display: none; }
 /* The word game slip: under the My Words review strip, led by four small tiles. */
 .kakurenbo-slip { display: grid; justify-items: start; gap: 5px; margin: 10px 12px 0; padding: 11px 13px 11px 12px; border: 1px solid var(--paper-edge); border-radius: 4px; background: var(--paper); background-image: url("paper-texture.svg"); animation: popup-notice-rise 140ms ease-out; }
 .kakurenbo-slip[hidden] { display: none; }

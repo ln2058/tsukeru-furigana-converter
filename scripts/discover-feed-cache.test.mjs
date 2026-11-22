@@ -8,7 +8,7 @@ const read = (browser) => readFileSync(new URL(`../${browser}/js/bg-api.js`, imp
 const withoutModules = (source) => source.replace(/^import\s[\s\S]*?;\r?\n/gm, '').replace(/^export\s+/gm, '');
 const HOUR = 60 * 60 * 1000;
 const NOW = Date.UTC(2026, 10, 23, 12);
-const FEED = { version: 1, prototype: false, articles: [{ id: 'a1' }] };
+const FEED = { version: 1, articles: [{ id: 'a1' }] };
 
 function harness(browser, answers) {
   const session = {};
@@ -55,5 +55,14 @@ for (const browser of ['chrome', 'firefox']) {
     await api.fetchDiscoverFeed(NOW + HOUR + 2);
     assert.equal(requests.length, 2);
     assert.equal(requests[0].ifNoneMatch, null);
+  });
+}
+
+for (const browser of ['chrome', 'firefox']) {
+  test(`${browser} without the backend's feed Discover reports it unavailable, with no bundled stand-in`, async () => {
+    const { api, requests } = harness(browser, [{ status: 503 }]);
+    await assert.rejects(api.fetchDiscoverFeed(NOW), (error) => error.code === 'discover_unavailable');
+    assert.equal(requests.length, 1);
+    assert.ok(requests[0].url.startsWith('https://www.ezfurigana.com/'));
   });
 }

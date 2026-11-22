@@ -1,5 +1,21 @@
 # Changelog
 
+## 4.7.0 — 2026-11-23
+
+### Added
+
+- **Discover**: a new popup tab with five Japanese articles a day from other sites, picked for your level and what you enjoy. Each card shows the JLPT level, how much of it you know, and how many of your learning words it has. "Show all articles" lists the rest, by level and topic.
+- Discover learns from the articles you open and read to the end, and from a like or dislike after you finish one. What it learns stays in this browser; "Reset what Discover learned" clears it.
+- Reading a Discover article to the end counts toward your EZFurigana streak. Scrolling to the bottom without reading does not.
+- **Recently read**: your last five finished articles, under today's picks.
+
+### Changed
+
+- Settings moved from its tab to the gear button in the header.
+- Discover replaces the reading-picks suggestion on This page.
+- The My Words review box no longer has a blue edge when words are due.
+- Discover sends anonymous usage counts to EZFurigana to improve it, without cookies, tracking or personal data. Article pictures load from EZFurigana, not from the article's site.
+
 ## 4.6.0 — 2026-11-18
 
 ### Added

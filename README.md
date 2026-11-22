@@ -16,7 +16,7 @@
 
 Tsukeru is a browser extension for Chrome, Microsoft Edge, and Firefox. It adds readings above kanji while preserving the layout of the page, with dictionary lookup, word lists, and Anki export.
 
-Version **4.6.0** asks your Japanese level and shows how much of each page you know, offers to mark the words you probably know in one go, lets a free EZFurigana account try sentence audio and Explain a few times a week, and lets you drag the dictionary out of the way. Version 4.5.2 opened account links in the popup's language and counted weekly users with a random ID that changes every week. Version 4.5.1 added Simplified Chinese, returned the Chrome and Edge shortcut to `Ctrl+Shift+F`, kept a disconnected account disconnected, and showed fewer connection messages on EZFurigana. See the [changelog](CHANGELOG.md) for details.
+Version **4.7.0** adds Discover: five Japanese articles a day from other sites, picked for your level and what you enjoy, with finished articles counting toward your EZFurigana streak. Version 4.6.0 asked your Japanese level and showed how much of each page you know, offered to mark the words you probably know in one go, let a free EZFurigana account try sentence audio and Explain a few times a week, and let you drag the dictionary out of the way. Version 4.5.2 opened account links in the popup's language and counted weekly users with a random ID that changes every week. See the [changelog](CHANGELOG.md) for details.
 
 ![Tsukeru adding furigana to a Japanese Wikipedia article, with its popup open](.github/images/furigana-on-any-website.webp)
 

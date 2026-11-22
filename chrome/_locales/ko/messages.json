@@ -1066,9 +1066,6 @@
   "discover_retry": {
     "message": "다시 시도"
   },
-  "discover_sample_note": {
-    "message": "시험판: 11월 22일에 모은 샘플 글입니다."
-  },
   "discover_today": {
     "message": "오늘의 추천"
   },

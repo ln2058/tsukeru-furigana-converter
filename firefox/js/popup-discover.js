@@ -511,7 +511,6 @@ async function load() {
   const streak = combinedStreak(lastStored[SITE_STREAK_KEY], lastStored[READ_DAYS_KEY], calendarDay(Date.now()));
   void send({ action: 'discoverNote', kind: 'tab', dims: { streak: streakBand(streak.count), reader_level: readerLevel } });
   byId('discoverLevelNote').hidden = hasLevel;
-  byId('discoverSampleNote').hidden = feed.prototype !== true;
   markTab(false);
   setView(view);
   watchScrolling();

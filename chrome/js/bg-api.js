@@ -5,7 +5,6 @@ Purpose: Execute backend workflows for furigana processing, dictionary data, aud
 Inputs:
 - Text chunk payloads, settings, and action parameters.
 - Network responses from EZFurigana API endpoints.
-- The bundled Discover sample (prototype) when the Discover endpoint gives no feed.
 
 Outputs:
 - Processed furigana HTML, reading-aware dictionary/enrichment payloads, base64 data URLs, report completion, and structured error metadata (including network and timeout codes).
@@ -565,9 +564,6 @@ export async function getSupporterPlan(now = Date.now(), { fresh = false } = {})
 const DISCOVER_CACHE_KEY = 'discoverFeedCache';
 const DISCOVER_CACHE_MS = 60 * 60 * 1000;
 const MAX_DISCOVER_RESPONSE_CHARS = 4 * 1024 * 1024;
-// PROTOTYPE: until the backend serves /api/extension/discover, the bundled
-// sample stands in. Remove the sample and this fallback before release.
-const DISCOVER_SAMPLE_PATH = 'discover-sample.json';
 
 async function readDiscoverCacheEntry() {
   try {
@@ -599,7 +595,7 @@ async function readDiscoverResponse(response) {
 }
 
 /**
- * The Discover feed: the stored copy for an hour, else the backend's, else (prototype) the bundled sample.
+ * The Discover feed: the stored copy for an hour, else the backend's.
  * After the hour the stored copy's tag goes with the request; when the backend answers that it has not
  * changed (304), the stored copy is kept for another hour without downloading it again.
  */
@@ -629,13 +625,6 @@ export async function fetchDiscoverFeed(now = Date.now()) {
     }
   } catch (_) {
     feed = null;
-  }
-  if (!feed) {
-    try {
-      feed = await readDiscoverResponse(await fetch(chrome.runtime.getURL(DISCOVER_SAMPLE_PATH)));
-    } catch (_) {
-      feed = null;
-    }
   }
   if (!feed) throw Object.assign(new Error('Discover feed unavailable'), { code: 'discover_unavailable' });
   try {

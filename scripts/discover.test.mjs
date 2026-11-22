@@ -48,7 +48,6 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(odd.jlpt, '');
     assert.equal(odd.minutes, null);
     assert.equal(odd.title, '題名');
-    assert.equal(feed.prototype, false);
   });
 
   test(`${browserName} Discover card pictures load only from the EZFurigana picture path`, () => {
