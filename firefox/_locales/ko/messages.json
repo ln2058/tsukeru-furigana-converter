@@ -60,6 +60,9 @@
   "tab_settings": {
     "message": "설정"
   },
+  "tab_discover": {
+    "message": "추천"
+  },
   "settings_section_furigana_appearance": {
     "message": "후리가나 모양"
   },
@@ -823,18 +826,6 @@
   "review_prompt_never": {
     "message": "다시 묻지 않기"
   },
-  "reading_picks_title": {
-    "message": "읽을거리를 찾고 있나요?"
-  },
-  "reading_picks_text": {
-    "message": "무료 소설, 뉴스, 영상을 JLPT 레벨별로 모았어요. 모두 Tsukeru로 읽을 수 있어요."
-  },
-  "reading_picks_open": {
-    "message": "추천 읽을거리 보기"
-  },
-  "reading_picks_later": {
-    "message": "다음에"
-  },
   "kakurenbo_slip_title": {
     "message": "오늘의 かくれんぼ"
   },
@@ -996,5 +987,146 @@
   },
   "supporter_connected_free_toast": {
     "message": "Tsukeru가 무료 계정에 연결되었습니다. 문장 읽기와 설명을 매주 몇 번 체험할 수 있습니다."
+  },
+  "discover_filter_levels": {
+    "message": "레벨"
+  },
+  "discover_filter_categories": {
+    "message": "카테고리"
+  },
+  "discover_for_you": {
+    "message": "맞춤"
+  },
+  "discover_all": {
+    "message": "전체"
+  },
+  "discover_category_learner": {
+    "message": "학습자용"
+  },
+  "discover_category_did_you_know": {
+    "message": "알고 계셨나요"
+  },
+  "discover_category_science": {
+    "message": "과학·자연"
+  },
+  "discover_category_tech": {
+    "message": "기술"
+  },
+  "discover_category_news": {
+    "message": "뉴스"
+  },
+  "discover_category_culture": {
+    "message": "문화·역사"
+  },
+  "discover_category_food_travel": {
+    "message": "음식·여행"
+  },
+  "discover_category_anime_games": {
+    "message": "애니·만화·게임"
+  },
+  "discover_category_entertainment_sports": {
+    "message": "연예·스포츠"
+  },
+  "discover_category_life_society": {
+    "message": "생활·사회"
+  },
+  "discover_category_stories": {
+    "message": "이야기"
+  },
+  "discover_minutes": {
+    "message": "$1분"
+  },
+  "discover_known": {
+    "message": "아는 단어 $1%"
+  },
+  "discover_learning_one": {
+    "message": "학습 중인 단어 1개"
+  },
+  "discover_learning_many": {
+    "message": "학습 중인 단어 $1개"
+  },
+  "discover_hide": {
+    "message": "숨기기"
+  },
+  "discover_level_note": {
+    "message": "레벨을 선택하면 각 글의 단어를 얼마나 아는지 보여 드립니다."
+  },
+  "discover_level_action": {
+    "message": "레벨 선택"
+  },
+  "discover_loading": {
+    "message": "글을 불러오는 중…"
+  },
+  "discover_empty": {
+    "message": "조건에 맞는 글이 없습니다."
+  },
+  "discover_error": {
+    "message": "글을 불러오지 못했습니다. 연결을 확인하고 다시 시도해 주세요."
+  },
+  "discover_retry": {
+    "message": "다시 시도"
+  },
+  "discover_sample_note": {
+    "message": "시험판: 11월 22일에 모은 샘플 글입니다."
+  },
+  "discover_today": {
+    "message": "오늘의 추천"
+  },
+  "discover_today_progress": {
+    "message": "$2개 중 $1개 읽음"
+  },
+  "discover_today_done": {
+    "message": "모두 읽었어요. 내일 새 추천이 나와요."
+  },
+  "discover_today_empty": {
+    "message": "오늘은 새 추천이 없어요. 아래에서 모든 글을 볼 수 있어요."
+  },
+  "discover_streak_one": {
+    "message": "1일 연속"
+  },
+  "discover_streak_many": {
+    "message": "$1일 연속"
+  },
+  "discover_streak_keep": {
+    "message": "$1: 한 편을 끝까지 읽으면 이어져요"
+  },
+  "discover_reason_category": {
+    "message": "$1 글을 읽어서"
+  },
+  "discover_reason_source": {
+    "message": "자주 읽는 사이트 $1에서"
+  },
+  "discover_reason_crowd": {
+    "message": "끝까지 읽는 사람이 많은 글"
+  },
+  "discover_reason_level": {
+    "message": "내 레벨에 잘 맞아요"
+  },
+  "discover_reason_explore": {
+    "message": "새로운 분야를 읽어 보세요"
+  },
+  "discover_card_finished": {
+    "message": "읽음"
+  },
+  "discover_card_started": {
+    "message": "읽는 중"
+  },
+  "discover_show_all": {
+    "message": "모든 글 보기"
+  },
+  "discover_show_today": {
+    "message": "오늘의 추천으로 돌아가기"
+  },
+  "discover_reset": {
+    "message": "Discover 학습 초기화"
+  },
+  "discover_reset_done": {
+    "message": "초기화했어요. 앞으로 읽는 글로 다시 학습해요."
+  },
+  "discover_new_today": {
+    "message": "오늘의 새 추천"
+  },
+  "discover_finished_toast": {
+    "message": "끝까지 읽었어요. 오늘 연속 기록에 포함돼요."
   }
 }

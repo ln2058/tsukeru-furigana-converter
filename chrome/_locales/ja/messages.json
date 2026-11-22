@@ -60,6 +60,9 @@
   "tab_settings": {
     "message": "設定"
   },
+  "tab_discover": {
+    "message": "おすすめ"
+  },
   "settings_section_furigana_appearance": {
     "message": "ふりがな表示"
   },
@@ -823,18 +826,6 @@
   "review_prompt_never": {
     "message": "今後表示しない"
   },
-  "reading_picks_title": {
-    "message": "読むものをお探しですか？"
-  },
-  "reading_picks_text": {
-    "message": "JLPTレベル別に、無料で読める物語やニュース、動画を集めました。どれもTsukeruで読めます。"
-  },
-  "reading_picks_open": {
-    "message": "おすすめを見る"
-  },
-  "reading_picks_later": {
-    "message": "あとで"
-  },
   "kakurenbo_slip_title": {
     "message": "今日のかくれんぼ"
   },
@@ -996,5 +987,146 @@
   },
   "supporter_connected_free_toast": {
     "message": "Tsukeruが無料アカウントと連携しました。文の読み上げと解説を毎週数回試せます。"
+  },
+  "discover_filter_levels": {
+    "message": "レベル"
+  },
+  "discover_filter_categories": {
+    "message": "カテゴリ"
+  },
+  "discover_for_you": {
+    "message": "あなたに"
+  },
+  "discover_all": {
+    "message": "すべて"
+  },
+  "discover_category_learner": {
+    "message": "学習者向け"
+  },
+  "discover_category_did_you_know": {
+    "message": "雑学"
+  },
+  "discover_category_science": {
+    "message": "科学・自然"
+  },
+  "discover_category_tech": {
+    "message": "テクノロジー"
+  },
+  "discover_category_news": {
+    "message": "ニュース"
+  },
+  "discover_category_culture": {
+    "message": "文化・歴史"
+  },
+  "discover_category_food_travel": {
+    "message": "グルメ・旅行"
+  },
+  "discover_category_anime_games": {
+    "message": "アニメ・マンガ・ゲーム"
+  },
+  "discover_category_entertainment_sports": {
+    "message": "エンタメ・スポーツ"
+  },
+  "discover_category_life_society": {
+    "message": "暮らし・社会"
+  },
+  "discover_category_stories": {
+    "message": "物語"
+  },
+  "discover_minutes": {
+    "message": "$1分"
+  },
+  "discover_known": {
+    "message": "知っている単語 $1%"
+  },
+  "discover_learning_one": {
+    "message": "学習中の単語：1語"
+  },
+  "discover_learning_many": {
+    "message": "学習中の単語：$1語"
+  },
+  "discover_hide": {
+    "message": "非表示"
+  },
+  "discover_level_note": {
+    "message": "レベルを選ぶと、各記事の単語をどれだけ知っているか表示されます。"
+  },
+  "discover_level_action": {
+    "message": "レベルを選ぶ"
+  },
+  "discover_loading": {
+    "message": "記事を読み込んでいます…"
+  },
+  "discover_empty": {
+    "message": "条件に合う記事がありません。"
+  },
+  "discover_error": {
+    "message": "記事を読み込めませんでした。接続を確認して、もう一度お試しください。"
+  },
+  "discover_retry": {
+    "message": "再試行"
+  },
+  "discover_sample_note": {
+    "message": "試作版：11月22日に集めたサンプル記事です。"
+  },
+  "discover_today": {
+    "message": "今日のおすすめ"
+  },
+  "discover_today_progress": {
+    "message": "$2本中$1本 読了"
+  },
+  "discover_today_done": {
+    "message": "全部読みました。明日また新しい記事が届きます。"
+  },
+  "discover_today_empty": {
+    "message": "今日の新しいおすすめはありません。下からすべての記事を見られます。"
+  },
+  "discover_streak_one": {
+    "message": "1日連続"
+  },
+  "discover_streak_many": {
+    "message": "$1日連続"
+  },
+  "discover_streak_keep": {
+    "message": "$1：1本最後まで読むと続きます"
+  },
+  "discover_reason_category": {
+    "message": "「$1」をよく読むので"
+  },
+  "discover_reason_source": {
+    "message": "よく読むサイト「$1」から"
+  },
+  "discover_reason_crowd": {
+    "message": "最後まで読む人が多い記事"
+  },
+  "discover_reason_level": {
+    "message": "あなたのレベルにぴったり"
+  },
+  "discover_reason_explore": {
+    "message": "新しいジャンルを試してみよう"
+  },
+  "discover_card_finished": {
+    "message": "読了"
+  },
+  "discover_card_started": {
+    "message": "途中"
+  },
+  "discover_show_all": {
+    "message": "すべての記事を見る"
+  },
+  "discover_show_today": {
+    "message": "今日のおすすめに戻る"
+  },
+  "discover_reset": {
+    "message": "Discoverの学習をリセット"
+  },
+  "discover_reset_done": {
+    "message": "リセットしました。これから読む記事でまた学習します。"
+  },
+  "discover_new_today": {
+    "message": "今日のおすすめが届きました"
+  },
+  "discover_finished_toast": {
+    "message": "最後まで読みました。今日の連続記録に入ります。"
   }
 }

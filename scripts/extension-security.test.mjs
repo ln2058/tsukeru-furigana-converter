@@ -162,6 +162,7 @@ for (const browser of ['chrome', 'firefox']) {
     let reads = 0;
     const sandbox = {
       URL, console, syncPart: async () => ({}), applySyncPart: async () => {},
+      discoverReadDays: async () => [], noteSiteStreak: async () => {},
       chrome: { runtime: { id: 'extension-id' }, storage: { local: {
         async get() { reads++; return {}; }, async set() {}, async remove() {},
       } } },

@@ -1,10 +1,11 @@
 /*
 Module: bg-api
-Purpose: Execute backend workflows for furigana processing, dictionary data, audio proxying, account sentence audio and explanations, and reading-error reports.
+Purpose: Execute backend workflows for furigana processing, dictionary data, audio proxying, account sentence audio and explanations, reading-error reports, the Discover feed, and Discover's anonymous counts.
 
 Inputs:
 - Text chunk payloads, settings, and action parameters.
 - Network responses from EZFurigana API endpoints.
+- The bundled Discover sample (prototype) when the Discover endpoint gives no feed.
 
 Outputs:
 - Processed furigana HTML, reading-aware dictionary/enrichment payloads, base64 data URLs, report completion, and structured error metadata (including network and timeout codes).
@@ -14,6 +15,8 @@ Side Effects:
 - Persists only validated cooldown metadata, the current UTC day's and ISO week's random IDs, and the website's account token answer (a free account's or a Supporter's) through extension-local storage; backend quotas remain authoritative. A token refused before its expiry marks this browser disconnected, and the website does not reconnect it until the popup's Connect.
 - Shares logical dictionary lookups and bounds completed in-memory dictionary results.
 - Reads/writes furigana fragments and successful localized dictionary entries through `bg-cache`.
+- Keeps the last Discover feed for an hour in `chrome.storage.session`.
+- Posts Discover's anonymous counts (`{ id, kind }` lists from `bg-discover`) to /api/extension/discover/events.
 
 Failure Modes:
 - Network/API failures, malformed responses, nonce retry exhaustion, and rate-limit rejections.
@@ -29,10 +32,12 @@ Security Notes:
 - Sentence explanations send one plain sentence of at most 120 characters and the display language, only after the reader clicks Explain; responses are bounded JSON, reduced to bounded plain-text fields.
 - Keep endpoint configuration centralized to avoid host sprawl.
 - Audio proxy fetches accept only HTTPS www.ezfurigana.com on the default port and refuse redirects.
+- The Discover request carries no level, words or account token: the feed is the same for everyone, and `discover` checks it before use. Articles open only from the stored feed, never from an address a sender supplies.
 */
 // External network requests, furigana pipeline, and audio for the service worker.
 import { sha256Hash, cacheGet, cacheSet, definitionCache, DEFINITION_CACHE_TTL, localizedCacheGet, localizedCacheSet } from './bg-cache.js';
 import { kata2hira } from './utils.js';
+import { normalizeDiscoverFeed } from './discover.js';
 
 export const API_BASE_URL = 'https://www.ezfurigana.com';
 
@@ -553,6 +558,107 @@ export async function getSupporterPlan(now = Date.now(), { fresh = false } = {})
   } catch (_) { /* retried next time */ }
   _supporterPlanCache = { plan, until: now + _SUPPORTER_PLAN_TTL_MS };
   return plan;
+}
+
+// ── Discover feed ────────────────────────────────────────────────────────────
+
+const DISCOVER_CACHE_KEY = 'discoverFeedCache';
+const DISCOVER_CACHE_MS = 60 * 60 * 1000;
+const MAX_DISCOVER_RESPONSE_CHARS = 4 * 1024 * 1024;
+// PROTOTYPE: until the backend serves /api/extension/discover, the bundled
+// sample stands in. Remove the sample and this fallback before release.
+const DISCOVER_SAMPLE_PATH = 'discover-sample.json';
+
+async function readDiscoverCache(now) {
+  try {
+    const cached = (await chrome.storage.session.get(DISCOVER_CACHE_KEY))[DISCOVER_CACHE_KEY];
+    if (!cached || !(cached.at <= now) || now - cached.at >= DISCOVER_CACHE_MS) return null;
+    return normalizeDiscoverFeed(cached.feed);
+  } catch (_) {
+    return null;
+  }
+}
+
+async function readDiscoverResponse(response) {
+  if (!response.ok) return null;
+  const text = await response.text();
+  if (text.length > MAX_DISCOVER_RESPONSE_CHARS) return null;
+  try {
+    return normalizeDiscoverFeed(JSON.parse(text));
+  } catch (_) {
+    return null;
+  }
+}
+
+/** The Discover feed: the stored copy for an hour, else the backend's, else (prototype) the bundled sample. */
+export async function fetchDiscoverFeed(now = Date.now()) {
+  const cached = await readDiscoverCache(now);
+  if (cached) return cached;
+  let feed = null;
+  try {
+    feed = await readDiscoverResponse(await fetch(`${API_BASE_URL}/api/extension/discover`, {
+      method: 'GET',
+      headers: _extensionHeaders(),
+      credentials: 'omit',
+      mode: 'cors',
+      cache: 'no-store',
+      redirect: 'error',
+    }));
+  } catch (_) {
+    feed = null;
+  }
+  if (!feed) {
+    try {
+      feed = await readDiscoverResponse(await fetch(chrome.runtime.getURL(DISCOVER_SAMPLE_PATH)));
+    } catch (_) {
+      feed = null;
+    }
+  }
+  if (!feed) throw Object.assign(new Error('Discover feed unavailable'), { code: 'discover_unavailable' });
+  try {
+    await chrome.storage.session.set({ [DISCOVER_CACHE_KEY]: { at: now, feed } });
+  } catch (_) { /* Fetched again next time. */ }
+  return feed;
+}
+
+/** The article with this ID in the stored feed, or null when it is not in it. */
+export async function discoverArticle(id, now = Date.now()) {
+  const feed = (await readDiscoverCache(now)) || (await fetchDiscoverFeed(now).catch(() => null));
+  return feed?.articles.find((article) => article.id === id) || null;
+}
+
+/** The address of an article in the stored feed, or '' when the ID is not in it. */
+export async function discoverArticleUrl(id, now = Date.now()) {
+  return (await discoverArticle(id, now))?.url || '';
+}
+
+const DISCOVER_EVENTS_TIMEOUT_MS = 10000;
+
+/**
+ * Post anonymous Discover counts ([{ id, kind }]). No cookies, account token or session ID
+ * go with them. True when the server took them (or refused them for good), false to try again later.
+ */
+export async function postDiscoverEvents(events) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), DISCOVER_EVENTS_TIMEOUT_MS);
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/extension/discover/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events }),
+      credentials: 'omit',
+      mode: 'cors',
+      cache: 'no-store',
+      redirect: 'error',
+      signal: controller.signal,
+    });
+    // 400 will not get better on a retry; 404 means the server has no Discover yet.
+    return response.ok || response.status === 400 || response.status === 404;
+  } catch (_) {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function _nonceLog(event, detail = {}) {

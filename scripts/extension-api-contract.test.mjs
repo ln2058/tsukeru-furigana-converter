@@ -23,6 +23,7 @@ function loadApi(browserName, route, { cacheLimit = 200, storage = null, manifes
   let source = readFileSync(apiUrl, 'utf8')
     .replace(/import\s+\{[\s\S]*?\}\s+from\s+'\.\/bg-cache\.js';\s*/m, '')
     .replace(/import\s+\{[\s\S]*?\}\s+from\s+'\.\/utils\.js';\s*/m, '')
+    .replace(/import\s+\{[\s\S]*?\}\s+from\s+'\.\/discover\.js';\s*/m, '')
     .replace(/^export\s+/gm, '');
   source = source.replace(
     'const BACKGROUND_DEFINITION_CACHE_MAX_ENTRIES = 200;',

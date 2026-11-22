@@ -505,19 +505,58 @@ a.vocab-action-btn { display: inline-flex; align-items: center; text-decoration:
 .review-prompt-actions .review-prompt-never { color: var(--muted); }
 .review-prompt-actions .review-prompt-never:hover { color: var(--text); }
 
-/* Reading picks: a slip in the empty This page state, led by the JLPT tint strip. */
-.vocab-empty:has(> .reading-picks:not([hidden])) { padding-bottom: 14px; }
-.reading-picks { display: grid; justify-items: start; gap: 5px; margin: 18px -10px 0; padding: 11px 13px 11px 12px; border: 1px solid var(--paper-edge); border-radius: 4px; background: var(--paper); background-image: url("paper-texture.svg"); color: var(--muted); text-align: left; animation: popup-notice-rise 140ms ease-out; }
-.reading-picks[hidden] { display: none; }
-.reading-picks-levels { display: flex; align-items: center; gap: 8px; margin: 0 0 2px; color: var(--muted); font-family: var(--mono); font-size: 9px; font-variant-numeric: tabular-nums; letter-spacing: .06em; }
-.reading-picks-cells { display: flex; gap: 1px; padding: 1px; border: 1px solid var(--border); border-radius: 2px; background: var(--border); }
-.reading-picks-cells i { width: 14px; height: 6px; background: var(--tint); }
-.reading-picks-title { margin: 0; color: var(--ink); font-size: 14px; font-weight: 700; line-height: 1.25; }
-.reading-picks-text { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
-.reading-picks-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 5px; }
-.reading-picks-actions .primary-link { min-height: 30px; }
-.reading-picks-actions .reading-picks-later { color: var(--muted); }
-.reading-picks-actions .reading-picks-later:hover { color: var(--text); }
+/* Discover: filter chips over a list of article cards; Settings opens from the header gear. */
+.header-link-icon.header-settings { padding: 0; background: transparent; appearance: none; }
+.header-link-icon.header-settings svg { width: 15px; height: 15px; }
+.header-link-icon.header-settings[aria-pressed="true"] { border-color: var(--blue-border); background: var(--blue-soft); color: var(--ink); }
+.discover-today { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 10px 12px 2px; }
+.discover-today[hidden] { display: none; }
+.discover-today-title { margin: 0; color: var(--ink); font-size: 13px; font-weight: 700; }
+.discover-today-progress { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.discover-streak { margin-left: auto; color: color-mix(in srgb, var(--star) 70%, var(--ink)); font-size: 11px; font-weight: 600; }
+.discover-streak[data-today="false"] { color: var(--muted); }
+.discover-streak[hidden] { display: none; }
+.discover-filters[hidden] { display: none; }
+.discover-filters { position: sticky; top: 0; z-index: 2; display: grid; gap: 6px; padding: 10px 12px 8px; border-bottom: 1px solid var(--border); background-color: var(--paper); background-image: url("paper-texture.svg"); }
+.discover-chips { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.discover-chips:empty { display: none; }
+.discover-chips-scroll { flex-wrap: nowrap; margin: 0 -12px; padding: 0 12px 1px; overflow-x: auto; scrollbar-width: none; }
+.discover-chips-scroll::-webkit-scrollbar { display: none; }
+.discover-chips .level-chip { flex: 0 0 auto; }
+.discover-note { margin: 10px 12px 0; padding: 8px 10px; border: 1px solid var(--paper-edge); border-radius: 4px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.discover-note[hidden] { display: none; }
+.discover-retry { margin-top: 6px; }
+.discover-retry[hidden] { display: none; }
+.discover-list { display: grid; gap: 8px; margin: 0; padding: 10px 12px 4px; list-style: none; }
+.discover-list[hidden] { display: none; }
+.discover-card { position: relative; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); animation: popup-notice-rise 140ms ease-out; transition: border-color .14s ease; }
+.discover-card:hover { border-color: var(--border-strong); }
+.discover-card-link { display: grid; gap: 4px; padding: 9px 32px 9px 11px; border-radius: 4px; color: inherit; text-decoration: none; }
+.discover-card-meta { display: flex; gap: 6px; min-width: 0; overflow: hidden; color: var(--muted); font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.discover-card-source { min-width: 0; overflow: hidden; color: var(--ink); text-overflow: ellipsis; }
+.discover-card-title { display: -webkit-box; overflow: hidden; color: var(--ink); font-size: 13px; font-weight: 700; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.discover-card-excerpt { display: -webkit-box; overflow: hidden; color: var(--muted); font-size: 11px; line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.discover-card-excerpt:empty { display: none; }
+.discover-card-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 2px; font-size: 10px; }
+.discover-card-level { padding: 1px 5px; border-radius: 2px; background: color-mix(in srgb, var(--tint) 55%, var(--surface)); color: var(--ink); font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: .06em; }
+.discover-card-known { color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 600; }
+.discover-card-known[data-difficulty="comfortable"] { color: var(--success); }
+.discover-card-known[data-difficulty="stretch"] { color: color-mix(in srgb, var(--star) 70%, var(--ink)); }
+.discover-card-learning { color: var(--blue-readable); font-weight: 600; }
+.discover-card[data-read="true"] .discover-card-title { color: var(--muted); font-weight: 600; }
+.discover-card-hide { position: absolute; top: 5px; right: 5px; display: grid; width: 22px; height: 22px; place-items: center; margin: 0; padding: 0; border: 1px solid transparent; border-radius: 3px; background: transparent; color: var(--muted); font-size: 15px; line-height: 1; }
+.discover-card-hide:hover { border-color: var(--border); background: var(--surface-hover); color: var(--text); }
+.discover-card-reason { color: var(--blue-readable); font-size: 10px; font-weight: 600; line-height: 1.3; }
+.discover-card-outcome { padding: 1px 5px; border-radius: 2px; background: color-mix(in srgb, var(--success) 18%, var(--surface)); color: var(--success); font-size: 9px; font-weight: 700; }
+.discover-card[data-outcome="skimmed"] .discover-card-outcome { background: var(--surface-hover); color: var(--muted); }
+.discover-card[data-outcome="finished"] .discover-card-title { color: var(--muted); }
+.discover-more { height: 1px; }
+.discover-view-row { margin: 6px 12px 0; text-align: center; }
+.discover-view-row[hidden] { display: none; }
+.discover-reset { color: var(--muted); font-size: 10px; }
+.tab-btn.has-new::after { content: ""; position: absolute; top: 5px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--blue); }
+.discover-sample-note { margin: 4px 12px 12px; color: var(--muted); font-size: 10px; line-height: 1.4; text-align: center; }
+.discover-sample-note[hidden] { display: none; }
 /* The word game slip: under the My Words review strip, led by four small tiles. */
 .kakurenbo-slip { display: grid; justify-items: start; gap: 5px; margin: 10px 12px 0; padding: 11px 13px 11px 12px; border: 1px solid var(--paper-edge); border-radius: 4px; background: var(--paper); background-image: url("paper-texture.svg"); animation: popup-notice-rise 140ms ease-out; }
 .kakurenbo-slip[hidden] { display: none; }

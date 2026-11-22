@@ -24,7 +24,7 @@ Failure Modes:
 
 Security Notes:
 - Runs only on https://www.ezfurigana.com pages (manifest match) and posts only to that origin.
-- Word sync carries only words, readings, states, schedule times, and short sentences from the reader's lists, plus the chosen level and counts per difficulty; nothing is sent to a server.
+- Word sync carries only words, readings, states, schedule times, and short sentences from the reader's lists, plus the chosen level, counts per difficulty, the days a Discover article was read to the end, and the website's streak; nothing is sent to a server.
 - Only a SHA-256 digest of the CSRF cookie is kept (tab session storage) to notice an account change; the cookie itself is never stored or posted.
 - The account token goes straight to the background and is never posted to the page window.
 */
@@ -73,7 +73,15 @@ Security Notes:
       if (!outbox?.success) throw new Error('The word store did not answer');
       exchange.startedAt = outbox.startedAt;
       exchange.timeout = setTimeout(endExchange, EXCHANGE_TIMEOUT_MS);
-      post({ type: 'push', exchangeId: exchange.id, changes: outbox.changes, removed: outbox.removed, estimate: outbox.estimate || {} });
+      post({
+        type: 'push',
+        exchangeId: exchange.id,
+        changes: outbox.changes,
+        removed: outbox.removed,
+        estimate: outbox.estimate || {},
+        // Days a Discover article was read to the end; they join the website's streak.
+        readDays: Array.isArray(outbox.readDays) ? outbox.readDays : [],
+      });
     } catch (error) {
       console.warn('Tsukeru: word sync could not start', error?.message);
       endExchange();
@@ -92,6 +100,8 @@ Security Notes:
         estimate: data.estimate && typeof data.estimate === 'object' ? data.estimate : null,
         // The day of the page's last finished review session; the badge clears after it.
         reviewedDay: typeof data.reviewedDay === 'string' ? data.reviewedDay.slice(0, 10) : null,
+        // The website's streak ({ count, day }); older pages send none.
+        streak: data.streak && typeof data.streak === 'object' ? { count: data.streak.count, day: data.streak.day } : null,
       });
     } catch (error) {
       console.warn('Tsukeru: word sync could not finish', error?.message);
@@ -121,7 +131,7 @@ Security Notes:
   // Words marked in other tabs while this page is open.
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local' || !pageReady) return;
-    if (Object.keys(changes).some((key) => key.startsWith('w:') || key.startsWith('wr:') || key === 'vocabEstimate')) schedule();
+    if (Object.keys(changes).some((key) => key.startsWith('w:') || key.startsWith('wr:') || key === 'vocabEstimate' || key === 'discoverReadDays')) schedule();
   });
 
   const FORCED_REFRESH_GAP_MS = 5000;

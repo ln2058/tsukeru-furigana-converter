@@ -60,6 +60,9 @@
   "tab_settings": {
     "message": "Settings"
   },
+  "tab_discover": {
+    "message": "Discover"
+  },
   "settings_section_furigana_appearance": {
     "message": "Furigana Appearance"
   },
@@ -823,18 +826,6 @@
   "review_prompt_never": {
     "message": "Don't ask again"
   },
-  "reading_picks_title": {
-    "message": "Looking for something to read?"
-  },
-  "reading_picks_text": {
-    "message": "Free stories, news and videos sorted by JLPT level. Tsukeru works on all of them."
-  },
-  "reading_picks_open": {
-    "message": "See reading picks"
-  },
-  "reading_picks_later": {
-    "message": "Not now"
-  },
   "kakurenbo_slip_title": {
     "message": "Today's かくれんぼ"
   },
@@ -996,5 +987,146 @@
   },
   "supporter_connected_free_toast": {
     "message": "Tsukeru is connected to your free account. You can try sentence audio and explanations a few times a week."
+  },
+  "discover_filter_levels": {
+    "message": "Level"
+  },
+  "discover_filter_categories": {
+    "message": "Category"
+  },
+  "discover_for_you": {
+    "message": "For you"
+  },
+  "discover_all": {
+    "message": "All"
+  },
+  "discover_category_learner": {
+    "message": "Learner-written"
+  },
+  "discover_category_did_you_know": {
+    "message": "Did you know"
+  },
+  "discover_category_science": {
+    "message": "Science & nature"
+  },
+  "discover_category_tech": {
+    "message": "Technology"
+  },
+  "discover_category_news": {
+    "message": "News"
+  },
+  "discover_category_culture": {
+    "message": "Culture & history"
+  },
+  "discover_category_food_travel": {
+    "message": "Food & travel"
+  },
+  "discover_category_anime_games": {
+    "message": "Anime, manga & games"
+  },
+  "discover_category_entertainment_sports": {
+    "message": "Entertainment & sports"
+  },
+  "discover_category_life_society": {
+    "message": "Life & society"
+  },
+  "discover_category_stories": {
+    "message": "Stories"
+  },
+  "discover_minutes": {
+    "message": "$1 min"
+  },
+  "discover_known": {
+    "message": "You know $1%"
+  },
+  "discover_learning_one": {
+    "message": "1 word you're learning"
+  },
+  "discover_learning_many": {
+    "message": "$1 words you're learning"
+  },
+  "discover_hide": {
+    "message": "Hide"
+  },
+  "discover_level_note": {
+    "message": "Choose your level to see how much of each article you know."
+  },
+  "discover_level_action": {
+    "message": "Choose level"
+  },
+  "discover_loading": {
+    "message": "Loading articles…"
+  },
+  "discover_empty": {
+    "message": "No articles match these filters."
+  },
+  "discover_error": {
+    "message": "Couldn't load articles. Check your connection and try again."
+  },
+  "discover_retry": {
+    "message": "Try again"
+  },
+  "discover_sample_note": {
+    "message": "Prototype: sample articles collected on 22 November."
+  },
+  "discover_today": {
+    "message": "Today's picks"
+  },
+  "discover_today_progress": {
+    "message": "$1 of $2 read"
+  },
+  "discover_today_done": {
+    "message": "All read. New picks tomorrow."
+  },
+  "discover_today_empty": {
+    "message": "No new picks today. See all articles below."
+  },
+  "discover_streak_one": {
+    "message": "1-day streak"
+  },
+  "discover_streak_many": {
+    "message": "$1-day streak"
+  },
+  "discover_streak_keep": {
+    "message": "$1: read one to the end to keep it"
+  },
+  "discover_reason_category": {
+    "message": "Because you read $1"
+  },
+  "discover_reason_source": {
+    "message": "From $1, a site you read"
+  },
+  "discover_reason_crowd": {
+    "message": "Readers often finish this one"
+  },
+  "discover_reason_level": {
+    "message": "A good fit for your level"
+  },
+  "discover_reason_explore": {
+    "message": "Something new to try"
+  },
+  "discover_card_finished": {
+    "message": "Read"
+  },
+  "discover_card_started": {
+    "message": "Started"
+  },
+  "discover_show_all": {
+    "message": "Show all articles"
+  },
+  "discover_show_today": {
+    "message": "Back to today's picks"
+  },
+  "discover_reset": {
+    "message": "Reset what Discover learned"
+  },
+  "discover_reset_done": {
+    "message": "Done. Discover will learn again from what you read."
+  },
+  "discover_new_today": {
+    "message": "New picks today"
+  },
+  "discover_finished_toast": {
+    "message": "Read to the end. Today counts toward your streak."
   }
 }

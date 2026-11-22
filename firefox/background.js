@@ -4,7 +4,7 @@ Purpose: Route extension events and messages between popup/content scripts and b
 
 Inputs:
 - Shared UI catalogs, uiLocale storage changes, runtime install, command, and context menu events.
-- Message actions and payloads from popup/content scripts, including My Words, the vocabulary estimate, and EZFurigana sync actions.
+- Message actions and payloads from popup/content scripts, including My Words, the vocabulary estimate, EZFurigana sync actions, the Discover feed, and Discover reading (visits, progress and the popup's notes, via `bg-discover`).
 - Browser startup and tab activation, which refresh the review badge.
 
 Outputs:
@@ -26,7 +26,9 @@ Security Notes:
 - Delegates external network traffic to `bg-api` only.
 - Audio proxy messages accept only HTTPS www.ezfurigana.com URLs on the default port.
 - Account token handoff messages are accepted only from this extension's script on the website; the popup may only read the plan.
-- Automatic furigana is decided from the tab address the browser reports for a top-level page, never from a URL the page sends.
+- Automatic furigana is decided from the tab address the browser reports for a top-level page, never from a URL the page sends, or once for a tab the popup opened from Discover.
+- Discover opens only articles in the stored feed, chosen by ID; the popup never supplies the address.
+- Discover reading progress is taken only from this extension's content script in the top frame of the tab opened from Discover; the article it belongs to comes from the stored visit, never from the page.
 - Avoid logging raw user page text in error paths.
 */
 // Background script — Firefox message router and command handler.
@@ -35,8 +37,9 @@ import {
   handleFuriganaRequest, lookupDefinition, lookupLocalizedDefinition, fetchExampleSentence, fetchKanjiBreakdown,
   handlePlayAudio, handlePlayAudioDirect, handleFetchProxyAudio, handleReportReadingError,
   DEFAULT_SETTINGS, getRateLimitState, getAccountToken, getSupporterPlan, getSupporterStatus, hasSupporterToken, storeSupporterHandoff, supporterRefreshDue,
-  fetchSentenceAudio, fetchExampleAudio, fetchSentenceExplanation,
+  fetchSentenceAudio, fetchExampleAudio, fetchSentenceExplanation, fetchDiscoverFeed, discoverArticle,
 } from './js/bg-api.js';
+import { discoverVisitFor, noteDiscoverEvent, noteDiscoverProgress, startDiscoverVisit } from './js/bg-discover.js';
 import { handleWordsMessage, isEzfuriganaSender, isWordsAction, refreshWordBadge } from './js/bg-words.js';
 import { handleVocabMessage, isVocabAction } from './js/bg-vocab.js';
 import { isAutoSite } from './js/auto-sites.js';
@@ -180,6 +183,30 @@ chrome.tabs.onActivated.addListener(() => {
   refreshWordBadge();
 });
 
+// A tab opened from Discover gets furigana once when its page first asks
+// (getAutoApply), within a few minutes of opening. Session storage keeps the
+// grant if the background restarts while the page loads.
+const DISCOVER_TABS_KEY = 'discoverTabs';
+const DISCOVER_TAB_GRANT_MS = 5 * 60 * 1000;
+
+async function grantDiscoverTab(tabId, now = Date.now()) {
+  const stored = (await chrome.storage.session.get(DISCOVER_TABS_KEY))[DISCOVER_TABS_KEY] || {};
+  const live = Object.fromEntries(Object.entries(stored).filter(([, until]) => Number(until) > now).slice(-20));
+  await chrome.storage.session.set({ [DISCOVER_TABS_KEY]: { ...live, [tabId]: now + DISCOVER_TAB_GRANT_MS } });
+}
+
+async function takeDiscoverTab(tabId, now = Date.now()) {
+  try {
+    const stored = (await chrome.storage.session.get(DISCOVER_TABS_KEY))[DISCOVER_TABS_KEY] || {};
+    if (!(Number(stored[tabId]) > now)) return false;
+    delete stored[tabId];
+    await chrome.storage.session.set({ [DISCOVER_TABS_KEY]: stored });
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 // Process furigana requests coming from the content script so we can bypass site CORS
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.action === 'getUiCatalog') {
@@ -255,10 +282,57 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // top-level page is answered, with the stored settings to apply.
   if (message?.action === 'getAutoApply') {
     if (sender.id !== chrome.runtime.id || !sender.tab || sender.frameId !== 0) return false;
-    isAutoSite(sender.tab.url || '')
-      .then((listed) => (listed ? chrome.storage.sync.get(DEFAULT_SETTINGS) : null))
+    Promise.all([isAutoSite(sender.tab.url || ''), takeDiscoverTab(sender.tab.id)])
+      .then(([listed, fromDiscover]) => (listed || fromDiscover ? chrome.storage.sync.get(DEFAULT_SETTINGS) : null))
       .then((settings) => sendResponse({ success: true, settings }))
       .catch(() => sendResponse({ success: false }));
+    return true;
+  }
+
+  // The popup's Discover tab: the feed, and opening one of its articles by ID.
+  if (message?.action === 'discoverFeed') {
+    if (sender.id !== chrome.runtime.id || sender.tab) return false;
+    fetchDiscoverFeed()
+      .then((feed) => sendResponse({ success: true, feed }))
+      .catch(() => sendResponse({ success: false, error: 'discover_unavailable' }));
+    return true;
+  }
+
+  if (message?.action === 'discoverOpen') {
+    if (sender.id !== chrome.runtime.id || sender.tab) return false;
+    if (typeof message.id !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(message.id)) {
+      sendResponse({ success: false });
+      return true;
+    }
+    discoverArticle(message.id)
+      .then(async (article) => {
+        const tab = article ? await chrome.tabs.create({ url: article.url, active: true }) : null;
+        if (!tab?.id) return false;
+        await grantDiscoverTab(tab.id);
+        await startDiscoverVisit(tab.id, article).catch(() => {});
+        return true;
+      })
+      .then((opened) => sendResponse({ success: opened }))
+      .catch(() => sendResponse({ success: false }));
+    return true;
+  }
+
+  // The popup showed, hid or unhid a Discover article, or reset what Discover learned.
+  if (message?.action === 'discoverNote') {
+    if (sender.id !== chrome.runtime.id || sender.tab) return false;
+    noteDiscoverEvent(message.id, message.kind)
+      .then((noted) => sendResponse({ success: noted }))
+      .catch(() => sendResponse({ success: false }));
+    return true;
+  }
+
+  // The content script on a tab opened from Discover: what to measure, and how far the reader got.
+  if (message?.action === 'discoverSession' || message?.action === 'discoverProgress') {
+    if (sender.id !== chrome.runtime.id || !sender.tab || sender.frameId !== 0) return false;
+    const work = message.action === 'discoverSession'
+      ? discoverVisitFor(sender.tab).then((visit) => ({ success: Boolean(visit), visit }))
+      : noteDiscoverProgress(sender.tab, message).then((outcome) => ({ success: Boolean(outcome), outcome }));
+    work.then(sendResponse).catch(() => sendResponse({ success: false }));
     return true;
   }
 

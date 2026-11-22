@@ -29,6 +29,9 @@
       <a id="header-supporter-link" href="https://www.ezfurigana.com/pricing?from=tsukeru" target="_blank" rel="noopener noreferrer" class="header-link-icon supporter-icon" data-i18n-title="header_title_become_supporter" data-i18n-aria-label="header_title_become_supporter" title="Become a Supporter" aria-label="Become a Supporter">
         <svg aria-hidden="true" viewBox="0 0 5 5" fill="currentColor" shape-rendering="crispEdges"><path d="M0 0h1v1H0zM4 0h1v1H4zM1 1h1v1H1zM3 1h1v1H3zM0 2h5v1H0zM1 3h1v1H1zM3 3h1v1H3zM0 4h1v1H0zM4 4h1v1H4z"/></svg>
       </a>
+      <button id="settingsToggle" type="button" class="header-link-icon header-settings" aria-pressed="false" title="Settings" aria-label="Settings" data-i18n-title="tab_settings" data-i18n-aria-label="tab_settings">
+        <svg aria-hidden="true" viewBox="0 0 9 9" fill="currentColor" shape-rendering="crispEdges" focusable="false"><path d="M3 0h3v1H3zM1 1h1v1H1zM3 1h3v1H3zM7 1h1v1H7zM2 2h5v1H2zM0 3h4v1H0zM5 3h4v1H5zM0 4h3v1H0zM6 4h3v1H6zM0 5h4v1H0zM5 5h4v1H5zM2 6h5v1H2zM1 7h1v1H1zM3 7h3v1H3zM7 7h1v1H7zM3 8h3v1H3z"/></svg>
+      </button>
       <button id="themeToggle" type="button" class="header-theme-toggle" title="Switch to dark mode" aria-label="Switch to dark mode">
         <svg class="theme-icon-sun" viewBox="0 0 7 7" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path d="M0 0h1v1H0zM3 0h1v1H3zM6 0h1v1H6zM2 2h3v3H2zM0 3h1v1H0zM6 3h1v1H6zM0 6h1v1H0zM3 6h1v1H3zM6 6h1v1H6z"/></svg>
         <svg class="theme-icon-moon" viewBox="0 0 7 7" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><path d="M3 0h3v1H3zM2 1h2v1H2zM1 2h2v3H1zM2 5h2v1H2zM3 6h3v1H3z"/></svg>
@@ -40,7 +43,7 @@
     <div class="tab-nav-inner">
       <button class="tab-btn active" data-tab="page" data-i18n="tab_this_page">This page</button>
       <button class="tab-btn" data-tab="words" data-i18n="tab_my_words">My Words</button>
-      <button class="tab-btn" data-tab="settings" data-i18n="tab_settings">Settings</button>
+      <button class="tab-btn" data-tab="discover" data-i18n="tab_discover">Discover</button>
     </div>
   </nav>
 
@@ -268,15 +271,6 @@
       <div class="vocab-empty" id="pageWordsEmpty">
         <div class="vocab-empty-text" data-i18n="page_words_empty_text">No words on this page yet</div>
         <div class="vocab-empty-hint" data-i18n="page_words_empty_hint">Apply furigana to see the words in this text</div>
-        <aside id="readingPicks" class="reading-picks" aria-labelledby="readingPicksTitle" hidden>
-          <p class="reading-picks-levels" aria-hidden="true"><span class="reading-picks-cells"><i data-jlpt="5"></i><i data-jlpt="4"></i><i data-jlpt="3"></i><i data-jlpt="2"></i><i data-jlpt="1"></i></span>JLPT N5–N1</p>
-          <h2 id="readingPicksTitle" class="reading-picks-title" data-i18n="reading_picks_title">Looking for something to read?</h2>
-          <p class="reading-picks-text" data-i18n="reading_picks_text">Free stories, news and videos sorted by JLPT level. Tsukeru works on all of them.</p>
-          <div class="reading-picks-actions">
-            <a id="readingPicksOpen" class="primary-link" href="https://www.ezfurigana.com/japanese-reading-practice" target="_blank" rel="noopener noreferrer" data-i18n="reading_picks_open">See reading picks</a>
-            <button type="button" id="readingPicksLater" class="text-action reading-picks-later" data-i18n="reading_picks_later">Not now</button>
-          </div>
-        </aside>
       </div>
     </section>
 
@@ -335,6 +329,28 @@
         </div>
         <div class="vocab-pagination"><button type="button" id="knownWordsMore" class="secondary" data-i18n="vocab_show_more" hidden>Show more</button></div>
       </div>
+    </section>
+
+    <section class="tab-content" id="discover-tab">
+      <div id="discoverToday" class="discover-today">
+        <h2 class="discover-today-title" data-i18n="discover_today">Today's picks</h2>
+        <span id="discoverProgress" class="discover-today-progress"></span>
+        <span id="discoverStreak" class="discover-streak" hidden></span>
+      </div>
+      <div id="discoverFilters" class="discover-filters" hidden>
+        <div id="discoverLevels" class="discover-chips" role="group" aria-label="Level" data-i18n-aria-label="discover_filter_levels"></div>
+        <div id="discoverCategories" class="discover-chips discover-chips-scroll" role="group" aria-label="Category" data-i18n-aria-label="discover_filter_categories"></div>
+      </div>
+      <p id="discoverLevelNote" class="discover-note" hidden><span data-i18n="discover_level_note">Choose your level to see how much of each article you know.</span> <button type="button" id="discoverLevelAction" class="text-action" data-i18n="discover_level_action">Choose level</button></p>
+      <div id="discoverStatus" class="vocab-empty discover-status" aria-live="polite">
+        <div id="discoverStatusText" class="vocab-empty-text" data-i18n="discover_loading">Loading articles…</div>
+        <button type="button" id="discoverRetry" class="text-action discover-retry" data-i18n="discover_retry" hidden>Try again</button>
+      </div>
+      <ol id="discoverList" class="discover-list" hidden></ol>
+      <div id="discoverMore" class="discover-more" aria-hidden="true"></div>
+      <p class="discover-view-row"><button type="button" id="discoverViewToggle" class="text-action" data-i18n="discover_show_all">Show all articles</button></p>
+      <p id="discoverResetRow" class="discover-view-row" hidden><button type="button" id="discoverReset" class="text-action discover-reset" data-i18n="discover_reset">Reset what Discover learned</button></p>
+      <p id="discoverSampleNote" class="discover-sample-note" data-i18n="discover_sample_note" hidden>Prototype: sample articles collected on 22 November.</p>
     </section>
   </main>
 

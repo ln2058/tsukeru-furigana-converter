@@ -49,6 +49,7 @@ function loadBinaryHelpers(browserName) {
   let source = readFileSync(fileUrl, 'utf8')
     .replace(/import\s+\{[\s\S]*?\}\s+from\s+'\.\/bg-cache\.js';\s*/m, '')
     .replace(/import\s+\{[\s\S]*?\}\s+from\s+'\.\/utils\.js';\s*/m, '')
+    .replace(/import\s+\{[\s\S]*?\}\s+from\s+'\.\/discover\.js';\s*/m, '')
     .replace(/^export\s+/gm, '');
   source += `
     globalThis.__api = { normalizeResponseMimeType, readBoundedResponseBlob };

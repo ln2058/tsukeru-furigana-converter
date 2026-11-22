@@ -4,7 +4,7 @@ Purpose: Own the My Words store in the background: load and persist word records
 
 Inputs:
 - Word messages from content scripts and the popup (capture, state, definition, a sentence explanation, removal, listing).
-- Sync messages from the content script on EZFurigana pages (outbox request and the page's record snapshot, each with the vocabulary estimate part that bg-vocab owns).
+- Sync messages from the content script on EZFurigana pages (outbox request and the page's record snapshot, each with the vocabulary estimate part that bg-vocab owns, the Discover reading days and the website's streak that bg-discover owns).
 - `chrome.storage.local` word records, removals, sync metadata, and the retired `vocabulary` list.
 
 Outputs:
@@ -26,6 +26,7 @@ Security Notes:
 */
 import './word-rules.js';
 import { applySyncPart, syncPart } from './bg-vocab.js';
+import { discoverReadDays, noteSiteStreak } from './bg-discover.js';
 
 const Words = globalThis.TsukeruWords;
 
@@ -237,7 +238,7 @@ export async function handleWordsMessage(message, sender) {
       if (!isEzfuriganaSender(sender)) return { success: false };
       const storeId = text(message.storeId, 100) || null;
       const outbox = await update((store, at) => Words.buildOutbox(store, storeId, at));
-      return { success: true, ...outbox, estimate: await syncPart() };
+      return { success: true, ...outbox, estimate: await syncPart(), readDays: await discoverReadDays().catch(() => []) };
     }
     case 'wordsSyncFinish': {
       if (!isEzfuriganaSender(sender)) return { success: false };
@@ -248,6 +249,8 @@ export async function handleWordsMessage(message, sender) {
       const changed = await update((store, at) => Words.mergeSnapshot(store, message.records, { startedAt, storeId, at, reviewedDay }));
       // Older EZFurigana pages send no estimate.
       await applySyncPart(message.estimate);
+      // The website's streak, which the popup joins with Discover reading days.
+      await noteSiteStreak(message.streak).catch(() => {});
       return { success: true, changed };
     }
     default:

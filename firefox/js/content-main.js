@@ -290,8 +290,9 @@ async function applyFurigana(settings, { automatic = false } = {}) {
 }
 
 /**
- * Apply furigana when the reader listed this site in Settings. The background
- * decides from the tab's address and answers with the stored settings. A
+ * Apply furigana when the reader listed this site in Settings, or once when the
+ * popup opened this tab from Discover. The background decides from the tab's
+ * address (or that one-time grant) and answers with the stored settings. A
  * Clear or a manual Apply meanwhile cancels the automatic one.
  */
 async function autoApplyIfListed() {

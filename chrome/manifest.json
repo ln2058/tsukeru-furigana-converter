@@ -46,7 +46,9 @@
         "js/vocab-model.js",
         "js/content-vocab.js",
         "js/content-tooltip.js",
-        "js/content-main.js"
+        "js/content-main.js",
+        "js/discover-reading.js",
+        "js/content-discover.js"
       ],
       "css": [
         "content.css"

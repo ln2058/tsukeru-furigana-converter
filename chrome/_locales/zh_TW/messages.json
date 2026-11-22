@@ -60,6 +60,9 @@
   "tab_settings": {
     "message": "設定"
   },
+  "tab_discover": {
+    "message": "探索"
+  },
   "settings_section_furigana_appearance": {
     "message": "振假名外觀"
   },
@@ -823,18 +826,6 @@
   "review_prompt_never": {
     "message": "不再詢問"
   },
-  "reading_picks_title": {
-    "message": "想找點日文讀物嗎？"
-  },
-  "reading_picks_text": {
-    "message": "依 JLPT 程度整理的免費小說、新聞與影片，全都能用 Tsukeru 閱讀。"
-  },
-  "reading_picks_open": {
-    "message": "看看推薦讀物"
-  },
-  "reading_picks_later": {
-    "message": "下次再說"
-  },
   "kakurenbo_slip_title": {
     "message": "今天的かくれんぼ"
   },
@@ -996,5 +987,146 @@
   },
   "supporter_connected_free_toast": {
     "message": "Tsukeru 已連結你的免費帳戶。每週可以試用幾次句子朗讀和解說。"
+  },
+  "discover_filter_levels": {
+    "message": "程度"
+  },
+  "discover_filter_categories": {
+    "message": "類別"
+  },
+  "discover_for_you": {
+    "message": "為你推薦"
+  },
+  "discover_all": {
+    "message": "全部"
+  },
+  "discover_category_learner": {
+    "message": "學習者讀物"
+  },
+  "discover_category_did_you_know": {
+    "message": "冷知識"
+  },
+  "discover_category_science": {
+    "message": "科學與自然"
+  },
+  "discover_category_tech": {
+    "message": "科技"
+  },
+  "discover_category_news": {
+    "message": "新聞"
+  },
+  "discover_category_culture": {
+    "message": "文化與歷史"
+  },
+  "discover_category_food_travel": {
+    "message": "美食與旅行"
+  },
+  "discover_category_anime_games": {
+    "message": "動漫與遊戲"
+  },
+  "discover_category_entertainment_sports": {
+    "message": "娛樂與運動"
+  },
+  "discover_category_life_society": {
+    "message": "生活與社會"
+  },
+  "discover_category_stories": {
+    "message": "故事"
+  },
+  "discover_minutes": {
+    "message": "$1 分鐘"
+  },
+  "discover_known": {
+    "message": "你認識 $1%"
+  },
+  "discover_learning_one": {
+    "message": "有 1 個正在學的單字"
+  },
+  "discover_learning_many": {
+    "message": "有 $1 個正在學的單字"
+  },
+  "discover_hide": {
+    "message": "隱藏"
+  },
+  "discover_level_note": {
+    "message": "選擇你的程度，就能看到每篇文章你認識多少單字。"
+  },
+  "discover_level_action": {
+    "message": "選擇程度"
+  },
+  "discover_loading": {
+    "message": "正在載入文章…"
+  },
+  "discover_empty": {
+    "message": "沒有符合條件的文章。"
+  },
+  "discover_error": {
+    "message": "無法載入文章。請檢查網路連線後再試一次。"
+  },
+  "discover_retry": {
+    "message": "再試一次"
+  },
+  "discover_sample_note": {
+    "message": "原型：11 月 22 日收集的範例文章。"
+  },
+  "discover_today": {
+    "message": "今日推薦"
+  },
+  "discover_today_progress": {
+    "message": "已讀 $1/$2"
+  },
+  "discover_today_done": {
+    "message": "全部讀完了。明天有新的推薦。"
+  },
+  "discover_today_empty": {
+    "message": "今天沒有新的推薦。可以在下方查看所有文章。"
+  },
+  "discover_streak_one": {
+    "message": "連續 1 天"
+  },
+  "discover_streak_many": {
+    "message": "連續 $1 天"
+  },
+  "discover_streak_keep": {
+    "message": "$1：讀完一篇即可保持"
+  },
+  "discover_reason_category": {
+    "message": "因為你常讀$1"
+  },
+  "discover_reason_source": {
+    "message": "來自你常讀的網站 $1"
+  },
+  "discover_reason_crowd": {
+    "message": "很多讀者讀完了這篇"
+  },
+  "discover_reason_level": {
+    "message": "適合你的程度"
+  },
+  "discover_reason_explore": {
+    "message": "試試新領域"
+  },
+  "discover_card_finished": {
+    "message": "已讀完"
+  },
+  "discover_card_started": {
+    "message": "讀到一半"
+  },
+  "discover_show_all": {
+    "message": "查看所有文章"
+  },
+  "discover_show_today": {
+    "message": "返回今日推薦"
+  },
+  "discover_reset": {
+    "message": "重設 Discover 的學習紀錄"
+  },
+  "discover_reset_done": {
+    "message": "已重設。Discover 會根據你接下來讀的文章重新學習。"
+  },
+  "discover_new_today": {
+    "message": "今日有新推薦"
+  },
+  "discover_finished_toast": {
+    "message": "已讀完。今天計入連續紀錄。"
   }
 }

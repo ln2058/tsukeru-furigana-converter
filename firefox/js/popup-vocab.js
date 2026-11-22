@@ -7,7 +7,6 @@ Inputs:
 - Word records and summaries from the background store, the vocabulary estimate (`vocabGet`) and the shared model (`TsukeruVocab`), page words from the active tab, the stored Study mode setting, popup UI events, background dictionary and audio responses, and `pageWordsChanged` notices from the active tab's content script.
 
 Outputs:
-- `whenPageListed()`, which tells the reading-picks suggestion whether the first listing of the tab was empty.
 - Rendered My Words and page word lists (each saved word with a pronunciation button; numbers that share a counter form one 〜年 row with their most frequent uses), Learning/Known/removal requests, Study mode updates, and CSV export downloads.
 - A saved word opens in place to its first meanings (the display language's cached translation when there is one, else English); its sentence has a "Play sentence" button (account audio).
 - A word under Words in this text opens the dictionary popup on the page (or scrolls to it when the page cannot open one) and closes the extension popup.
@@ -799,15 +798,6 @@ let pageRefreshPending = false;
 let pendingSaves = 0;
 let pageRenderSignature = null;
 let pageRenderedNonEmpty = false;
-// Settles with whether the page had no words, after the first listing.
-let settlePageListed;
-const pageListed = new Promise((resolve) => { settlePageListed = resolve; });
-
-/** Resolves true when the first listing of the active tab found no words. */
-export function whenPageListed() {
-  return pageListed;
-}
-
 /** Count uses of a counter (2024年 にせんにじゅうよねん) in its group. */
 function addCounterExample(word, raw, occurrences) {
   if (!word.examples) word.examples = new Map();
@@ -1326,7 +1316,6 @@ async function loadPageWords() {
   pageWords = words;
   pageStates = states?.success && states.states ? states.states : {};
   renderPage();
-  settlePageListed(words.length === 0);
 }
 
 /** Animate only empty-to-nonempty listings, including the first listing after Clear. */

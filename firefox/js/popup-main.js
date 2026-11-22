@@ -1,6 +1,6 @@
 /*
 Module: popup-main
-Purpose: Bootstrap popup navigation, language/theme settings, and report modal submission behavior.
+Purpose: Bootstrap popup navigation (the This page, My Words and Discover tabs, and Settings behind the header gear), language/theme settings, and report modal submission behavior.
 
 Inputs:
 - Popup DOM events, runtime report responses, resolved display language and sync preferences, and user-agent/platform hints.
@@ -10,7 +10,7 @@ Outputs:
 
 Side Effects:
 - Mutates popup DOM state, shows the toggle shortcut the browser has set (`commands.getAll`), sets language-specific home/pricing/store-review links, requests coalesced page-word refreshes, and sends `reportReadingError` messages.
-- Starts the occasional store-review card (`popup-review`), the Japanese level question (`popup-level`), the occasional reading picks slip (`popup-reading-picks`), and the occasional word game slip in My Words (`popup-kakurenbo`).
+- Starts the occasional store-review card (`popup-review`), the Japanese level question (`popup-level`), the Discover tab (`popup-discover`, loaded when first shown), and the occasional word game slip in My Words (`popup-kakurenbo`).
 
 Failure Modes:
 - Runtime messaging failures keep the modal open with localized error feedback; raw backend messages are not displayed.
@@ -30,22 +30,32 @@ import {
   t,
   userFacingError,
 } from './popup-settings.js';
-import { initMyWordsTab, initPageTab, loadMyWords, relativeTime, requestPageWordsRefresh, whenPageListed } from './popup-vocab.js';
+import { initMyWordsTab, initPageTab, loadMyWords, relativeTime, requestPageWordsRefresh } from './popup-vocab.js';
 import { initReviewPrompt } from './popup-review.js';
 import { initLevelAsk } from './popup-level.js';
-import { initReadingPicks } from './popup-reading-picks.js';
+import { initDiscover, resetDiscover, showDiscover } from './popup-discover.js';
 import { initKakurenboSlip } from './popup-kakurenbo.js';
 import { storeReviewUrl } from './review-prompt.js';
 
 // ── Tab navigation ────────────────────────────────────────────────────────────
 
+// Settings has no tab of its own: the header gear opens it, and pressing the
+// gear again goes back to the tab that was open.
+let currentTab = 'page';
+let tabBeforeSettings = 'page';
+
 function selectTab(targetTab) {
+  if (targetTab === 'settings' && currentTab !== 'settings') tabBeforeSettings = currentTab;
+  currentTab = targetTab;
   document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === targetTab));
   document.querySelectorAll('.tab-content').forEach((c) => c.classList.toggle('active', c.id === `${targetTab}-tab`));
+  document.getElementById('settingsToggle')?.setAttribute('aria-pressed', String(targetTab === 'settings'));
   if (targetTab === 'words') {
     loadMyWords();
   } else if (targetTab === 'page') {
     requestPageWordsRefresh();
+  } else if (targetTab === 'discover') {
+    showDiscover();
   }
 }
 
@@ -53,6 +63,15 @@ function initTabNavigation() {
   document.querySelectorAll('.tab-btn').forEach((btn) => {
     btn.addEventListener('click', () => selectTab(btn.dataset.tab));
   });
+  document.getElementById('settingsToggle')?.addEventListener('click', () => {
+    selectTab(currentTab === 'settings' ? tabBeforeSettings : 'settings');
+  });
+}
+
+/** Open Settings at the reader's level (from Discover's "Choose level"). */
+function openLevelSetting() {
+  selectTab('settings');
+  document.querySelector('[data-level-ask][data-mode="change"]')?.scrollIntoView({ block: 'center' });
 }
 
 /** Language changes reopen Settings once; normal openings start on This page. */
@@ -148,15 +167,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSettingsForm();
     initMyWordsTab();
     initPageTab();
-    const levelAsk = initLevelAsk({ onChange: () => requestPageWordsRefresh() });
+    // A new level changes how much of each article the reader knows.
+    const levelAsk = initLevelAsk({ onChange: () => { requestPageWordsRefresh(); resetDiscover(); } });
+    initDiscover({ onChooseLevel: openLevelSetting });
     initTabNavigation();
     selectInitialTab();
     const reviewPrompt = initReviewPrompt({ store: reviewStore, language: TsukeruI18n.language() });
-    // The reading picks slip waits for the level question and review card, and the word game
-    // slip for all of them, so only one card shows.
+    // The word game slip waits for the level question and review card, so only one card shows.
     void Promise.allSettled([levelAsk, reviewPrompt])
-      .then(() => initReadingPicks({ language: TsukeruI18n.language(), pageListed: whenPageListed() }))
-      .catch(() => {})
       .then(() => initKakurenboSlip({ language: TsukeruI18n.language() }));
   } finally {
     document.documentElement.removeAttribute('data-i18n-pending');

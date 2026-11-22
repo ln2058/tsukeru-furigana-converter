@@ -33,9 +33,9 @@ async function saveState(state) {
   }
 }
 
-// One card per opening: a notice, the review card, the level question, or reading picks wins.
+// One card per opening: a notice, the review card, or the level question wins.
 function anotherCardShown() {
-  return ['status', 'reviewPrompt', 'pageLevelAsk', 'readingPicks'].some((id) => document.getElementById(id)?.hidden === false);
+  return ['status', 'reviewPrompt', 'pageLevelAsk'].some((id) => document.getElementById(id)?.hidden === false);
 }
 
 /** Run `seen` once My Words is on screen, now or when its tab is chosen. */
