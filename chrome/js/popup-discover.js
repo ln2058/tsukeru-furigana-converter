@@ -1,6 +1,6 @@
 /*
 Module: popup-discover
-Purpose: Show the Discover tab: today's picks (about five articles chosen for this reader, with why each was picked, how many are read and the reading streak), and one tap away the full feed filtered by level and category. Each card has its JLPT tag, how much of it the reader knows, and how many of their learning words it has.
+Purpose: Show the Discover tab: today's picks (about five articles chosen for this reader, with why each was picked, how many are read and the reading streak), and one tap away the full feed filtered by level and category. Each card has its picture (or a tile in its category's colour), its JLPT tag, how much of it the reader knows, and how many of their learning words it has.
 
 Inputs:
 - The Discover feed from the background (`discoverFeed`), the reader's word states (`wordsGetStates`), the vocabulary estimate (`vocabGet`), the stored hidden/opened record, reading history, today's picks, reading days and the website's streak, and popup clicks and scrolling.
@@ -20,6 +20,7 @@ Failure Modes:
 Security Notes:
 - Article text is inserted with textContent only. The background opens articles by ID from its stored feed; the popup's own fallback opens only that same feed's https address.
 - Word states, the reader's level and what Discover learned stay on this device; coverage and picks are worked out here.
+- Card pictures load only from EZFurigana's picture path, without cookies or a referrer; the article's own site is not contacted until the reader opens the article.
 */
 import { t } from './popup-settings.js';
 import { coverageWordsOf, pageKnownShare } from './popup-vocab.js';
@@ -28,6 +29,7 @@ import {
   DISCOVER_LEVELS,
   DISCOVER_STATE_KEY,
   articleRawWords,
+  discoverThumbUrl,
   markArticle,
   normalizeDiscoverState,
   selectArticles,
@@ -173,6 +175,35 @@ function span(className, text) {
 
 const outcomeOf = (id) => normalizeHistory(history)[id]?.o || '';
 
+const THUMB_CSS_PX = 72;
+
+/** The card's picture, over a tile in the category's colour with the site's first letter, which stays when there is no picture or it fails to load. */
+function thumbnail(article) {
+  const frame = document.createElement('span');
+  frame.className = 'discover-card-thumb';
+  frame.dataset.category = article.category || '';
+  frame.setAttribute('aria-hidden', 'true');
+  const initial = span('discover-card-thumb-initial', Array.from(article.source.name)[0] || '');
+  initial.lang = 'ja';
+  frame.append(initial);
+  const src = discoverThumbUrl(article);
+  if (!src) return frame;
+  const image = document.createElement('img');
+  image.alt = '';
+  image.width = THUMB_CSS_PX;
+  image.height = THUMB_CSS_PX;
+  image.loading = 'lazy';
+  image.decoding = 'async';
+  // No cookies or referrer go with the picture request.
+  image.crossOrigin = 'anonymous';
+  image.referrerPolicy = 'no-referrer';
+  image.addEventListener('load', () => { frame.dataset.loaded = 'true'; }, { once: true });
+  image.addEventListener('error', () => image.remove(), { once: true });
+  image.src = src;
+  frame.append(image);
+  return frame;
+}
+
 function card({ article, pct, label, learning }, reason = null) {
   const item = document.createElement('li');
   item.className = 'discover-card';
@@ -220,8 +251,10 @@ function card({ article, pct, label, learning }, reason = null) {
       : t('discover_learning_many', [String(learning)], `${learning} words you're learning`)));
   }
 
-  link.append(meta, title, excerpt, foot);
-  if (why) link.prepend(span('discover-card-reason', why));
+  const body = span('discover-card-body', '');
+  body.append(meta, title, excerpt, foot);
+  if (why) body.prepend(span('discover-card-reason', why));
+  link.append(thumbnail(article), body);
 
   const hide = document.createElement('button');
   hide.type = 'button';

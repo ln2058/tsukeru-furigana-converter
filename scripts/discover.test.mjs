@@ -51,6 +51,23 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(feed.prototype, false);
   });
 
+  test(`${browserName} Discover card pictures load only from the EZFurigana picture path`, () => {
+    const good = '/api/extension/discover/thumb/a1-0123456789abcdef.webp';
+    const feed = Discover.normalizeDiscoverFeed({
+      version: 1,
+      articles: [
+        article('p1', { thumb: good }),
+        article('p2', { thumb: 'https://example.jp/og.jpg' }),
+        article('p3', { thumb: '/api/extension/discover/thumb/../../account.webp' }),
+        article('p4', { thumb: null }),
+      ],
+    });
+    assert.deepEqual(feed.articles.map((entry) => entry.thumb), [good, '', '', '']);
+    assert.equal(Discover.discoverThumbUrl(feed.articles[0]), `https://www.ezfurigana.com${good}`);
+    assert.equal(Discover.discoverThumbUrl(feed.articles[1]), '');
+    assert.equal(Discover.discoverThumbUrl({ thumb: 'https://example.jp/og.jpg' }), '');
+  });
+
   test(`${browserName} Discover words take the page-word shape`, () => {
     const [entry] = Discover.normalizeDiscoverFeed({ version: 1, articles: [article('w1', {
       words: [['研究', '研究', 'けんきゅう', 'けんきゅう', 4, 1, 'Noun', 2], ['の', '', '', 'ノ', 0, null, 'Particle', 9], 'junk', [7]],

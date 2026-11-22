@@ -1,12 +1,12 @@
 /*
 Module: discover
-Purpose: Check the Discover feed, turn each article's word list into the page-word shape, and filter and order articles for the popup's Discover tab.
+Purpose: Check the Discover feed, turn each article's word list into the page-word shape, give each card picture's address, and filter and order articles for the popup's Discover tab.
 
 Inputs:
 - Feed bodies from EZFurigana's Discover endpoint (or the bundled prototype sample), the reader's coverage figure and learning-word count per article, the stored hidden/read record, and the chosen filters.
 
 Outputs:
-- A checked feed, raw page-style word lists, filtered and ordered article lists, and the next hidden/read record.
+- A checked feed, raw page-style word lists, card picture addresses on EZFurigana, filtered and ordered article lists, and the next hidden/read record.
 
 Side Effects:
 - None; the popup stores the hidden/read record in chrome.storage.local.
@@ -16,6 +16,7 @@ Failure Modes:
 
 Security Notes:
 - Article URLs must be https with a host and no credentials; every text field is bounded plain text, which the popup inserts with textContent.
+- Card pictures load only from EZFurigana's fixed picture path (the feed's `thumb` must match it), never from the article's site.
 */
 
 export const DISCOVER_STATE_KEY = 'discoverState';
@@ -34,6 +35,9 @@ const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const CATEGORY_SET = new Set(DISCOVER_CATEGORIES);
 const LEVEL_SET = new Set(DISCOVER_LEVELS);
 const STYLE_SET = new Set(DISCOVER_STYLES);
+// Card pictures are served by EZFurigana itself, named by their digest.
+const THUMB_ORIGIN = 'https://www.ezfurigana.com';
+const THUMB_PATH_RE = /^\/api\/extension\/discover\/thumb\/[A-Za-z0-9_-]{1,64}-[0-9a-f]{16}\.webp$/;
 
 function count(value, max = 100000000) {
   return Number.isInteger(value) && value > 0 ? Math.min(value, max) : 0;
@@ -88,6 +92,7 @@ function normalizeArticle(entry) {
     jlpt: LEVEL_SET.has(entry.jlpt) ? entry.jlpt : '',
     minutes: Number.isInteger(entry.minutes) && entry.minutes > 0 ? Math.min(entry.minutes, 120) : null,
     style: STYLE_SET.has(entry.style) ? entry.style : '',
+    thumb: typeof entry.thumb === 'string' && THUMB_PATH_RE.test(entry.thumb) ? entry.thumb : '',
     chars: count(entry.chars, 1000000),
     published_at: typeof entry.published_at === 'string' && Number.isFinite(Date.parse(entry.published_at)) ? entry.published_at.slice(0, 40) : '',
     // Where the article starts and ends on its page, for measuring how much of it was read.
@@ -114,6 +119,12 @@ export function normalizeDiscoverFeed(body) {
     articles.push(article);
   }
   return { version: 1, prototype: body.prototype === true, articles };
+}
+
+/** The address of an article's card picture, or '' when it has none. */
+export function discoverThumbUrl(article) {
+  const path = article?.thumb;
+  return typeof path === 'string' && THUMB_PATH_RE.test(path) ? `${THUMB_ORIGIN}${path}` : '';
 }
 
 /** An article's words in the shape the content script reports page words, for `coverageWordsOf`. */

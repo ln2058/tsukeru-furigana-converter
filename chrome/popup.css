@@ -531,7 +531,26 @@ a.vocab-action-btn { display: inline-flex; align-items: center; text-decoration:
 .discover-list[hidden] { display: none; }
 .discover-card { position: relative; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); animation: popup-notice-rise 140ms ease-out; transition: border-color .14s ease; }
 .discover-card:hover { border-color: var(--border-strong); }
-.discover-card-link { display: grid; gap: 4px; padding: 9px 32px 9px 11px; border-radius: 4px; color: inherit; text-decoration: none; }
+.discover-card-link { display: flex; align-items: flex-start; gap: 10px; padding: 9px 32px 9px 9px; border-radius: 4px; color: inherit; text-decoration: none; }
+.discover-card-body { display: grid; flex: 1; gap: 4px; min-width: 0; }
+/* The card picture sits on a tile in the category colour, which shows the site's first letter until the picture loads or when there is none. */
+.discover-card-thumb { --thumb-accent: var(--muted); position: relative; display: grid; flex: none; width: 72px; height: 72px; place-items: center; overflow: hidden; border-radius: 3px; background: color-mix(in srgb, var(--thumb-accent) 20%, var(--surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--thumb-accent) 28%, transparent); }
+.discover-card-thumb-initial { color: color-mix(in srgb, var(--thumb-accent) 70%, var(--ink)); font-size: 26px; font-weight: 700; line-height: 1; }
+.discover-card-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .18s ease; }
+.discover-card-thumb[data-loaded="true"] img { opacity: 1; }
+.discover-card[data-outcome="finished"] .discover-card-thumb { opacity: .7; filter: grayscale(.5); }
+.discover-card-thumb[data-category="learner"] { --thumb-accent: var(--success); }
+.discover-card-thumb[data-category="did_you_know"] { --thumb-accent: var(--star); }
+.discover-card-thumb[data-category="science"] { --thumb-accent: var(--blue); }
+.discover-card-thumb[data-category="tech"] { --thumb-accent: var(--ink); }
+.discover-card-thumb[data-category="news"] { --thumb-accent: var(--attention); }
+.discover-card-thumb[data-category="culture"] { --thumb-accent: var(--pos-adjective); }
+.discover-card-thumb[data-category="food_travel"] { --thumb-accent: var(--warning); }
+.discover-card-thumb[data-category="anime_games"] { --thumb-accent: var(--pos-verb); }
+.discover-card-thumb[data-category="entertainment_sports"] { --thumb-accent: var(--error); }
+.discover-card-thumb[data-category="life_society"] { --thumb-accent: var(--pos-noun); }
+.discover-card-thumb[data-category="stories"] { --thumb-accent: var(--pos-adverb); }
+@media (prefers-reduced-motion: reduce) { .discover-card-thumb img { transition: none; } }
 .discover-card-meta { display: flex; gap: 6px; min-width: 0; overflow: hidden; color: var(--muted); font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
 .discover-card-source { min-width: 0; overflow: hidden; color: var(--ink); text-overflow: ellipsis; }
 .discover-card-title { display: -webkit-box; overflow: hidden; color: var(--ink); font-size: 13px; font-weight: 700; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
