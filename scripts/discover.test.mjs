@@ -245,6 +245,14 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(Rank.voteOf(history, 'f1'), 0);
   });
 
+  test(`${browserName} the readable count leaves out texts far above the reader and ones already opened`, () => {
+    const history = Rank.noteOutcome({}, feedEntries()[0].article, 'opened', NOW);
+    // Ten entries: one far above the reader, one opened, one hidden.
+    assert.equal(Rank.readableCount(feedEntries(), history, { hidden: ['t1'] }), 7);
+    // Without a level there is nothing to judge readability by.
+    assert.equal(Rank.readableCount(feedEntries().map((entry) => ({ ...entry, pct: null })), {}), 0);
+  });
+
   test(`${browserName} recently read lists the latest finished articles`, () => {
     let history = {};
     ['r1', 'r2', 'r3'].forEach((id, index) => { history = Rank.noteOutcome(history, article(id), 'finished', NOW + index); });

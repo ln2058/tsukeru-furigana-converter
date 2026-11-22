@@ -6,7 +6,7 @@ Inputs:
 - The Discover feed from the background (`discoverFeed`), the reader's word states (`wordsGetStates`), the vocabulary estimate (`vocabGet`), the stored hidden/opened record, reading history, today's picks, reading days and the website's streak, and popup clicks and scrolling.
 
 Outputs:
-- Today's picks and recently read articles, or the filter chips and article list, loaded a page at a time as the list scrolls; `discoverOpen` requests for a chosen article, with where it was shown; `discoverNote` messages (picks shown, an article hidden, liked or disliked, the tab opened, all picks read, the full list opened, a reset of what Discover learned), each with the fixed dimensions of the anonymous success counters.
+- Today's picks and recently read articles, or the filter chips and article list, loaded a page at a time as the list scrolls; `discoverOpen` requests for a chosen article, with where it was shown; `discoverNote` messages (picks shown, an article hidden, liked or disliked, the tab opened, today's picks short of readable articles, all picks read, the full list opened, a level filter chosen, a reset of what Discover learned), each with the fixed dimensions of the anonymous success counters.
 - A mark on the Discover tab when a new day's picks are waiting.
 
 Side Effects:
@@ -38,6 +38,7 @@ import {
 import {
   DISCOVER_DAILY_KEY,
   DISCOVER_HISTORY_KEY,
+  DAILY_SIZE,
   calendarDay,
   combinedStreak,
   dailySet,
@@ -46,6 +47,7 @@ import {
   noteVote,
   pickDay,
   rankEntries,
+  readableCount,
   recentReads,
   voteOf,
 } from './discover-rank.js';
@@ -166,6 +168,9 @@ function scrollToTop() {
 }
 
 function setFilter(change) {
+  if (change.level && change.level !== 'for_you' && change.level !== filters.level) {
+    void send({ action: 'discoverNote', kind: 'level_filter', dims: { level: change.level } });
+  }
   filters = { ...filters, ...change };
   renderFilters();
   renderList();
@@ -441,6 +446,10 @@ async function ensureDaily(now) {
   if (daily?.picks.length) return;
   daily = { day, picks: dailySet(entries, history, { day, now, hidden: record.hidden }) };
   await chrome.storage.local.set({ [DISCOVER_DAILY_KEY]: daily }).catch(() => {});
+  // Fewer articles at the reader's level than places: unmet demand at that level.
+  if (readerLevel !== 'none' && readableCount(entries, history, { hidden: record.hidden }) < DAILY_SIZE) {
+    void send({ action: 'discoverNote', kind: 'picks_short', dims: { reader_level: readerLevel } });
+  }
   const byArticle = new Map(entries.map((entry) => [entry.article.id, entry]));
   daily.picks.forEach((pick, index) => {
     const entry = byArticle.get(pick.id);

@@ -288,6 +288,14 @@ function seen(history, id) {
   return outcome && outcome !== 'shown';
 }
 
+/** How many articles the daily set could choose that the reader can read (not opened or hidden before). */
+export function readableCount(entries, history, { hidden = [] } = {}) {
+  const record = normalizeHistory(history);
+  const hiddenIds = new Set(hidden);
+  return (Array.isArray(entries) ? entries : []).filter(({ article, pct }) => !hiddenIds.has(article.id)
+    && !seen(record, article.id) && typeof pct === 'number' && fitScore(pct) > 0).length;
+}
+
 /**
  * The day's picks ({ id, reason }), drawn with a generator seeded by `day`: articles not opened or
  * hidden before, preferring ones the reader can read (when a level is set), at most two per category

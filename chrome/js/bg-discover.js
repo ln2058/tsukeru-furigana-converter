@@ -3,7 +3,7 @@ Module: bg-discover
 Purpose: Own Discover's reading state in the background: the reading visit of each tab opened from Discover (its pages and how much was read), the reader's history that the ranker learns from (with their likes and dislikes), the days an article was read to the end (which join the My Words streak), the website's last streak, the days Discover was opened, and the queue of anonymous counts and success counters sent to EZFurigana.
 
 Inputs:
-- Articles opened from the popup (with where they were chosen), `discoverSession`, `discoverProgress`, `discoverVote` and `discoverMissing` messages from the content script on those tabs, `discoverNote` messages from the popup (shown, hidden, unhidden, liked, disliked, unvoted, tab, daily_done, all_viewed, reset), and the website's streak from the EZFurigana sync.
+- Articles opened from the popup (with where they were chosen), `discoverSession`, `discoverProgress`, `discoverVote` and `discoverMissing` messages from the content script on those tabs, `discoverNote` messages from the popup (shown, hidden, unhidden, liked, disliked, unvoted, tab, picks_short, daily_done, all_viewed, level_filter, reset), and the website's streak from the EZFurigana sync.
 - The stored Discover feed (`bg-api`), for the article behind an ID.
 
 Outputs:
@@ -318,6 +318,12 @@ export function noteDiscoverEvent(id, kind, now = Date.now(), dims = null) {
   }
   if (kind === 'daily_done' || kind === 'all_viewed') {
     return serial(() => queueStat(kind, now, {}, kind === 'daily_done' ? 'daily_done' : '')).then(() => true).finally(() => flushSoon(now));
+  }
+  if (kind === 'picks_short' || kind === 'level_filter') {
+    const kept = kind === 'picks_short'
+      ? (given.reader_level ? { reader_level: given.reader_level } : {})
+      : (given.level ? { level: given.level } : {});
+    return serial(() => queueStat(kind, now, kept, kind === 'picks_short' ? 'picks_short' : '')).then(() => true).finally(() => flushSoon(now));
   }
   if (!ID_RE.test(String(id))) return Promise.resolve(false);
   if (kind in VOTE_KINDS) {
