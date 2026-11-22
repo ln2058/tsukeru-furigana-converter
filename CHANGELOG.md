@@ -13,6 +13,7 @@
 
 - Settings moved from its tab to the gear button in the header.
 - Discover replaces the reading-picks suggestion on This page.
+- My Words says how many words one review on EZFurigana asks about (at most seven), not every word waiting.
 - The My Words review box no longer has a blue edge when words are due.
 - Discover sends anonymous usage counts to EZFurigana to improve it, without cookies, tracking or personal data. Article pictures load from EZFurigana, not from the article's site.
 
