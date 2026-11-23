@@ -1078,6 +1078,15 @@
   "discover_today_empty": {
     "message": "오늘은 새 추천이 없어요. 아래에서 모든 글을 볼 수 있어요."
   },
+  "discover_tadoku_title": {
+    "message": "쉬운 이야기부터 시작해요"
+  },
+  "discover_tadoku_text": {
+    "message": "Tadoku(にほんごたどく)에는 레벨별로 나뉜 초급자용 무료 단편 책이 있어요. 레벨 0이나 1부터 읽고, 읽기가 쉬워지면 여기 글로 돌아오세요."
+  },
+  "discover_tadoku_open": {
+    "message": "쉬운 이야기 찾기"
+  },
   "discover_streak_one": {
     "message": "1일 연속"
   },

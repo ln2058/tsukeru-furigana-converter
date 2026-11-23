@@ -1,6 +1,6 @@
 /*
 Module: popup-discover
-Purpose: Show the Discover tab: today's picks (about five articles chosen for this reader, with why each was picked, how many are read and the reading streak), the last few articles read to the end, and one tap away the full feed filtered by level and category. Each card has its picture (or a tile in its category's colour), its JLPT tag, how much of it the reader knows, and how many of their learning words it has; a finished article's card has like and dislike buttons.
+Purpose: Show the Discover tab: today's picks (about five articles chosen for this reader, with why each was picked, how many are read and the reading streak; for a beginner or N5 reader, a link to Tadoku's free graded books above them), the last few articles read to the end, and one tap away the full feed filtered by level and category. Each card has its picture (or a tile in its category's colour), its JLPT tag, how much of it the reader knows, and how many of their learning words it has; a finished article's card has like and dislike buttons.
 
 Inputs:
 - The Discover feed from the background (`discoverFeed`), the reader's word states (`wordsGetStates`), the vocabulary estimate (`vocabGet`), the stored hidden/opened record, reading history, today's picks, reading days and the website's streak, and popup clicks and scrolling.
@@ -53,6 +53,8 @@ import {
 } from './discover-rank.js';
 
 const PAGE_SIZE = 15;
+// Readers this early get Tadoku's graded books shown with their picks: easy articles are few.
+const TADOKU_LEVELS = new Set(['beginner', 'n5']);
 const RECENT_SIZE = 5;
 // Written by bg-discover.
 const READ_DAYS_KEY = 'discoverReadDays';
@@ -420,6 +422,7 @@ function setView(next) {
   view = next;
   const today = view === 'today';
   byId('discoverToday').hidden = !today;
+  byId('discoverTadoku').hidden = !today || !TADOKU_LEVELS.has(readerLevel);
   byId('discoverFilters').hidden = today;
   byId('discoverViewToggle').textContent = today
     ? t('discover_show_all', undefined, 'Show all articles')

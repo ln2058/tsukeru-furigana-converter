@@ -1078,6 +1078,15 @@
   "discover_today_empty": {
     "message": "No new picks today. See all articles below."
   },
+  "discover_tadoku_title": {
+    "message": "Easy stories to start with"
+  },
+  "discover_tadoku_text": {
+    "message": "Tadoku has free short books for beginners, sorted by level. Start at level 0 or 1, and come back to these articles as reading gets easier."
+  },
+  "discover_tadoku_open": {
+    "message": "Find easy stories"
+  },
   "discover_streak_one": {
     "message": "1-day streak"
   },

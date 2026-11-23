@@ -1078,6 +1078,15 @@
   "discover_today_empty": {
     "message": "今天没有新的推荐。可以在下方查看所有文章。"
   },
+  "discover_tadoku_title": {
+    "message": "从简单的故事开始"
+  },
+  "discover_tadoku_text": {
+    "message": "Tadoku（にほんごたどく）有按级别分类的免费初级短篇读物。从 0 级或 1 级开始读，读得轻松后再回来看这里的文章。"
+  },
+  "discover_tadoku_open": {
+    "message": "查找简单读物"
+  },
   "discover_streak_one": {
     "message": "连续 1 天"
   },

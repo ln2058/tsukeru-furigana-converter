@@ -1078,6 +1078,15 @@
   "discover_today_empty": {
     "message": "今日の新しいおすすめはありません。下からすべての記事を見られます。"
   },
+  "discover_tadoku_title": {
+    "message": "やさしい読み物から始めよう"
+  },
+  "discover_tadoku_text": {
+    "message": "「にほんごたどく」には、レベル別の無料の短い本がたくさんあります。レベル0か1から読んで、慣れてきたらここの記事も読んでみましょう。"
+  },
+  "discover_tadoku_open": {
+    "message": "読み物を探す"
+  },
   "discover_streak_one": {
     "message": "1日連続"
   },
