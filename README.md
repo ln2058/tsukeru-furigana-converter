@@ -61,7 +61,9 @@ Looking up a new kanji word, or revealing its reading in Study mode, adds it to 
 
 My Words shows how many words are due for review, with a link to review them on EZFurigana. Known words have their furigana hidden by default. Turn off **Hide furigana for known words** in Settings if you prefer to keep the readings visible.
 
-When you upgrade, eligible kanji words from the old saved vocabulary list move into Learning automatically. Words already in My Words keep their state. Kana-only entries stay in the old storage because My Words does not track them.
+When you upgrade, words from the old saved vocabulary list move into Learning automatically. Words already in My Words keep their state. Single-kana entries stay in the old storage because My Words does not track them.
+
+Words written only in kana, such as こんにちは and テレビ, are tracked too when you look them up, as long as they have at least two kana and are not grammar words like particles.
 
 **Export to Anki** opens EZFurigana's Anki export, which builds a deck with readings, meanings, and audio from your synced words. Under **Other formats**, **Download list (CSV)** saves the selected Learning or Known list with words, readings, definitions, and example sentences. CSV export can request missing definitions from EZFurigana and does not include audio.
 

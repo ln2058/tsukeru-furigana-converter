@@ -34,17 +34,27 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.deepEqual(plain(met.sentences), ['映画を見た。']);
   });
 
-  test(`${browserName} identifies words like EZFurigana: dictionary form and lookup reading, kanji only`, () => {
+  test(`${browserName} identifies words like EZFurigana: dictionary form and lookup reading, kana content words too`, () => {
     // The same id format and rules as the website's word-progress identityForPair.
     assert.equal(Words.identityForPair(' 食べる ', 'たべる').id, '食べる\u0000たべる');
-    assert.equal(Words.identityForPair('すごい', 'すごい'), null);
+    // A kana-only word of two or more kana; its reading is the word itself.
+    assert.equal(Words.identityForPair('すごい', 'すごい').id, 'すごい\u0000すごい');
+    assert.equal(Words.identityForPair('テレビ', 'てれび').reading, 'テレビ');
+    assert.equal(Words.identityForPair('ね', 'ね'), null);
+    assert.equal(Words.identityForWordInfo({ surface: 'ありがとう', reading: 'アリガトウ', pos: 'Interjection' }).id,
+      'ありがとう\u0000ありがとう');
+    assert.equal(Words.identityForWordInfo({ surface: 'から', reading: 'カラ', pos: 'Particle' }), null);
+    assert.equal(Words.identityForWordInfo({ surface: 'ます', reading: 'マス', pos: 'Aux verb' }), null);
+    assert.equal(Words.identityForWordInfo({ surface: 'ありがとう', reading: 'アリガトウ' }), null);
     assert.equal(Words.identityForPair('漢字', ''), null);
     assert.equal(Words.identityForPair('々', 'どう').word, '々');
     assert.equal(Words.identityForWordInfo({
       surface: '食べました', dictForm: '食べる', lookupReading: 'たべる', reading: 'たべました',
     }).id, '食べる\u0000たべる');
-    // A kana surface is not tracked even when its dictionary form has kanji.
+    // A kana surface needs a content-word part of speech; then it is its dictionary form.
     assert.equal(Words.identityForWordInfo({ surface: 'たべる', dictForm: '食べる', reading: 'たべる' }), null);
+    assert.equal(Words.identityForWordInfo({ surface: 'たべる', dictForm: '食べる', reading: 'たべる', pos: 'Verb' }).id,
+      '食べる\u0000たべる');
     // A number + counter unit is its counter, like the website.
     assert.equal(Words.identityForWordInfo({
       surface: '2024年', reading: 'にせんにじゅうよねん', counter: '年', counterReading: 'ねん',
@@ -83,19 +93,21 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(store.removed[record.id], undefined);
   });
 
-  test(`${browserName} retired saved words move into Learning; kana-only words stay in the old list`, () => {
+  test(`${browserName} retired saved words move into Learning; a single kana stays in the old list`, () => {
     const store = Words.createStore();
     Words.setWordState(store, { word: '先生', reading: 'せんせい' }, 'known', T0);
     const entries = [
       { word: '先生', reading: 'せんせい', timestamp: T0 - DAY },
       { word: 'すごい', reading: 'すごい' },
+      { word: 'ね', reading: 'ね' },
       { word: '漢字', reading: 'かんじ', jlpt: 3, pos: 'Noun', timestamp: T0 - DAY,
         sentence: '<ruby data-surface="漢字">漢字<rt>かんじ</rt></ruby>を&amp;書く', definitions: [{ glosses: ['kanji'] }] },
     ];
     for (let index = 0; index < 21; index += 1) entries.push({ word: `語${index}`, reading: `ご${index}` });
 
     const kept = Words.importVocabulary(store, entries, T0);
-    assert.deepEqual(plain(kept), [{ word: 'すごい', reading: 'すごい' }]);
+    assert.deepEqual(plain(kept), [{ word: 'ね', reading: 'ね' }]);
+    assert.equal(store.records['すごい\u0000すごい'].state, 'learning');
     assert.equal(store.records['先生\u0000せんせい'].state, 'known');
     const kanji = store.records['漢字\u0000かんじ'];
     assert.equal(kanji.state, 'learning');
@@ -106,7 +118,8 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(kanji.firstSeenAt, T0 - DAY);
     // New imports fall due 20 a day.
     assert.equal(Words.summarize(store, T0).due, 20);
-    assert.equal(Words.summarize(store, T0 + DAY).due, 22);
+    // 21 words, 漢字 and すごい.
+    assert.equal(Words.summarize(store, T0 + DAY).due, 23);
   });
 
   test(`${browserName} the badge shows one session of due words and clears once today's review is done`, () => {
@@ -189,8 +202,9 @@ for (const browserName of ['chrome', 'firefox']) {
       { word: '宿題', reading: 'しゅくだい', state: 'learning', dueAt: T0 },
       // Learning only on the website.
       { word: '先生', reading: 'せんせい', state: 'known', changedAt: T0 - DAY, knownAt: T0 - DAY },
-      // Not trackable; ignored.
+      // A kana-only word is kept; a single kana is not trackable and is ignored.
       { word: 'すごい', reading: 'すごい', state: 'learning' },
+      { word: 'ね', reading: 'ね', state: 'learning' },
     ], { startedAt, storeId: 'store-a', at: T0 + 20 });
 
     assert.equal(changed, true);
@@ -203,7 +217,8 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(store.records['映画\u0000えいが'], undefined);
     assert.equal(store.records['宿題\u0000しゅくだい'].state, 'known');
     assert.equal(store.records['先生\u0000せんせい'].state, 'known');
-    assert.equal(store.records['すごい\u0000すごい'], undefined);
+    assert.equal(store.records['すごい\u0000すごい'].state, 'learning');
+    assert.equal(store.records['ね\u0000ね'], undefined);
     assert.deepEqual(plain(store.meta), { pushedThrough: startedAt, storeId: 'store-a', lastSyncAt: T0 + 20 });
     // Only the word changed during the exchange goes out next time.
     assert.deepEqual(plain(Words.buildOutbox(store, 'store-a', T0 + 30).changes.map((change) => change.word)), ['宿題']);

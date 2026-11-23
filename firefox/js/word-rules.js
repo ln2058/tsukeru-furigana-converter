@@ -1,6 +1,6 @@
 /*
 Module: word-rules
-Purpose: Hold the My Words rules shared by the background store, content scripts, and popup: word identity, Learning/Known/hidden/removal changes, "Review first" picks (at most 20), easy words that are added only on a lookup on a later day, review counts, migration of the retired saved-word list, and the merge rules for syncing with EZFurigana.
+Purpose: Hold the My Words rules shared by the background store, content scripts, and popup: word identity (kana-only words of two or more kana count as content words, with the word as their reading), Learning/Known/hidden/removal changes, "Review first" picks (at most 20), easy words that are added only on a lookup on a later day, review counts, migration of the retired saved-word list, and the merge rules for syncing with EZFurigana.
 
 Inputs:
 - Word, reading, sentence, JLPT level, and state values from page lookups and popup actions.
@@ -15,7 +15,7 @@ Side Effects:
 - None outside the store object passed in; storage and messaging belong to the callers.
 
 Failure Modes:
-- Invalid words (no kanji, empty, or too long), states, and snapshot rows are ignored rather than stored.
+- Invalid words (no kanji and not a kana-only word of two or more kana, empty, or too long), states, and snapshot rows are ignored rather than stored.
 
 Security Notes:
 - Records keep only a word, its reading, its state, schedule times, a short definition, at most three short plain-text sentences (never one that is only the word) with the readings their words were given (checked [start, length, kana reading, word id] spans), and at most one bounded plain-text sentence explanation a Supporter asked for; no URLs or page markup.
@@ -23,6 +23,15 @@ Security Notes:
 */
 (function attachWordRules(root) {
   const KANJI_RE = /[㐀-䶿一-鿿豈-﫿々]/;
+  // A word written only in kana, as on EZFurigana (static/js/word-progress.js).
+  const KANA_WORD_RE = /^[ぁ-ゖゝゞァ-ヺーヽヾ]+$/;
+  const MIN_KANA_WORD_LENGTH = 2;
+  // Parts of speech (a page word's data-pos) a kana-only word is tracked for:
+  // content words, never particles, auxiliary verbs, affixes, numbers or symbols.
+  const KANA_WORD_POS = new Set([
+    'Noun', 'Pronoun', 'Verb', 'Adjective', 'Na-adj', 'Adverb', 'Adnominal', 'Conjunction', 'Interjection',
+    'Onomatopoeia', 'Keigo', 'Compound', 'Proverb',
+  ]);
   const STATES = new Set(['learning', 'known', 'ignored']);
   const MAX_FIELD_LENGTH = 100;
   const MAX_SENTENCES = 3;
@@ -57,25 +66,41 @@ Security Notes:
     return `${word}\u0000${reading}`;
   }
 
-  /** The {id, word, reading} identity of a pair, or null when it cannot be tracked. */
+  /** Whether a word is written only in kana and long enough to track (not ね or よ). */
+  function kanaOnlyWord(word) {
+    const text = normalize(word);
+    return KANA_WORD_RE.test(text) && charLength(text) >= MIN_KANA_WORD_LENGTH;
+  }
+
+  /** Whether a kana-only page word with this part of speech is a word to track. */
+  function kanaWordPos(pos) {
+    return KANA_WORD_POS.has(String(pos || '').split(',')[0].trim());
+  }
+
+  /**
+   * The {id, word, reading} identity of a pair, or null when it cannot be
+   * tracked. A kana-only word's reading is the word itself.
+   */
   function identityForPair(word, reading) {
     const normalizedWord = normalize(word);
-    const normalizedReading = normalize(reading);
-    if (!normalizedWord || !normalizedReading || !KANJI_RE.test(normalizedWord)) return null;
+    const normalizedReading = kanaOnlyWord(normalizedWord) ? normalizedWord : normalize(reading);
+    if (!normalizedWord || !normalizedReading) return null;
+    if (!KANJI_RE.test(normalizedWord) && !kanaOnlyWord(normalizedWord)) return null;
     if (charLength(normalizedWord) > MAX_FIELD_LENGTH || charLength(normalizedReading) > MAX_FIELD_LENGTH) return null;
     return { id: recordId(normalizedWord, normalizedReading), word: normalizedWord, reading: normalizedReading };
   }
 
   /**
    * Identity of an analysed page word: its dictionary form and lookup
-   * reading. Kana-only units are not tracked, as on the website. A number +
+   * reading. A unit written in kana is tracked only as a content word
+   * (`info.pos`), as on the website. A number +
    * counter unit (2024年, 3本) is its counter (年 ねん), so every number with
    * that counter is one word, as on the website.
    */
   function identityForWordInfo(info) {
     if (!info) return null;
     const surface = normalize(info.surface);
-    if (surface && !KANJI_RE.test(surface)) return null;
+    if (surface && !KANJI_RE.test(surface) && !kanaWordPos(info.pos)) return null;
     if (info.counter && info.counterReading) return identityForPair(info.counter, info.counterReading);
     return identityForPair(info.dictForm || info.word || info.surface, info.lookupReading || info.reading);
   }
@@ -567,7 +592,7 @@ Security Notes:
   /**
    * Move retired saved words into learning, like the website did. Words
    * already tracked keep their state; new ones fall due IMPORT_DUE_PER_DAY a
-   * day. Returns the entries that cannot be tracked (kana-only words).
+   * day. Returns the entries that cannot be tracked (a single kana, or no Japanese).
    */
   function importVocabulary(store, entries, at) {
     const kept = [];
@@ -804,6 +829,7 @@ Security Notes:
     isWordOnlySentence,
     identityForPair,
     identityForWordInfo,
+    kanaOnlyWord,
     importVocabulary,
     levelOf,
     listRecords,

@@ -541,7 +541,7 @@ function buildLedgerRow(record) {
   open.title = t('content_show_meaning', undefined, 'Show meaning');
   open.append(
     textSpan('word-ledger-word', record.word, 'ja'),
-    textSpan('word-ledger-reading', record.reading, 'ja')
+    textSpan('word-ledger-reading', record.reading === record.word ? '' : record.reading, 'ja')
   );
   open.addEventListener('click', () => toggleEntry(row, record, open));
   term.append(open, listenButton(record));
@@ -880,6 +880,7 @@ export function collectPageWords(rawWords) {
       dictForm: raw.word,
       lookupReading: raw.lookupReading,
       reading: raw.reading,
+      pos: raw.pos,
       counter: raw.counter,
       counterReading: raw.counterReading,
     });
@@ -1135,7 +1136,8 @@ function buildPageRow(word) {
   term.title = t('content_show_meaning', undefined, 'Show meaning');
   // 〜年 is the usual way to write a counter in dictionaries and textbooks.
   const label = word.examples ? `〜${word.word}` : word.word;
-  const reading = textSpan('result-word-reading', word.reading, 'ja');
+  // A kana-only word's reading is the word itself.
+  const reading = textSpan('result-word-reading', word.reading === word.word ? '' : word.reading, 'ja');
   const examples = counterExamples(word)
     .map((example) => (example.reading ? `${example.surface} ${example.reading}` : example.surface))
     .join(' · ');
@@ -1193,7 +1195,7 @@ function sortChip(word) {
   button.setAttribute('aria-pressed', pagePicked.has(word.id) ? 'true' : 'false');
   const term = textSpan('page-sort-word-term', word.word);
   term.lang = 'ja';
-  const reading = textSpan('page-sort-word-reading', word.reading);
+  const reading = textSpan('page-sort-word-reading', word.reading === word.word ? '' : word.reading);
   reading.lang = 'ja';
   button.append(term, reading);
   button.addEventListener('click', () => {
@@ -1363,8 +1365,9 @@ async function loadPageWords() {
     ? { ready: estimate.ready === true, ability: Number(estimate.ability), level: typeof estimate.level === 'string' ? estimate.level : null }
     : null;
   pageCoverageWords = coverageWordsOf(rawWords);
-  pageWords = words;
   pageStates = states?.success && states.states ? states.states : {};
+  // Kana-only words are listed once the reader has them in My Words, as on EZFurigana.
+  pageWords = words.filter((word) => !wordRules().kanaOnlyWord(word.word) || pageStates[word.id]);
   renderPage();
 }
 

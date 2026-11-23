@@ -34,7 +34,7 @@ Side Effects:
 
 Failure Modes:
 - Lookup/audio/report/enrichment requests can fail with preserved runtime status/rate-limit metadata and trigger fallback/no-op paths; stale or dismissed responses are ignored.
-- Missing metadata prevents capture/play actions for a target word; kana-only words are not tracked.
+- Missing metadata prevents capture/play actions for a target word; kana-only words are tracked only as content words of two or more kana (never particles or auxiliary verbs).
 - Audio playback failures fall back to speech synthesis.
 - Completed dictionary results are TTL-bound and size-bounded; shared in-flight requests are retained only until settlement.
 
@@ -2255,7 +2255,7 @@ function noteLocalWordState(record) {
 /**
  * Record that the reader checked a word on this page (dictionary lookup or
  * Study reveal). A new word starts learning; a known word stays known.
- * Resolves to {id, word, reading, state}, or null for kana-only words.
+ * Resolves to {id, word, reading, state}, or null for words that are not tracked.
  */
 async function captureCheckedWord(element, wordInfo, source) {
   // The vocabulary estimate counts the lookup and the text read around it.
