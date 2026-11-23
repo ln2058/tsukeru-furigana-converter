@@ -12,7 +12,7 @@ Outputs:
 
 Side Effects:
 - Toggles page classes/attributes/styles and shared runtime globals.
-- Starts/stops observers, long-page block state, dictionary popup behavior, lazy tooltip lookup sessions, and live appearance updates.
+- Starts/stops observers, long-page block state, dictionary popup behavior, lazy tooltip lookup sessions, live appearance updates, and the page dock (shown while the page has furigana).
 - Uses the shared i18n catalog for action-triggered feedback.
 - Applies My Words display settings (Study mode, hidden readings on known words) and follows word state changes from `chrome.storage.onChanged`.
 
@@ -138,6 +138,7 @@ async function applyFurigana(settings, { automatic = false } = {}) {
         return { pending: revealPending };
       } finally {
         if (activeApplyOperation === operation) activeApplyOperation = null;
+        refreshPageDock();
       }
       return;
     }
@@ -286,7 +287,13 @@ async function applyFurigana(settings, { automatic = false } = {}) {
   } finally {
     // Toasts manage their own lifetime; do not dismiss them here.
     if (activeApplyOperation === operation) activeApplyOperation = null;
+    refreshPageDock();
   }
+}
+
+/** Show or remove the page dock (content-dock.js) after furigana changed. */
+function refreshPageDock() {
+  if (typeof syncPageDock === 'function') syncPageDock().catch(() => {});
 }
 
 /**
@@ -336,6 +343,7 @@ function clearFurigana() {
   clearLongPageRuntime({ retainClassification: true });
   setHighlightMode('off');
   clearWordDisplaySettings();
+  refreshPageDock();
 }
 
 // Full DOM teardown — used before re-applying with changed settings.
@@ -374,6 +382,7 @@ function hardClearFurigana() {
   clearLongPageRuntime();
   setHighlightMode('off');
   clearWordDisplaySettings();
+  refreshPageDock();
 }
 
 // ── Initialization guard ──────────────────────────────────────────────────────

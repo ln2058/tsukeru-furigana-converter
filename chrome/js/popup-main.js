@@ -1,6 +1,6 @@
 /*
 Module: popup-main
-Purpose: Bootstrap popup navigation (the This page, My Words and Discover tabs, and Settings behind the header gear), language/theme settings, and report modal submission behavior.
+Purpose: Bootstrap popup navigation (the This page, My Words and Discover tabs, Settings behind the header gear, and the Supporter view behind the header star and the free account card's button), language/theme settings, and report modal submission behavior.
 
 Inputs:
 - Popup DOM events, runtime report responses, resolved display language and sync preferences, and user-agent/platform hints.
@@ -35,17 +35,20 @@ import { initReviewPrompt } from './popup-review.js';
 import { initLevelAsk } from './popup-level.js';
 import { initDiscover, resetDiscover, showDiscover } from './popup-discover.js';
 import { initKakurenboSlip } from './popup-kakurenbo.js';
+import { prefetchSupporterPerks, showSupporterView } from './popup-supporter.js';
 import { storeReviewUrl } from './review-prompt.js';
 
 // ── Tab navigation ────────────────────────────────────────────────────────────
 
-// Settings has no tab of its own: the header gear opens it, and pressing the
-// gear again goes back to the tab that was open.
+// Settings and the Supporter view have no tab of their own: the header gear
+// and star open them, and pressing the same button again goes back to the tab
+// that was open.
+const HEADER_VIEWS = new Set(['settings', 'supporter']);
 let currentTab = 'page';
-let tabBeforeSettings = 'page';
+let tabBeforeHeaderView = 'page';
 
 function selectTab(targetTab) {
-  if (targetTab === 'settings' && currentTab !== 'settings') tabBeforeSettings = currentTab;
+  if (HEADER_VIEWS.has(targetTab) && !HEADER_VIEWS.has(currentTab)) tabBeforeHeaderView = currentTab;
   currentTab = targetTab;
   document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === targetTab));
   document.querySelectorAll('.tab-content').forEach((c) => c.classList.toggle('active', c.id === `${targetTab}-tab`));
@@ -64,8 +67,31 @@ function initTabNavigation() {
     btn.addEventListener('click', () => selectTab(btn.dataset.tab));
   });
   document.getElementById('settingsToggle')?.addEventListener('click', () => {
-    selectTab(currentTab === 'settings' ? tabBeforeSettings : 'settings');
+    selectTab(currentTab === 'settings' ? tabBeforeHeaderView : 'settings');
   });
+  // The star keeps its pricing link for opening in a new tab; a plain click opens the view.
+  document.getElementById('header-supporter-link')?.addEventListener('click', (event) => {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    if (currentTab === 'supporter') {
+      selectTab(tabBeforeHeaderView);
+      return;
+    }
+    openSupporterView('header');
+  });
+  document.getElementById('supporterCardAction')?.addEventListener('click', (event) => {
+    if (supporterState !== 'free' || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    openSupporterView('account');
+  });
+}
+
+/** The Supporter view, for this browser's connection, opened from the star or the account card. */
+function openSupporterView(entry) {
+  supporterEntry = entry;
+  showSupporterView(supporterState, entry);
+  selectTab('supporter');
+  document.getElementById('supporter-tab')?.scrollIntoView({ block: 'start' });
 }
 
 /** Open Settings at the reader's level (from Discover's "Choose level"). */
@@ -128,9 +154,10 @@ function getEzfuriganaHomeUrl() {
   return TsukeruI18n.websiteUrl();
 }
 
-function getEzfuriganaPricingUrl() {
-  // `placement` lets the pricing page count the click; the extension reports nothing.
-  return TsukeruI18n.websiteUrl('/pricing?from=tsukeru&placement=extension_account');
+// `placement` lets the pricing page count the click (the header star or the
+// account card); the extension reports nothing.
+function getEzfuriganaPricingUrl(placement = 'extension_account') {
+  return TsukeruI18n.websiteUrl(`/pricing?from=tsukeru&placement=${placement}`);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -157,9 +184,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const supporterLink = document.getElementById('header-supporter-link');
-    if (supporterLink) supporterLink.href = getEzfuriganaPricingUrl();
+    if (supporterLink) supporterLink.href = getEzfuriganaPricingUrl('extension_header');
     // Never let the plan check stop the popup from starting.
     initSupporterCard();
+    prefetchSupporterPerks();
 
     const shortcutText = document.getElementById('shortcut-text');
     if (shortcutText) void showToggleShortcut(shortcutText);
@@ -205,17 +233,24 @@ const SUPPORTER_CARD = {
   expired: { text: () => t('supporter_state_expired', undefined, 'Your Supporter connection expired. Open EZFurigana once to reconnect.'), action: () => t('supporter_reconnect', undefined, 'Reconnect'), path: '/account?tsukeru=connect' },
 };
 
+// The connection the account card shows, and where the Supporter view was opened.
+let supporterState = 'none';
+let supporterEntry = 'header';
+
 /** Show how this browser is connected; the header star follows the same answer. */
 function renderSupporterCard(status) {
   const card = document.getElementById('supporterCard');
   const state = SUPPORTER_CARD[status?.state] ? status.state : 'none';
+  supporterState = state;
+  // An open Supporter view follows a connection that finishes meanwhile.
+  if (currentTab === 'supporter') showSupporterView(state, supporterEntry);
   const copy = SUPPORTER_CARD[state];
   const supporterLink = document.getElementById('header-supporter-link');
   if (supporterLink) {
     const supporter = state === 'supporter';
     supporterLink.classList.toggle('is-supporter', supporter);
     // websiteUrl keeps the display language's prefix (/zh/account); new URL('/account', …) would drop it.
-    supporterLink.href = supporter ? TsukeruI18n.websiteUrl('/account') : getEzfuriganaPricingUrl();
+    supporterLink.href = supporter ? TsukeruI18n.websiteUrl('/account') : getEzfuriganaPricingUrl('extension_header');
     supporterLink.title = supporter
       ? t('header_title_supporter_active', undefined, "You're a Supporter")
       : t('header_title_become_supporter', undefined, 'Become a Supporter');

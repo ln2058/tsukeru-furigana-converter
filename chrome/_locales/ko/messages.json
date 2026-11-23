@@ -96,6 +96,12 @@
   "settings_watch_dynamic_hint": {
     "message": "YouTube, X 등에서 피드, 댓글, 채팅이 새로 나타날 때 후리가나를 추가합니다."
   },
+  "settings_page_dock": {
+    "message": "페이지 버튼"
+  },
+  "settings_page_dock_hint": {
+    "message": "후리가나를 단 페이지 오른쪽 아래에 후리가나 켜기/끄기, 읽기, 설명 버튼을 표시합니다."
+  },
   "settings_auto_site": {
     "message": "이 사이트에서는 항상 후리가나 추가"
   },
@@ -734,6 +740,30 @@
   "content_review_first_full": {
     "message": "먼저 복습 목록이 가득 찼습니다($1개 단어)"
   },
+  "content_dock_furigana_hide": {
+    "message": "후리가나 숨기기"
+  },
+  "content_dock_furigana_show": {
+    "message": "후리가나 표시"
+  },
+  "content_dock_listen": {
+    "message": "선택한 문장 읽기"
+  },
+  "content_dock_explain": {
+    "message": "선택한 문장 설명하기"
+  },
+  "content_dock_collapse": {
+    "message": "버튼 접기"
+  },
+  "content_dock_expand": {
+    "message": "Tsukeru 버튼 표시"
+  },
+  "content_dock_select_hint": {
+    "message": "먼저 페이지에서 일본어를 선택하세요($1자까지)."
+  },
+  "content_dock_too_long": {
+    "message": "선택한 부분이 너무 깁니다. $1자까지 선택하세요."
+  },
   "content_state_tap_to_hide": {
     "message": "한 번 더 누르면 내 단어에서 숨깁니다"
   },
@@ -984,6 +1014,81 @@
   },
   "supporter_become": {
     "message": "서포터 되기"
+  },
+  "supporter_view_title": {
+    "message": "서포터"
+  },
+  "supporter_view_lede": {
+    "message": "서포터가 되면 매일 공부할 때 쓸 수 있는 횟수가 늘어납니다. 여러분의 후원 덕분에 Tsukeru는 누구나 무료로 계속 쓸 수 있습니다."
+  },
+  "supporter_view_lede_supporter": {
+    "message": "서포터가 되어 주셔서 감사합니다!"
+  },
+  "supporter_view_sign_in_count": {
+    "message": "무료로 로그인하면 문장 읽기와 설명을 각각 일주일에 $1문장까지 써 볼 수 있습니다."
+  },
+  "supporter_view_sign_in": {
+    "message": "무료로 로그인하면 문장 읽기와 설명을 써 볼 수 있습니다."
+  },
+  "supporter_view_col_free": {
+    "message": "무료 계정"
+  },
+  "supporter_view_col_supporter": {
+    "message": "서포터"
+  },
+  "supporter_view_audio": {
+    "message": "문장 읽기"
+  },
+  "supporter_view_audio_desc": {
+    "message": "자연스러운 일본어 음성으로 문장을 읽어 줍니다."
+  },
+  "supporter_view_audio_free": {
+    "message": "새 문장 주 $1개"
+  },
+  "supporter_view_audio_supporter": {
+    "message": "새 문장 월 약 $1개"
+  },
+  "supporter_view_explain": {
+    "message": "문장 설명"
+  },
+  "supporter_view_explain_desc": {
+    "message": "문장을 한국어로 옮기고, 각 부분이 무슨 뜻인지 풀어 줍니다."
+  },
+  "supporter_view_explain_free": {
+    "message": "주 $1회"
+  },
+  "supporter_view_explain_supporter": {
+    "message": "하루 $1회"
+  },
+  "supporter_view_dictionary": {
+    "message": "한국어 사전"
+  },
+  "supporter_view_dictionary_desc": {
+    "message": "단어 뜻을 영어 대신 한국어로 보여 줍니다."
+  },
+  "supporter_view_dictionary_free": {
+    "message": "새 단어 주 $1개"
+  },
+  "supporter_view_dictionary_supporter": {
+    "message": "새 단어 하루 $1개"
+  },
+  "supporter_view_always_free_label": {
+    "message": "언제나 무료:"
+  },
+  "supporter_view_always_free": {
+    "message": "후리가나, 사전, 단어 발음, 내 단어, 복습."
+  },
+  "supporter_view_website_label": {
+    "message": "EZFurigana에서도:"
+  },
+  "supporter_view_website": {
+    "message": "더 큰 파일, 더 많은 PDF·OCR·전자책 다운로드, 긴 글의 AI 읽기 개선."
+  },
+  "supporter_view_solo": {
+    "message": "1인 개발자를 응원할 수 있습니다"
+  },
+  "supporter_view_plans": {
+    "message": "요금제와 가격 보기"
   },
   "supporter_sign_in": {
     "message": "로그인"

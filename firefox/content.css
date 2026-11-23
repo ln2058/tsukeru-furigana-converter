@@ -1,6 +1,7 @@
 /* Shared tokens for every injected UI surface, including when custom page styling is disabled. */
 .tsukeru-word-tooltip,
 .tsukeru-content-report-modal,
+.tsukeru-page-dock,
 .tsukeru-toast {
   color-scheme: light !important;
   --tsukeru-group-n1: #f0a8a0;
@@ -48,6 +49,7 @@
 @media (prefers-color-scheme: dark) {
   .tsukeru-word-tooltip:not([data-tsukeru-theme="light"]),
   .tsukeru-content-report-modal:not([data-tsukeru-theme="light"]),
+  .tsukeru-page-dock:not([data-tsukeru-theme="light"]),
   .tsukeru-toast:not([data-tsukeru-theme="light"]) {
     color-scheme: dark !important;
     --tsukeru-group-n1: #77393a;
@@ -94,6 +96,7 @@
 /* Keep this palette identical to the system-dark UI block (theme.test.mjs). */
 .tsukeru-word-tooltip[data-tsukeru-theme="dark"],
 .tsukeru-content-report-modal[data-tsukeru-theme="dark"],
+.tsukeru-page-dock[data-tsukeru-theme="dark"],
 .tsukeru-toast[data-tsukeru-theme="dark"] {
   color-scheme: dark !important;
   --tsukeru-group-n1: #77393a;
@@ -659,17 +662,15 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 .tsukeru-word-tooltip .tsukeru-example-audio { position: relative !important; top: -0.08em !important; width: 24px !important; height: 24px !important; margin-left: 2px !important; vertical-align: middle !important; }
 .tsukeru-word-tooltip .tsukeru-tooltip-report-btn { color: var(--tsukeru-attention) !important; }
 
-/* Learning / Known switch: the same two-state control as EZFurigana's dictionary popup. */
+/* Learning / Known switch: the same two-state control as EZFurigana's dictionary popup, on the left of the footer. */
 .tsukeru-word-tooltip .tooltip-progress {
   display: inline-flex !important;
   flex: 0 0 auto !important;
-  margin-right: 4px !important;
   overflow: hidden !important;
   border: 1px solid var(--tsukeru-border) !important;
   border-radius: 4px !important;
   background: var(--tsukeru-surface) !important;
 }
-.tsukeru-word-tooltip .tooltip-progress-row { display: flex !important; width: max-content !important; margin: 0 0 10px !important; }
 .tsukeru-word-tooltip .tooltip-progress-option {
   min-height: 26px !important;
   padding: 0 9px !important;
@@ -698,11 +699,30 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tsukeru-success) 42%, transparent) !important;
   color: var(--tsukeru-success) !important;
 }
-/* "Review first", bottom right under both tabs, as on EZFurigana. */
-.tsukeru-word-tooltip .tooltip-progress-foot { display: flex !important; align-items: center !important; justify-content: flex-end !important; gap: 8px !important; margin-top: 10px !important; }
-.tsukeru-word-tooltip .tooltip-review-first-note { color: var(--tsukeru-secondary) !important; font-size: 11px !important; }
+/* The footer under both tabs, as on EZFurigana: the Learning / Known switch on
+   the left and "Review first" on the right, with the "full" note on its own
+   line above them while it shows. The footer stays at the popup's bottom edge while the content scrolls, and settles in
+   place at the end. The popup's bottom padding moves into the footer, so the
+   sticky edge is the popup's own edge in every browser. */
+.tsukeru-word-tooltip:has(> .tooltip-progress-foot) { padding-bottom: 0 !important; }
+.tsukeru-word-tooltip .tooltip-progress-foot {
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 2 !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 6px 8px !important;
+  margin: 10px -14px 0 !important;
+  padding: 8px 14px 14px !important;
+  border-top: 1px solid var(--tsukeru-border) !important;
+  background-color: var(--tsukeru-paper) !important;
+}
+.tsukeru-word-tooltip .tooltip-review-first-note { flex: 1 0 100% !important; color: var(--tsukeru-secondary) !important; font-size: 11px !important; text-align: right !important; }
+.tsukeru-word-tooltip .tooltip-review-first-note:empty { display: none !important; }
 .tsukeru-word-tooltip .tooltip-review-first {
   flex: 0 0 auto !important;
+  margin-left: auto !important;
   min-height: 26px !important;
   padding: 0 10px !important;
   border: 1px solid var(--tsukeru-border) !important;
@@ -1042,17 +1062,17 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 .tsukeru-word-tooltip .tsukeru-explain-btn:focus-visible,
 .tsukeru-word-tooltip .tsukeru-explain-btn[aria-expanded="true"] { border-color: var(--tsukeru-blue) !important; background: var(--tsukeru-blue-soft) !important; }
 .tsukeru-word-tooltip .tsukeru-explain-btn:disabled { cursor: progress !important; opacity: .7 !important; }
-.tsukeru-word-tooltip .tsukeru-explain-notice { margin: -4px 0 10px !important; padding: 8px 10px !important; border: 1px solid var(--tsukeru-blue-border) !important; border-radius: 3px !important; background: var(--tsukeru-blue-soft) !important; color: var(--tsukeru-text) !important; font-size: .92em !important; line-height: 1.5 !important; }
-.tsukeru-word-tooltip .tsukeru-explain-notice p,
-.tsukeru-word-tooltip .tsukeru-explain-result p { margin: 0 !important; padding: 0 !important; }
-.tsukeru-word-tooltip .tsukeru-explain-continue { margin: 6px 0 0 !important; padding: 3px 10px !important; border: 1px solid var(--tsukeru-blue) !important; border-radius: 3px !important; background: var(--tsukeru-blue) !important; color: #fff !important; cursor: pointer !important; font: inherit !important; font-weight: 650 !important; }
-.tsukeru-word-tooltip .tsukeru-explain-result { margin: -4px 0 10px !important; padding: 6px 10px !important; border-left: 2px solid var(--tsukeru-blue) !important; color: var(--tsukeru-text) !important; font-size: .96em !important; line-height: 1.55 !important; }
-.tsukeru-word-tooltip .tsukeru-explain-result .tsukeru-explain-translation { color: var(--tsukeru-ink) !important; font-weight: 650 !important; }
-.tsukeru-word-tooltip .tsukeru-explain-points { margin: 6px 0 0 !important; padding: 0 !important; list-style: none !important; }
-.tsukeru-word-tooltip .tsukeru-explain-points li { margin: 4px 0 0 !important; padding: 0 !important; list-style: none !important; }
-.tsukeru-word-tooltip .tsukeru-explain-piece { display: block !important; color: var(--tsukeru-blue-readable) !important; font-weight: 650 !important; }
-.tsukeru-word-tooltip .tsukeru-explain-result .tsukeru-explain-note { margin-top: 6px !important; color: var(--tsukeru-secondary) !important; }
-.tsukeru-word-tooltip .tsukeru-explain-result .tsukeru-explain-ai { margin-top: 6px !important; color: var(--tsukeru-secondary) !important; font-family: var(--tsukeru-mono) !important; font-size: 10px !important; letter-spacing: .03em !important; }
+.tsukeru-word-tooltip .tsukeru-explain-notice, .tsukeru-page-dock .tsukeru-explain-notice { margin: -4px 0 10px !important; padding: 8px 10px !important; border: 1px solid var(--tsukeru-blue-border) !important; border-radius: 3px !important; background: var(--tsukeru-blue-soft) !important; color: var(--tsukeru-text) !important; font-size: .92em !important; line-height: 1.5 !important; }
+.tsukeru-word-tooltip .tsukeru-explain-notice p, .tsukeru-page-dock .tsukeru-explain-notice p,
+.tsukeru-word-tooltip .tsukeru-explain-result p, .tsukeru-page-dock .tsukeru-explain-result p { margin: 0 !important; padding: 0 !important; }
+.tsukeru-word-tooltip .tsukeru-explain-continue, .tsukeru-page-dock .tsukeru-explain-continue { margin: 6px 0 0 !important; padding: 3px 10px !important; border: 1px solid var(--tsukeru-blue) !important; border-radius: 3px !important; background: var(--tsukeru-blue) !important; color: #fff !important; cursor: pointer !important; font: inherit !important; font-weight: 650 !important; }
+.tsukeru-word-tooltip .tsukeru-explain-result, .tsukeru-page-dock .tsukeru-explain-result { margin: -4px 0 10px !important; padding: 6px 10px !important; border-left: 2px solid var(--tsukeru-blue) !important; color: var(--tsukeru-text) !important; font-size: .96em !important; line-height: 1.55 !important; }
+.tsukeru-word-tooltip .tsukeru-explain-result .tsukeru-explain-translation, .tsukeru-page-dock .tsukeru-explain-result .tsukeru-explain-translation { color: var(--tsukeru-ink) !important; font-weight: 650 !important; }
+.tsukeru-word-tooltip .tsukeru-explain-points, .tsukeru-page-dock .tsukeru-explain-points { margin: 6px 0 0 !important; padding: 0 !important; list-style: none !important; }
+.tsukeru-word-tooltip .tsukeru-explain-points li, .tsukeru-page-dock .tsukeru-explain-points li { margin: 4px 0 0 !important; padding: 0 !important; list-style: none !important; }
+.tsukeru-word-tooltip .tsukeru-explain-piece, .tsukeru-page-dock .tsukeru-explain-piece { display: block !important; color: var(--tsukeru-blue-readable) !important; font-weight: 650 !important; }
+.tsukeru-word-tooltip .tsukeru-explain-result .tsukeru-explain-note, .tsukeru-page-dock .tsukeru-explain-result .tsukeru-explain-note { margin-top: 6px !important; color: var(--tsukeru-secondary) !important; }
+.tsukeru-word-tooltip .tsukeru-explain-result .tsukeru-explain-ai, .tsukeru-page-dock .tsukeru-explain-result .tsukeru-explain-ai { margin-top: 6px !important; color: var(--tsukeru-secondary) !important; font-family: var(--tsukeru-mono) !important; font-size: 10px !important; letter-spacing: .03em !important; }
 .tsukeru-word-tooltip .tsukeru-form-surface { color: var(--tsukeru-text) !important; font-weight: 500 !important; }
 .tsukeru-word-tooltip .tsukeru-form-inflection { color: var(--tsukeru-secondary) !important; }
 /* A narrow row wraps between morae, never inside one (し|ゅ). */
@@ -1133,6 +1153,8 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
     font-size: 15px !important;
     transform: none !important;
   }
+  .tsukeru-word-tooltip.tsukeru-sheet:has(> .tooltip-progress-foot) { padding-bottom: 0 !important; }
+  .tsukeru-word-tooltip.tsukeru-sheet .tooltip-progress-foot { margin: 10px -18px 0 !important; padding: 8px 18px calc(18px + env(safe-area-inset-bottom, 0px)) !important; }
   .tsukeru-word-tooltip.tsukeru-sheet .tooltip-word-label { font-size: 23px !important; }
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-reading-text { font-size: 18px !important; }
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-sense-gloss { font-size: 16.5px !important; }
@@ -1159,4 +1181,172 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-stroke-btn { min-height: 44px !important; }
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-dropdown-toggle,
   .tsukeru-word-tooltip.tsukeru-sheet .tsukeru-sense-more-toggle { font-size: 12px !important; }
+}
+/* Page dock (content-dock.js): furigana on/off, Listen and Explain for the
+   selected text, as one bar of the website's metal keys at the bottom right
+   (the account page's feedback icon), with its panel above. */
+.tsukeru-page-dock {
+  position: fixed !important;
+  right: 24px !important;
+  bottom: 24px !important;
+  z-index: 2147483645 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  gap: 8px !important;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: none !important;
+  color: var(--tsukeru-text) !important;
+  font-family: var(--tsukeru-sans) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  line-height: 1.45 !important;
+  letter-spacing: normal !important;
+  direction: ltr !important;
+  text-align: left !important;
+  pointer-events: none !important;
+}
+.tsukeru-page-dock > * { pointer-events: auto !important; }
+.tsukeru-page-dock *,
+.tsukeru-page-dock *::before,
+.tsukeru-page-dock *::after { box-sizing: border-box !important; }
+.tsukeru-page-dock .tsukeru-hidden,
+.tsukeru-page-dock .tsukeru-dock-count.tsukeru-hidden,
+.tsukeru-page-dock[data-collapsed="true"] .tsukeru-dock-bar,
+.tsukeru-page-dock[data-collapsed="true"] .tsukeru-dock-panel,
+.tsukeru-page-dock:not([data-collapsed="true"]) .tsukeru-dock-launcher { display: none !important; }
+
+.tsukeru-page-dock .tsukeru-dock-bar,
+.tsukeru-page-dock .tsukeru-dock-launcher {
+  border: 1px solid var(--tsukeru-border-strong) !important;
+  border-radius: 6px !important;
+  background: linear-gradient(180deg, var(--tsukeru-metal-highlight), var(--tsukeru-metal)) !important;
+  box-shadow: inset 0 1px 0 var(--tsukeru-metal-highlight), inset 0 -1px 0 var(--tsukeru-metal-shadow), var(--tsukeru-toast-shadow) !important;
+}
+.tsukeru-page-dock .tsukeru-dock-bar {
+  display: flex !important;
+  align-items: stretch !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+.tsukeru-page-dock .tsukeru-dock-count {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 0 9px !important;
+  border-right: 1px solid var(--tsukeru-metal-shadow) !important;
+  color: var(--tsukeru-secondary) !important;
+  font-family: var(--tsukeru-mono) !important;
+  font-size: 11px !important;
+  font-variant-numeric: tabular-nums !important;
+  letter-spacing: .02em !important;
+  white-space: nowrap !important;
+}
+.tsukeru-page-dock .tsukeru-dock-count[data-over="true"] { color: var(--tsukeru-attention) !important; }
+.tsukeru-page-dock .tsukeru-dock-button {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  width: 44px !important;
+  min-width: 0 !important;
+  height: 44px !important;
+  min-height: 0 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--tsukeru-ink) !important;
+  cursor: pointer !important;
+  font: inherit !important;
+  line-height: 1 !important;
+  text-transform: none !important;
+  transition: color .12s ease, background-color .12s ease !important;
+}
+.tsukeru-page-dock .tsukeru-dock-bar .tsukeru-dock-button + .tsukeru-dock-button { border-left: 1px solid var(--tsukeru-metal-shadow) !important; }
+.tsukeru-page-dock .tsukeru-dock-button svg {
+  display: block !important;
+  width: 18px !important;
+  height: 16px !important;
+  margin: 0 !important;
+  fill: currentColor !important;
+  stroke: none !important;
+}
+.tsukeru-page-dock .tsukeru-dock-button:hover { background: var(--tsukeru-surface-hover) !important; }
+.tsukeru-page-dock .tsukeru-dock-button:focus-visible { outline: 2px solid var(--tsukeru-blue) !important; outline-offset: -2px !important; }
+/* Icons keep whole 2 px cells: the eye and Explain are 11 cells wide. */
+.tsukeru-page-dock .tsukeru-dock-furigana svg { width: 22px !important; height: 18px !important; }
+.tsukeru-page-dock .tsukeru-dock-explain svg { width: 22px !important; height: 20px !important; }
+/* Furigana on: an open eye, pressed in blue. Off: a closed eye. */
+.tsukeru-page-dock .tsukeru-dock-furigana[aria-pressed="true"] { background: var(--tsukeru-blue-soft) !important; color: var(--tsukeru-blue-readable) !important; }
+.tsukeru-page-dock .tsukeru-dock-furigana[aria-pressed="true"] .tsukeru-dock-eye-closed,
+.tsukeru-page-dock .tsukeru-dock-furigana:not([aria-pressed="true"]) .tsukeru-dock-eye-open { display: none !important; }
+/* Listen and Explain turn blue while the selection can be sent. */
+.tsukeru-page-dock .tsukeru-dock-button[data-ready="true"] { color: var(--tsukeru-blue-readable) !important; }
+.tsukeru-page-dock .tsukeru-dock-listen.speaking,
+.tsukeru-page-dock .tsukeru-dock-explain[aria-busy="true"],
+.tsukeru-page-dock .tsukeru-dock-explain[aria-expanded="true"] { background: var(--tsukeru-blue-soft) !important; color: var(--tsukeru-blue-readable) !important; }
+.tsukeru-page-dock .tsukeru-dock-explain[aria-busy="true"] { cursor: progress !important; }
+.tsukeru-page-dock .tsukeru-dock-collapse { width: 28px !important; color: var(--tsukeru-secondary) !important; }
+.tsukeru-page-dock .tsukeru-dock-collapse svg { width: 14px !important; height: 12px !important; }
+.tsukeru-page-dock .tsukeru-dock-launcher { display: inline-flex !important; border-radius: 6px !important; color: var(--tsukeru-blue-readable) !important; }
+/* The collapsed dock's ふ in the extension icon's blue, on whole 2 px cells. */
+.tsukeru-page-dock .tsukeru-dock-launcher svg { width: 26px !important; height: 22px !important; }
+
+.tsukeru-page-dock .tsukeru-dock-panel {
+  position: relative !important;
+  width: min(320px, calc(100vw - 48px)) !important;
+  max-height: min(50vh, 420px) !important;
+  margin: 0 !important;
+  padding: 12px 36px 12px 14px !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  border: 1px solid var(--tsukeru-border-strong) !important;
+  border-radius: 4px !important;
+  background-color: var(--tsukeru-paper) !important;
+  box-shadow: var(--tsukeru-tooltip-shadow) !important;
+  color: var(--tsukeru-text) !important;
+}
+.tsukeru-page-dock .tsukeru-dock-panel-close {
+  position: absolute !important;
+  top: 6px !important;
+  right: 6px !important;
+  display: inline-flex !important;
+  width: 26px !important;
+  height: 26px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1px solid transparent !important;
+  border-radius: 3px !important;
+  background: transparent !important;
+  color: var(--tsukeru-secondary) !important;
+  cursor: pointer !important;
+  font: inherit !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+}
+.tsukeru-page-dock .tsukeru-dock-panel-close:hover { background: var(--tsukeru-surface-hover) !important; color: var(--tsukeru-text) !important; }
+.tsukeru-page-dock .tsukeru-dock-panel-close:focus-visible { outline: 2px solid var(--tsukeru-blue) !important; outline-offset: 1px !important; }
+.tsukeru-page-dock .tsukeru-dock-quote { margin: 0 0 8px !important; padding: 0 !important; color: var(--tsukeru-text) !important; font-size: 15px !important; line-height: 1.6 !important; overflow-wrap: anywhere !important; }
+.tsukeru-page-dock .tsukeru-dock-hint { margin: 0 !important; padding: 0 !important; color: var(--tsukeru-secondary) !important; font-size: 12px !important; line-height: 1.5 !important; }
+.tsukeru-page-dock .tsukeru-explain-notice,
+.tsukeru-page-dock .tsukeru-explain-result { margin: 0 !important; }
+
+/* Desktop first: no dock beside the mobile bottom sheet, and none in print. */
+@media (max-width: 600px) {
+  .tsukeru-page-dock { display: none !important; }
+}
+@media print {
+  .tsukeru-page-dock { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tsukeru-page-dock .tsukeru-dock-button { transition: none !important; }
 }

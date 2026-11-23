@@ -106,6 +106,14 @@
           <input type="checkbox" id="watchDynamic" role="switch" aria-labelledby="watchDynamicLabel" aria-describedby="watchDynamicHint">
           <span class="study-switch-track" aria-hidden="true"></span>
         </label>
+        <label class="setting-switch" for="pageDock">
+          <span class="setting-switch-text">
+            <span id="pageDockLabel" class="setting-switch-label" data-i18n="settings_page_dock">Page buttons</span>
+            <span id="pageDockHint" class="setting-hint" data-i18n="settings_page_dock_hint">Furigana on/off, Listen and Explain at the bottom right of pages with furigana.</span>
+          </span>
+          <input type="checkbox" id="pageDock" role="switch" aria-labelledby="pageDockLabel" aria-describedby="pageDockHint">
+          <span class="study-switch-track" aria-hidden="true"></span>
+        </label>
         <div class="setting-row">
           <span id="popupSizeLabel" class="setting-label" data-i18n="settings_label_popup_size">Dictionary popup size</span>
           <div class="segments" id="popupSize" role="group" aria-labelledby="popupSizeLabel">
@@ -231,6 +239,28 @@
       <div class="vocab-empty" id="pageWordsEmpty">
         <div class="vocab-empty-text" data-i18n="page_words_empty_text">No words on this page yet</div>
         <div class="vocab-empty-hint" data-i18n="page_words_empty_hint">Apply furigana to see the words in this text</div>
+      </div>
+    </section>
+
+    <section class="tab-content" id="supporter-tab" aria-labelledby="supporterViewTitle">
+      <div class="supporter-view">
+        <h2 id="supporterViewTitle" class="supporter-view-title">
+          <svg aria-hidden="true" viewBox="0 0 5 5" fill="currentColor" shape-rendering="crispEdges"><path d="M0 0h1v1H0zM4 0h1v1H4zM1 1h1v1H1zM3 1h1v1H3zM0 2h5v1H0zM1 3h1v1H1zM3 3h1v1H3zM0 4h1v1H0zM4 4h1v1H4z"/></svg>
+          <span data-i18n="supporter_view_title">Supporter</span>
+        </h2>
+        <p id="supporterViewLede" class="supporter-view-lede"></p>
+        <div id="supporterViewSignIn" class="supporter-view-signin" hidden>
+          <p id="supporterViewSignInText" class="supporter-view-signin-text"></p>
+          <a id="supporterViewSignInLink" class="supporter-view-secondary" target="_blank" rel="noopener noreferrer" data-i18n="supporter_sign_in">Sign in</a>
+        </div>
+        <div id="supporterViewPlans" class="supporter-view-plans"></div>
+        <p class="supporter-view-note"><strong data-i18n="supporter_view_always_free_label">Always free:</strong> <span data-i18n="supporter_view_always_free">furigana, the dictionary, word audio, My Words and review.</span></p>
+        <p class="supporter-view-note"><strong data-i18n="supporter_view_website_label">On EZFurigana too:</strong> <span data-i18n="supporter_view_website">bigger files, more PDF, OCR and ebook downloads, and AI-improved readings for longer texts.</span></p>
+        <p id="supporterViewSolo" class="supporter-view-solo">
+          <svg aria-hidden="true" viewBox="0 0 5 5" fill="currentColor" shape-rendering="crispEdges"><path d="M0 0h1v1H0zM4 0h1v1H4zM1 1h1v1H1zM3 1h1v1H3zM0 2h5v1H0zM1 3h1v1H1zM3 3h1v1H3zM0 4h1v1H0zM4 4h1v1H4z"/></svg>
+          <span data-i18n="supporter_view_solo">Support a solo developer</span>
+        </p>
+        <a id="supporterViewAction" class="supporter-view-primary" target="_blank" rel="noopener noreferrer"></a>
       </div>
     </section>
 

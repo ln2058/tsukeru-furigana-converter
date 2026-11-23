@@ -8,7 +8,7 @@ Inputs:
 - Browser startup and tab activation, which refresh the review badge.
 
 Outputs:
-- Async message responses, structured API/report error metadata, and tab-level apply/clear toggles.
+- Async message responses, structured API/report error metadata, and tab-level apply/clear toggles (the keyboard shortcut and the page dock's furigana button).
 - Toolbar badge with the number of words due for review (via `bg-words`).
 
 Side Effects:
@@ -29,6 +29,7 @@ Security Notes:
 - Automatic furigana is decided from the tab address the browser reports for a top-level page, never from a URL the page sends, or once for a tab the popup opened from Discover.
 - Discover opens only articles in the stored feed, chosen by ID; the popup never supplies the address.
 - Discover reading progress is taken only from this extension's content script in the top frame of the tab opened from Discover; the article it belongs to comes from the stored visit, never from the page.
+- The page dock toggles only the tab of the content script that asked, from its top frame.
 - Avoid logging raw user page text in error paths.
 */
 // Background script — Firefox message router and command handler.
@@ -38,6 +39,7 @@ import {
   handlePlayAudio, handlePlayAudioDirect, handleFetchProxyAudio, handleReportReadingError,
   DEFAULT_SETTINGS, getRateLimitState, getAccountToken, getSupporterPlan, getSupporterStatus, hasSupporterToken, storeSupporterHandoff, supporterRefreshDue,
   fetchSentenceAudio, fetchExampleAudio, fetchSentenceExplanation, fetchDiscoverFeed, discoverArticle,
+  getSupporterPerks,
 } from './js/bg-api.js';
 import { discoverVisitFor, missingFromTab, noteDiscoverEvent, noteDiscoverProgress, startDiscoverVisit, voteFromTab } from './js/bg-discover.js';
 import { handleWordsMessage, isEzfuriganaSender, isWordsAction, refreshWordBadge } from './js/bg-words.js';
@@ -264,6 +266,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // The page dock's furigana button toggles its own tab, from the top frame only.
+  if (message?.action === 'toggleFurigana') {
+    if (sender.id !== chrome.runtime.id || !sender.tab?.id || sender.frameId !== 0) return false;
+    toggleFuriganaInTab(sender.tab.id)
+      .then(() => sendResponse({ success: true }))
+      .catch(() => sendResponse({ success: false }));
+    return true;
+  }
+
   // The dictionary popup on a page and the popup's My Words both play sentences.
   if (message?.action === 'playSentence') {
     if (sender.id !== chrome.runtime.id) return false;
@@ -364,6 +375,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     getAccountToken()
       .then(({ account, supporter }) => sendResponse({ success: true, account, supporter }))
       .catch(() => sendResponse({ success: false }));
+    return true;
+  }
+
+  // The popup's Supporter view: plan figures, the same for everyone.
+  if (message?.action === 'getSupporterPerks') {
+    if (sender.id !== chrome.runtime.id || sender.tab) return false;
+    getSupporterPerks()
+      .then((perks) => sendResponse({ success: true, perks }))
+      .catch(() => sendResponse({ success: true, perks: null }));
     return true;
   }
 
@@ -522,19 +542,24 @@ chrome.commands?.onCommand.addListener(async (command) => {
     }
 
     await ensureContentScript(tab.id);
-    const state = await chrome.tabs.sendMessage(tab.id, { action: 'getFuriganaState' })
-      .catch(() => null);
-
-    if (state?.active) {
-      await chrome.tabs.sendMessage(tab.id, { action: 'clearFurigana' });
-    } else {
-      const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
-      await chrome.tabs.sendMessage(tab.id, { action: 'applyFurigana', settings });
-    }
+    await toggleFuriganaInTab(tab.id);
   } catch (err) {
     console.error('Tsukeru: command handler failed', err);
   }
 });
+
+/** The keyboard shortcut's toggle, also used by the page dock's furigana button. */
+async function toggleFuriganaInTab(tabId) {
+  const state = await chrome.tabs.sendMessage(tabId, { action: 'getFuriganaState' })
+    .catch(() => null);
+
+  if (state?.active) {
+    await chrome.tabs.sendMessage(tabId, { action: 'clearFurigana' });
+  } else {
+    const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
+    await chrome.tabs.sendMessage(tabId, { action: 'applyFurigana', settings });
+  }
+}
 
 async function ensureContentScript(tabId) {
   if (!chrome.scripting) return;
@@ -576,6 +601,7 @@ async function ensureContentScript(tabId) {
     'js/vocab-model.js',
     'js/content-vocab.js',
     'js/content-tooltip.js',
+    'js/content-dock.js',
     'js/content-main.js',
   ]) {
     try {

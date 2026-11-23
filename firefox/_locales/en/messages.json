@@ -96,6 +96,12 @@
   "settings_watch_dynamic_hint": {
     "message": "Adds furigana as feeds, comments and chat load, such as on YouTube and X."
   },
+  "settings_page_dock": {
+    "message": "Page buttons"
+  },
+  "settings_page_dock_hint": {
+    "message": "Furigana on/off, Listen and Explain at the bottom right of pages with furigana."
+  },
   "settings_auto_site": {
     "message": "Always add furigana on this site"
   },
@@ -734,6 +740,30 @@
   "content_review_first_full": {
     "message": "Review first is full ($1 words)"
   },
+  "content_dock_furigana_hide": {
+    "message": "Hide furigana"
+  },
+  "content_dock_furigana_show": {
+    "message": "Show furigana"
+  },
+  "content_dock_listen": {
+    "message": "Listen to the selected text"
+  },
+  "content_dock_explain": {
+    "message": "Explain the selected text"
+  },
+  "content_dock_collapse": {
+    "message": "Hide these buttons"
+  },
+  "content_dock_expand": {
+    "message": "Show Tsukeru buttons"
+  },
+  "content_dock_select_hint": {
+    "message": "Select Japanese text on the page first, up to $1 characters."
+  },
+  "content_dock_too_long": {
+    "message": "That selection is too long. Select up to $1 characters."
+  },
   "content_state_tap_to_hide": {
     "message": "Tap again to hide this word from My Words"
   },
@@ -984,6 +1014,81 @@
   },
   "supporter_become": {
     "message": "Become a Supporter"
+  },
+  "supporter_view_title": {
+    "message": "Supporter"
+  },
+  "supporter_view_lede": {
+    "message": "Supporter keeps Tsukeru free for everyone and raises your limits for everyday study."
+  },
+  "supporter_view_lede_supporter": {
+    "message": "You're a Supporter. Thank you!"
+  },
+  "supporter_view_sign_in_count": {
+    "message": "Sign in for free to start: $1 sentences a week to listen to and explain."
+  },
+  "supporter_view_sign_in": {
+    "message": "Sign in for free to start listening to and explaining sentences."
+  },
+  "supporter_view_col_free": {
+    "message": "Free account"
+  },
+  "supporter_view_col_supporter": {
+    "message": "Supporter"
+  },
+  "supporter_view_audio": {
+    "message": "Sentence audio"
+  },
+  "supporter_view_audio_desc": {
+    "message": "Hear a sentence read aloud by a natural Japanese voice."
+  },
+  "supporter_view_audio_free": {
+    "message": "$1 new sentences a week"
+  },
+  "supporter_view_audio_supporter": {
+    "message": "About $1 new sentences a month"
+  },
+  "supporter_view_explain": {
+    "message": "Explain a sentence"
+  },
+  "supporter_view_explain_desc": {
+    "message": "A translation into your language, then what each part of the sentence means."
+  },
+  "supporter_view_explain_free": {
+    "message": "$1 a week"
+  },
+  "supporter_view_explain_supporter": {
+    "message": "$1 a day"
+  },
+  "supporter_view_dictionary": {
+    "message": "Dictionary in your language"
+  },
+  "supporter_view_dictionary_desc": {
+    "message": "Word meanings in your language instead of English."
+  },
+  "supporter_view_dictionary_free": {
+    "message": "$1 new words a week"
+  },
+  "supporter_view_dictionary_supporter": {
+    "message": "$1 new words a day"
+  },
+  "supporter_view_always_free_label": {
+    "message": "Always free:"
+  },
+  "supporter_view_always_free": {
+    "message": "furigana, the dictionary, word audio, My Words and review."
+  },
+  "supporter_view_website_label": {
+    "message": "On EZFurigana too:"
+  },
+  "supporter_view_website": {
+    "message": "bigger files, more PDF, OCR and ebook downloads, and AI-improved readings for longer texts."
+  },
+  "supporter_view_solo": {
+    "message": "Support a solo developer"
+  },
+  "supporter_view_plans": {
+    "message": "See plans and prices"
   },
   "supporter_sign_in": {
     "message": "Sign in"

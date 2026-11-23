@@ -1,5 +1,19 @@
 # Changelog
 
+## 4.7.5 — 2026-11-23
+
+### Added
+
+- **Review first**: a button at the bottom of the dictionary popup that stays in view while you scroll the popup. Words you pick come up first in your next EZFurigana review and stay first until you know them. You can pick up to 20 words at a time.
+- **Page buttons**: on pages with furigana, a small bar at the bottom right turns furigana on and off, and reads aloud or explains Japanese text you select (up to 120 characters). Collapse it to one button, or turn it off under Settings > Page behavior. Explanations you have already received open again without using a try.
+- **Supporter view**: the star at the top of the popup, and Become a Supporter on the account card, now open a short page in the popup that compares a free account and Supporter for sentence audio, Explain and, in Japanese, Korean and Chinese, the dictionary in your language.
+- **Hidden words**: tap Learning or Known again in the popup, or the × in My Words, to hide a word. Hidden words are not reviewed and are not added back when you look them up again. Find them under "Hidden" in My Words.
+
+### Changed
+
+- The Learning / Known switch moved from beside the reading to the bottom of the dictionary popup, next to Review first.
+- Looking up a word that is easy for your level no longer adds it to My Words. If you look it up again on another day, it is added.
+
 ## 4.7.0 — 2026-11-23
 
 ### Added

@@ -44,6 +44,8 @@ export const DEFAULT_SETTINGS = {
   studyMode: false,
   // Dictionary popup size on pages: small, medium, or large.
   popupSize: 'medium',
+  // The page dock (furigana on/off, Listen, Explain) on pages with furigana.
+  pageDock: true,
 };
 
 export const DICTIONARY_MAX_SENSES = 3;
@@ -531,6 +533,7 @@ export async function initSettingsForm() {
   const levelRows = document.getElementById('levelRows');
   const levelDescription = document.getElementById('levelDescription');
   const watchDynamicCheckbox = document.getElementById('watchDynamic');
+  const pageDockCheckbox = document.getElementById('pageDock');
   const customStylingCheckbox = document.getElementById('customRubyStyling');
   const appearanceControls = document.getElementById('appearanceControls');
   const hideKnownCheckbox = document.getElementById('hideKnownFurigana');
@@ -711,6 +714,7 @@ export async function initSettingsForm() {
       furiganaType,
       highlightMode,
       watchDynamic: watchDynamicCheckbox.checked,
+      pageDock: pageDockCheckbox.checked,
       removeCustomStyling: !customStylingCheckbox.checked,
       hideKnownFurigana: hideKnownCheckbox.checked,
       popupSize,
@@ -733,6 +737,7 @@ export async function initSettingsForm() {
   rubyColor = /^#[0-9a-f]{6}$/i.test(stored.rubyColor || '') ? stored.rubyColor : DEFAULT_SETTINGS.rubyColor;
   rubyWeight = stored.rubyWeight === 'bold' ? 'bold' : 'normal';
   watchDynamicCheckbox.checked = stored.watchDynamic === true;
+  pageDockCheckbox.checked = stored.pageDock !== false;
   customStylingCheckbox.checked = stored.removeCustomStyling !== true;
   hideKnownCheckbox.checked = stored.hideKnownFurigana !== false;
   popupSize = ['small', 'medium', 'large'].includes(stored.popupSize) ? stored.popupSize : DEFAULT_SETTINGS.popupSize;
@@ -806,6 +811,8 @@ export async function initSettingsForm() {
     });
   });
   watchDynamicCheckbox.addEventListener('change', saveSettings);
+  // Pages show or remove the dock through chrome.storage.onChanged.
+  pageDockCheckbox.addEventListener('change', saveSettings);
   // Switching on the open tab's site also adds furigana to it now.
   initAutoSites({ onListed: () => { if (!pageApplied) applyFuriganaToPage(); } });
   customStylingCheckbox.addEventListener('change', () => {

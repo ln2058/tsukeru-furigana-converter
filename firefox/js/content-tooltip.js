@@ -1,6 +1,6 @@
 /*
 Module: content-tooltip
-Purpose: Manage the instrument-styled dictionary tooltip, lazy enrichment, word interactions, reporting, My Words capture with the Learning / Known switch (tapping the selected state again hides the word) and the "Review first" footer button, Study mode reveals, and learning/known word marks on pages.
+Purpose: Manage the instrument-styled dictionary tooltip, lazy enrichment, word interactions, reporting, My Words capture with the Learning / Known switch (tapping the selected state again hides the word) and the "Review first" button, both in the popup footer, Study mode reveals, and learning/known word marks on pages.
 
 Inputs:
 - Pointer/selection events, wrapper metadata, reading-aware background lookup/audio responses, and the shared lazy-state coordinator.
@@ -23,7 +23,7 @@ Outputs:
 
 Side Effects:
 - Creates/removes tooltip DOM on the root element, scroll/resize/Escape listeners that re-place or close it, and disclosure state.
-- A click on a word opens its popup instead of the page's own click; inside a link, a modifier click, Enter, or a second click while that link's word is open goes to the link instead.
+- A click on a word opens its popup instead of the page's own click (not a click that ends a text selection, which is for the page dock); inside a link, a modifier click, Enter, or a second click while that link's word is open goes to the link instead.
 - Places the tooltip with the placement rules shared with EZFurigana (a bottom sheet at 600 px wide or less) and marks the clicked word with `tsukeru-active-word` while it is open.
 - Dragging the header (not the headword or its buttons) moves the tooltip on desktop; a moved tooltip stays where it was dropped, kept on screen, and no longer follows or closes with its word. The next word opens beside it again.
 - Registers tooltip and report surfaces with content-ui to follow the saved UI theme.
@@ -186,6 +186,10 @@ function handleDictionaryClick(event) {
   if (event.target.closest('#tsukeru-word-tooltip')) {
     return;
   }
+
+  // A click that ends a text selection is for the page dock, not the popup.
+  const selection = document.getSelection?.();
+  if (selection && !selection.isCollapsed && selection.toString().trim()) return;
 
   const targetEl = resolveAnalysisWordElement(event.target);
   if (!targetEl) {
@@ -2344,17 +2348,15 @@ async function setCheckedWordReviewFirst(record, on, element) {
 }
 
 /**
- * The Learning / Known switch and the "Review first" footer button, the same
- * controls as the website popup. Tapping the selected state again hides the
+ * The Learning / Known switch and the "Review first" button in the popup's
+ * footer, the same controls as the website popup. Tapping the selected state again hides the
  * word (neither is selected then, as for an easy word that was not added).
  * Review first puts the word in Learning and first in line; the switch follows.
  */
 function renderTooltipProgress(tooltip, record) {
   tooltip.querySelectorAll('.tooltip-progress, .tooltip-progress-foot').forEach((node) => node.remove());
   if (!record) return;
-  const host = tooltip.querySelector('.tsukeru-reading-actions');
-  const header = tooltip.querySelector('.tsukeru-header-row');
-  if (!host && !header) return;
+  if (!tooltip.querySelector('.tsukeru-header-row')) return;
   const group = document.createElement('div');
   group.className = 'tooltip-progress';
   group.setAttribute('role', 'group');
@@ -2413,15 +2415,10 @@ function renderTooltipProgress(tooltip, record) {
   });
   group.append(...options);
   show(record);
-  if (host) {
-    host.prepend(group);
-  } else {
-    group.classList.add('tooltip-progress-row');
-    header.insertAdjacentElement('afterend', group);
-  }
+  // The note takes its own line above the buttons while it shows.
   const foot = document.createElement('div');
   foot.className = 'tooltip-progress-foot';
-  foot.append(status, first);
+  foot.append(status, group, first);
   tooltip.appendChild(foot);
 }
 

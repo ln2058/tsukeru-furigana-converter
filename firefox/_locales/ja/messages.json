@@ -96,6 +96,12 @@
   "settings_watch_dynamic_hint": {
     "message": "フィード、コメント、チャットなどが読み込まれるたびにふりがなを付けます（YouTube、Xなど）。"
   },
+  "settings_page_dock": {
+    "message": "ページのボタン"
+  },
+  "settings_page_dock_hint": {
+    "message": "ふりがなを付けたページの右下に、ふりがなの表示/非表示、読み上げ、解説のボタンを出します。"
+  },
   "settings_auto_site": {
     "message": "このサイトでは常にふりがなを付ける"
   },
@@ -734,6 +740,30 @@
   "content_review_first_full": {
     "message": "「先に復習」はいっぱいです（$1語）"
   },
+  "content_dock_furigana_hide": {
+    "message": "ふりがなを隠す"
+  },
+  "content_dock_furigana_show": {
+    "message": "ふりがなを表示"
+  },
+  "content_dock_listen": {
+    "message": "選んだ文を読み上げる"
+  },
+  "content_dock_explain": {
+    "message": "選んだ文を解説する"
+  },
+  "content_dock_collapse": {
+    "message": "ボタンをしまう"
+  },
+  "content_dock_expand": {
+    "message": "Tsukeruのボタンを表示"
+  },
+  "content_dock_select_hint": {
+    "message": "先にページの日本語を選んでください（$1文字まで）。"
+  },
+  "content_dock_too_long": {
+    "message": "選んだ部分が長すぎます。$1文字までにしてください。"
+  },
   "content_state_tap_to_hide": {
     "message": "もう一度押すとマイ単語から非表示にします"
   },
@@ -984,6 +1014,81 @@
   },
   "supporter_become": {
     "message": "サポーターになる"
+  },
+  "supporter_view_title": {
+    "message": "サポーター"
+  },
+  "supporter_view_lede": {
+    "message": "サポーターになると、毎日の学習で使える回数が増えます。いただいたご支援で、Tsukeruは誰でも無料で使い続けられます。"
+  },
+  "supporter_view_lede_supporter": {
+    "message": "サポーターになっていただき、ありがとうございます！"
+  },
+  "supporter_view_sign_in_count": {
+    "message": "無料でログインすると、読み上げと解説をそれぞれ週$1文まで試せます。"
+  },
+  "supporter_view_sign_in": {
+    "message": "無料でログインすると、文の読み上げと解説を試せます。"
+  },
+  "supporter_view_col_free": {
+    "message": "無料アカウント"
+  },
+  "supporter_view_col_supporter": {
+    "message": "サポーター"
+  },
+  "supporter_view_audio": {
+    "message": "文の読み上げ"
+  },
+  "supporter_view_audio_desc": {
+    "message": "自然な日本語の音声で、文を読み上げます。"
+  },
+  "supporter_view_audio_free": {
+    "message": "新しい文を週$1文"
+  },
+  "supporter_view_audio_supporter": {
+    "message": "新しい文を月に約$1文"
+  },
+  "supporter_view_explain": {
+    "message": "文の解説"
+  },
+  "supporter_view_explain_desc": {
+    "message": "文の意味と、それぞれの部分の働きをやさしく説明します。"
+  },
+  "supporter_view_explain_free": {
+    "message": "週$1回"
+  },
+  "supporter_view_explain_supporter": {
+    "message": "1日$1回"
+  },
+  "supporter_view_dictionary": {
+    "message": "日本語で引ける辞書"
+  },
+  "supporter_view_dictionary_desc": {
+    "message": "単語の意味を、英語ではなく日本語で表示します。"
+  },
+  "supporter_view_dictionary_free": {
+    "message": "新しい単語を週$1語"
+  },
+  "supporter_view_dictionary_supporter": {
+    "message": "新しい単語を1日$1語"
+  },
+  "supporter_view_always_free_label": {
+    "message": "ずっと無料："
+  },
+  "supporter_view_always_free": {
+    "message": "ふりがな、辞書、単語の音声、マイ単語、復習。"
+  },
+  "supporter_view_website_label": {
+    "message": "EZFuriganaでも："
+  },
+  "supporter_view_website": {
+    "message": "より大きなファイル、PDF・OCR・電子書籍のダウンロード回数の追加、長い文章でのAIによる読みの改善。"
+  },
+  "supporter_view_solo": {
+    "message": "個人開発者を応援できます"
+  },
+  "supporter_view_plans": {
+    "message": "プランと料金を見る"
   },
   "supporter_sign_in": {
     "message": "ログイン"

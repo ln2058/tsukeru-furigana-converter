@@ -65,6 +65,7 @@ function loadApi(browserName, route, { cacheLimit = 200, storage = null, manifes
       getSupporterStatus,
       fetchSentenceAudio,
       fetchSentenceExplanation,
+      getSupporterPerks,
     };
   `;
   const calls = [];
@@ -230,6 +231,75 @@ for (const browserName of ['chrome', 'firefox']) {
     // A rejected live token was disconnected; only Connect hands over a new one.
     await assert.rejects(api.fetchSentenceExplanation('今日はいい天気ですね。', 'en'), { code: 'account_required' });
     assert.equal(storage.values.tsukeruSupporter.plan, 'disconnected');
+  });
+
+  test(`${browserName} answers an explanation it already has from this device, per language`, async () => {
+    const now = Date.now();
+    const expiresAt = Math.floor(now / 1000) + 3 * 86_400;
+    const token = `v2.${'c'.repeat(32)}.0.${expiresAt}.${'d'.repeat(64)}`;
+    const json = { 'content-type': 'application/json' };
+    const explained = (translation) => response(200, {
+      ok: true,
+      explanation: { translation, points: [], note: '' },
+      allowance: { plan: 'free', used: 1, limit: 3 },
+    }, json);
+    const { api, calls } = loadApi(browserName, queuedRoute([explained('It is raining.'), explained('비가 와요.')]), { storage: memoryStorage() });
+    await api.storeSupporterHandoff({ plan: 'free', token, expiresAt }, now);
+    const explains = () => calls.filter(({ url }) => url.endsWith('/api/extension/explain')).length;
+
+    await api.fetchSentenceExplanation('雨が降っている。', 'en');
+    const again = await api.fetchSentenceExplanation(' 雨が降っている。 ', 'en');
+    assert.equal(again.explanation.translation, 'It is raining.');
+    assert.equal(explains(), 1, 'the second press uses no request and no try');
+
+    const korean = await api.fetchSentenceExplanation('雨が降っている。', 'ko');
+    assert.equal(korean.explanation.translation, '비가 와요.');
+    assert.equal(explains(), 2, 'another display language asks again');
+  });
+
+  test(`${browserName} keeps the Supporter view's figures 12 hours and falls back to the last ones`, async () => {
+    const json = { 'content-type': 'application/json' };
+    const body = {
+      ok: true,
+      version: 1,
+      sentence_audio: { free_weekly_sentences: 3, supporter_monthly_sentences: 570 },
+      sentence_explain: { free_weekly: 3, supporter_daily: 50 },
+      // A feature the server switched off, and one with a figure that is not a count.
+      translated_dictionary: null,
+      extra: { free_weekly: '<b>9</b>' },
+    };
+    const storage = memoryStorage();
+    const routes = [
+      response(200, body, json),
+      response(503, { ok: false }, json),
+      response(200, { ...body, version: 2 }, json),
+    ];
+    const { api, calls } = loadApi(browserName, queuedRoute(routes), { storage });
+    const now = Date.now();
+    const expected = {
+      sentenceAudio: { free: 3, supporter: 570 },
+      explain: { free: 3, supporter: 50 },
+      dictionary: null,
+    };
+
+    assert.deepEqual(JSON.parse(JSON.stringify(await api.getSupporterPerks(now))), expected);
+    const call = calls.find(({ url }) => url.endsWith('/api/extension/supporter-perks'));
+    assert.equal(call.options.credentials, 'omit');
+    assert.equal(call.options.headers['x-tsukeru-supporter'], undefined, 'no account token');
+
+    // Within 12 hours no request is made.
+    assert.deepEqual(JSON.parse(JSON.stringify(await api.getSupporterPerks(now + 60_000))), expected);
+    assert.equal(calls.filter(({ url }) => url.endsWith('/supporter-perks')).length, 1);
+
+    // Later, a failed request and an unknown version keep the last good figures.
+    const later = now + 13 * 60 * 60 * 1000;
+    assert.deepEqual(JSON.parse(JSON.stringify(await api.getSupporterPerks(later))), expected);
+    assert.deepEqual(JSON.parse(JSON.stringify(await api.getSupporterPerks(later))), expected);
+    assert.equal(calls.filter(({ url }) => url.endsWith('/supporter-perks')).length, 3);
+
+    // With nothing kept, an unusable answer gives no figures at all.
+    const fresh = loadApi(browserName, queuedRoute([response(200, { ok: true, version: 2 }, json)]), { storage: memoryStorage() });
+    assert.equal(await fresh.api.getSupporterPerks(now), null);
   });
 
   test(`${browserName} notices a website disconnect from the popup and before the daily renewal`, async () => {

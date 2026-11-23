@@ -319,7 +319,7 @@ for (const browser of ['chrome', 'firefox']) {
       classList: { toggle(_name, active) { tabs.find(item => item.dataset.tab === tab).active = active; } },
       addEventListener() {},
     }));
-    const links = Object.fromEntries(['header-ezfurigana-link', 'header-supporter-link', 'shortcut-text'].map(id => [id, {}]));
+    const links = Object.fromEntries(['header-ezfurigana-link', 'header-supporter-link', 'shortcut-text'].map(id => [id, { addEventListener() {} }]));
     links['header-review-link'] = { setAttribute() {} };
     const reviewPrompts = [];
     let bootstrap;
@@ -342,6 +342,7 @@ for (const browser of ['chrome', 'firefox']) {
       storeReviewUrl: (store, language) => `${store}:${language}`,
       initReviewPrompt(options) { reviewPrompts.push(options); },
       initDiscover() {}, resetDiscover() {}, showDiscover() { assert.fail('Settings reload should not load Discover'); }, initKakurenboSlip() {},
+      prefetchSupporterPerks() {}, showSupporterView() {},
       t: fixture.i18n.t,
     });
     vm.runInNewContext(read(browser, 'js/popup-main.js').replace(/^import\s[\s\S]*?;\r?\n/gm, ''), fixture.sandbox);
@@ -355,7 +356,7 @@ for (const browser of ['chrome', 'firefox']) {
     assert.equal(root.pending, false);
     assert.equal(tabs.find(item => item.active).dataset.tab, 'settings');
     assert.equal(links['header-ezfurigana-link'].href, 'https://www.ezfurigana.com/ko');
-    assert.equal(links['header-supporter-link'].href, 'https://www.ezfurigana.com/ko/pricing?from=tsukeru&placement=extension_account');
+    assert.equal(links['header-supporter-link'].href, 'https://www.ezfurigana.com/ko/pricing?from=tsukeru&placement=extension_header');
     const store = browser === 'firefox' ? 'firefox' : 'chrome';
     assert.equal(links['header-review-link'].href, `${store}:ko`);
     assert.deepEqual(reviewPrompts.map(options => ({ ...options })), [{ store, language: 'ko' }]);

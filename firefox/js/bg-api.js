@@ -13,7 +13,8 @@ Side Effects:
 - Performs network fetches, tracks shared cooldown deadlines, and coalesces nonce acquisition/recovery across API requests.
 - Persists only validated cooldown metadata, the current UTC day's and ISO week's random IDs, and the website's account token answer (a free account's or a Supporter's) through extension-local storage; backend quotas remain authoritative. A token refused before its expiry marks this browser disconnected, and the website does not reconnect it until the popup's Connect.
 - Shares logical dictionary lookups and bounds completed in-memory dictionary results.
-- Reads/writes furigana fragments and successful localized dictionary entries through `bg-cache`.
+- Reads/writes furigana fragments, successful localized dictionary entries, and sentence explanations (by language and text hash) through `bg-cache`.
+- Keeps the popup Supporter view's plan figures in local storage (`supporterPerks`) for 12 hours.
 - Keeps the last Discover feed and its version tag in `chrome.storage.session`: used for an hour, then sent back with the tag, and kept another hour when the backend says it has not changed.
 - Posts Discover's anonymous counts (`{ id, kind }` lists) and success counters (`{ name, dims }` lists from `bg-discover`) to /api/extension/discover/events.
 
@@ -1360,13 +1361,25 @@ function cleanExplanation(value) {
   return { translation, points, note: explainText(value.note, 400) };
 }
 
+/** Where an explanation is kept on this device: the language and a hash of the text as the server reads it. */
+async function explanationCacheKey(text, locale) {
+  const sentence = String(text || '').normalize('NFC').split(/\s+/).filter(Boolean).join(' ');
+  return `explain:${locale}:${await sha256Hash(sentence)}`;
+}
+
 /**
  * Explain one sentence in the display language, for a connected account.
+ * An explanation already received on this device is answered from the cache
+ * without a request (and without using a try).
  * Throws with `code` account_required (no token, or the token was refused),
  * daily_limit (a Supporter's day), free_daily_limit (a free account's week),
  * not_available, rate_limited, or explain_unavailable.
  */
 export async function fetchSentenceExplanation(text, language) {
+  const locale = EXPLAIN_LANGUAGES.has(language) ? language : 'en';
+  const cacheKey = await explanationCacheKey(text, locale);
+  const cached = cleanExplanation(await localizedCacheGet(cacheKey));
+  if (cached) return { explanation: cached, limit: null };
   const headers = await supporterHeaders();
   const fail = (code, status) => Object.assign(new Error('Sentence explanation failed'), { code, status });
   if (!headers['x-tsukeru-supporter']) throw fail('account_required');
@@ -1375,7 +1388,7 @@ export async function fetchSentenceExplanation(text, language) {
     headers: { ..._extensionHeaders(), ...headers, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       text: String(text || '').trim(),
-      locale: EXPLAIN_LANGUAGES.has(language) ? language : 'en',
+      locale,
     }),
     credentials: 'omit',
     mode: 'cors',
@@ -1403,8 +1416,81 @@ export async function fetchSentenceExplanation(text, language) {
   }
   const explanation = cleanExplanation(body.explanation);
   if (!explanation) throw fail('explain_unavailable', response.status);
+  await localizedCacheSet(cacheKey, explanation);
   const limit = Number(body.allowance?.limit);
   return { explanation, limit: Number.isInteger(limit) && limit > 0 ? limit : null };
+}
+
+// ── Supporter view figures ───────────────────────────────────────────────────
+
+const SUPPORTER_PERKS_KEY = 'supporterPerks';
+const SUPPORTER_PERKS_TTL_MS = 12 * 60 * 60 * 1000;
+const MAX_SUPPORTER_PERKS_BYTES = 4 * 1024;
+
+function perkCount(value) {
+  return Number.isInteger(value) && value > 0 && value <= 1_000_000 ? value : null;
+}
+
+/**
+ * The popup's Supporter view figures from `/api/extension/supporter-perks`:
+ * `{ sentenceAudio, explain, dictionary }`, each `{ free, supporter }` or null
+ * when the feature is off or its figures are not valid; null for a body that
+ * is not version 1.
+ */
+export function cleanSupporterPerks(body) {
+  if (!body || typeof body !== 'object' || body.ok !== true || body.version !== 1) return null;
+  const pair = (value, freeKey, supporterKey) => {
+    if (!value || typeof value !== 'object') return null;
+    const free = perkCount(value[freeKey]);
+    const supporter = perkCount(value[supporterKey]);
+    return free && supporter ? { free, supporter } : null;
+  };
+  return {
+    sentenceAudio: pair(body.sentence_audio, 'free_weekly_sentences', 'supporter_monthly_sentences'),
+    explain: pair(body.sentence_explain, 'free_weekly', 'supporter_daily'),
+    dictionary: pair(body.translated_dictionary, 'free_weekly_words', 'supporter_daily_words'),
+  };
+}
+
+/**
+ * The Supporter view figures, kept 12 hours on this device. They are the same
+ * for everyone, so the request carries no account token or cookie. A failed
+ * request answers the last figures received, or null (the view then shows no
+ * numbers).
+ */
+export async function getSupporterPerks(now = Date.now()) {
+  let stored = null;
+  try {
+    stored = (await chrome.storage.local.get(SUPPORTER_PERKS_KEY))[SUPPORTER_PERKS_KEY];
+  } catch (_) { /* Asked again below. */ }
+  const at = Number(stored?.fetchedAt);
+  const kept = Number.isFinite(at) ? cleanSupporterPerks(stored?.body) : null;
+  if (kept && now >= at && now - at < SUPPORTER_PERKS_TTL_MS) return kept;
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/extension/supporter-perks`, {
+      method: 'GET',
+      headers: _extensionHeaders(),
+      credentials: 'omit',
+      mode: 'cors',
+      cache: 'no-store',
+      redirect: 'error',
+    });
+    if (response.ok) {
+      const blob = await readBoundedResponseBlob(response, {
+        maxBytes: MAX_SUPPORTER_PERKS_BYTES,
+        allowedMimeTypes: ['application/json'],
+      });
+      const body = JSON.parse(await blob.text());
+      const perks = cleanSupporterPerks(body);
+      if (perks) {
+        try {
+          await chrome.storage.local.set({ [SUPPORTER_PERKS_KEY]: { body, fetchedAt: now } });
+        } catch (_) { /* Asked again next time. */ }
+        return perks;
+      }
+    }
+  } catch (_) { /* Fall back to the last figures. */ }
+  return kept;
 }
 
 const EXAMPLE_ID_RE = /^[0-9]{5}_[A-Za-z0-9_-]{1,100}$/;

@@ -96,6 +96,12 @@
   "settings_watch_dynamic_hint": {
     "message": "當 YouTube、X 等網站載入新的動態消息、留言或聊天內容時，自動加上振假名。"
   },
+  "settings_page_dock": {
+    "message": "頁面按鈕"
+  },
+  "settings_page_dock_hint": {
+    "message": "在已加上振假名的網頁右下角顯示振假名開關、朗讀和解說按鈕。"
+  },
   "settings_auto_site": {
     "message": "在此網站一律加上振假名"
   },
@@ -734,6 +740,30 @@
   "content_review_first_full": {
     "message": "優先複習已滿（$1 個單字）"
   },
+  "content_dock_furigana_hide": {
+    "message": "隱藏振假名"
+  },
+  "content_dock_furigana_show": {
+    "message": "顯示振假名"
+  },
+  "content_dock_listen": {
+    "message": "朗讀所選文字"
+  },
+  "content_dock_explain": {
+    "message": "解說所選文字"
+  },
+  "content_dock_collapse": {
+    "message": "收起按鈕"
+  },
+  "content_dock_expand": {
+    "message": "顯示 Tsukeru 按鈕"
+  },
+  "content_dock_select_hint": {
+    "message": "請先在頁面上選取日文（最多 $1 個字元）。"
+  },
+  "content_dock_too_long": {
+    "message": "選取的內容太長。請選取不超過 $1 個字元。"
+  },
   "content_state_tap_to_hide": {
     "message": "再點一次即可從我的單字中隱藏"
   },
@@ -984,6 +1014,81 @@
   },
   "supporter_become": {
     "message": "成為支持者"
+  },
+  "supporter_view_title": {
+    "message": "支持者"
+  },
+  "supporter_view_lede": {
+    "message": "成為支持者後，日常學習可用的次數會更多。您的支持也讓 Tsukeru 能繼續對所有人免費。"
+  },
+  "supporter_view_lede_supporter": {
+    "message": "感謝您成為支持者！"
+  },
+  "supporter_view_sign_in_count": {
+    "message": "免費登入後，句子朗讀和解說每週各可試用 $1 次。"
+  },
+  "supporter_view_sign_in": {
+    "message": "免費登入後，就能試用句子朗讀和解說。"
+  },
+  "supporter_view_col_free": {
+    "message": "免費帳戶"
+  },
+  "supporter_view_col_supporter": {
+    "message": "支持者"
+  },
+  "supporter_view_audio": {
+    "message": "句子朗讀"
+  },
+  "supporter_view_audio_desc": {
+    "message": "用自然的日語語音朗讀句子。"
+  },
+  "supporter_view_audio_free": {
+    "message": "每週 $1 個新句子"
+  },
+  "supporter_view_audio_supporter": {
+    "message": "每月約 $1 個新句子"
+  },
+  "supporter_view_explain": {
+    "message": "句子解說"
+  },
+  "supporter_view_explain_desc": {
+    "message": "將句子翻譯成中文，再說明每個部分的意思。"
+  },
+  "supporter_view_explain_free": {
+    "message": "每週 $1 次"
+  },
+  "supporter_view_explain_supporter": {
+    "message": "每天 $1 次"
+  },
+  "supporter_view_dictionary": {
+    "message": "中文辭典"
+  },
+  "supporter_view_dictionary_desc": {
+    "message": "用中文而不是英文顯示單字的意思。"
+  },
+  "supporter_view_dictionary_free": {
+    "message": "每週 $1 個新單字"
+  },
+  "supporter_view_dictionary_supporter": {
+    "message": "每天 $1 個新單字"
+  },
+  "supporter_view_always_free_label": {
+    "message": "永遠免費："
+  },
+  "supporter_view_always_free": {
+    "message": "振假名、辭典、單字發音、我的單字和複習。"
+  },
+  "supporter_view_website_label": {
+    "message": "在 EZFurigana 上還能："
+  },
+  "supporter_view_website": {
+    "message": "處理更大的檔案，下載更多 PDF、OCR 和電子書，長篇文字也能用 AI 改善讀音。"
+  },
+  "supporter_view_solo": {
+    "message": "支持獨立開發者"
+  },
+  "supporter_view_plans": {
+    "message": "查看方案和價格"
   },
   "supporter_sign_in": {
     "message": "登入"
