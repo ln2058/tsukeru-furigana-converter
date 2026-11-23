@@ -728,6 +728,21 @@
   "remove_listed_word": {
     "message": "從清單移除 $1"
   },
+  "content_review_first": {
+    "message": "優先複習"
+  },
+  "content_review_first_full": {
+    "message": "優先複習已滿（$1 個單字）"
+  },
+  "content_state_tap_to_hide": {
+    "message": "再點一次即可從我的單字中隱藏"
+  },
+  "hidden_words_count": {
+    "message": "隱藏 ($1)"
+  },
+  "hidden_words_helper": {
+    "message": "隱藏的單字不會出現在複習中，再次查詢時也不會重新加入。"
+  },
   "clear_learning_confirm": {
     "message": "要移除所有學習中的單字嗎？EZFurigana 上的這些單字也會一併移除。"
   },

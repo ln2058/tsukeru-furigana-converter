@@ -107,6 +107,11 @@ function bins(values) {
     .filter((value) => Number.isInteger(value) && value >= 0 && value < Vocab.BAND_COUNT);
 }
 
+/** The level the reader chose ('beginner', 'n5'...'n1', 'beyond'), or null. */
+export async function chosenLevel() {
+  return chosen(await read());
+}
+
 /** The chosen level and every browser's evidence, for the EZFurigana sync push. */
 export async function syncPart() {
   const state = await read();

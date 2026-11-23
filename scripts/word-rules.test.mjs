@@ -288,4 +288,50 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.equal(store.records['字0\u0000じ'], undefined);
     assert.equal(store.records['既知\u0000きち'].state, 'known');
   });
+
+  test(`${browserName} a hidden word stays hidden when it is checked again`, () => {
+    const store = Words.createStore();
+    Words.captureWord(store, { word: '田中', reading: 'たなか' }, T0);
+    Words.setWordState(store, { word: '田中', reading: 'たなか' }, 'ignored', T0 + 1);
+    const again = Words.captureWord(store, { word: '田中', reading: 'たなか' }, T0 + 2, { countCheck: true });
+    assert.equal(again.state, 'ignored');
+    assert.equal(Words.summarize(store, T0 + 3).learning, 0);
+  });
+
+  test(`${browserName} an easy word is added only when checked again on a later day`, () => {
+    const store = Words.createStore();
+    const input = { word: '学校', reading: 'がっこう' };
+    assert.equal(Words.captureWord(store, input, T0, { easy: true }).state, null);
+    assert.equal(Words.captureWord(store, input, T0 + 60 * 1000, { easy: true }).state, null);
+    assert.equal(store.records['学校\u0000がっこう'], undefined);
+    assert.equal(store.metaDirty, true);
+    assert.equal(Words.captureWord(store, input, T0 + DAY, { easy: true }).state, 'learning');
+    // A word that is not easy is added on its first check.
+    assert.equal(Words.captureWord(store, { word: '経済', reading: 'けいざい' }, T0, { easy: false }).state, 'learning');
+  });
+
+  test(`${browserName} review first moves a word into Learning, holds 20 words, and syncs with the choice`, () => {
+    const store = Words.createStore();
+    Words.setWordState(store, { word: '性格', reading: 'せいかく' }, 'known', T0);
+    const { record } = Words.setReviewFirst(store, { word: '性格', reading: 'せいかく' }, true, T0 + 1);
+    assert.equal(record.state, 'learning');
+    assert.equal(record.priorityAt, T0 + 1);
+    for (let index = 0; index < 19; index += 1) {
+      Words.setReviewFirst(store, { word: `語${index}`, reading: `ご${index}` }, true, T0 + 2);
+    }
+    assert.equal(Words.setReviewFirst(store, { word: '天気', reading: 'てんき' }, true, T0 + 3).full, true);
+    assert.equal(store.records['天気\u0000てんき'], undefined);
+
+    const outbox = Words.buildOutbox(store, null, T0 + 4);
+    assert.equal(outbox.changes.find((change) => change.word === '性格').priorityAt, T0 + 1);
+
+    // Becoming Known ends it, and the website's snapshot brings it or leaves it out.
+    assert.equal(Words.setWordState(store, { word: '性格', reading: 'せいかく' }, 'known', T0 + 5).priorityAt, undefined);
+    Words.mergeSnapshot(store, [
+      { word: '映画', reading: 'えいが', state: 'learning', priorityAt: T0 + 6, changedAt: T0 + 6 },
+      { word: '天気', reading: 'てんき', state: 'known', priorityAt: T0 + 6, changedAt: T0 + 6 },
+    ], { startedAt: T0 + 7, storeId: 'store-a', at: T0 + 8 });
+    assert.equal(store.records['映画\u0000えいが'].priorityAt, T0 + 6);
+    assert.equal(store.records['天気\u0000てんき'].priorityAt, undefined);
+  });
 }

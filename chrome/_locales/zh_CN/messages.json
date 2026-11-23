@@ -728,6 +728,21 @@
   "remove_listed_word": {
     "message": "从清单移除 $1"
   },
+  "content_review_first": {
+    "message": "优先复习"
+  },
+  "content_review_first_full": {
+    "message": "优先复习已满（$1 个单词）"
+  },
+  "content_state_tap_to_hide": {
+    "message": "再点一次即可从我的单词中隐藏"
+  },
+  "hidden_words_count": {
+    "message": "隐藏 ($1)"
+  },
+  "hidden_words_helper": {
+    "message": "隐藏的单词不会出现在复习中，再次查询时也不会重新加入。"
+  },
   "clear_learning_confirm": {
     "message": "确定删除所有“学习中”的单词吗？EZFurigana 上的这些单词也会一并删除。"
   },

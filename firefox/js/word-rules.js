@@ -1,6 +1,6 @@
 /*
 Module: word-rules
-Purpose: Hold the My Words rules shared by the background store, content scripts, and popup: word identity, Learning/Known/removal changes, review counts, migration of the retired saved-word list, and the merge rules for syncing with EZFurigana.
+Purpose: Hold the My Words rules shared by the background store, content scripts, and popup: word identity, Learning/Known/hidden/removal changes, "Review first" picks (at most 20), easy words that are added only on a lookup on a later day, review counts, migration of the retired saved-word list, and the merge rules for syncing with EZFurigana.
 
 Inputs:
 - Word, reading, sentence, JLPT level, and state values from page lookups and popup actions.
@@ -9,7 +9,7 @@ Inputs:
 
 Outputs:
 - `globalThis.TsukeruWords`: identity helpers, store mutations, summaries, the toolbar badge count, and sync payloads.
-- Dirty-key sets on the store that tell the caller which records, removals, and metadata to persist.
+- Dirty-key sets on the store that tell the caller which records, removals, and metadata to persist (metadata includes the easy words looked up once: at most 300 word ids with the local day).
 
 Side Effects:
 - None outside the store object passed in; storage and messaging belong to the callers.
@@ -39,6 +39,10 @@ Security Notes:
   const IMPORT_DUE_PER_DAY = 20;
   // Words in one EZFurigana review session (REVIEW_SESSION_WORDS in its word-progress.js).
   const SESSION_WORDS = 7;
+  // "Review first": at most this many Learning words at once, as on EZFurigana.
+  const REVIEW_FIRST_MAX = 20;
+  // Easy words looked up once: at most this many ids with that day, in the store's metadata.
+  const MAX_EASY_LOOKUPS = 300;
   const DAY_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
   function normalize(value) {
@@ -404,13 +408,39 @@ Security Notes:
   }
 
   /**
+   * Whether this is the first lookup of an easy word (the chosen level counts
+   * it as known) that is not tracked yet. Only its local day is kept, in the
+   * store's metadata; a lookup on a later day returns false, so the word is
+   * added. Same rule as EZFurigana's word-progress.js.
+   */
+  function firstEasyLookup(store, id, at) {
+    const today = dayKey(at);
+    const stored = store.meta.easyLookups;
+    const days = stored && typeof stored === 'object' && !Array.isArray(stored) ? { ...stored } : {};
+    const seen = days[id];
+    delete days[id];
+    const first = !(typeof seen === 'string' && seen !== today);
+    // Re-added last, so the oldest lookups are the ones forgotten.
+    if (first) days[id] = today;
+    const ids = Object.keys(days);
+    ids.slice(0, Math.max(0, ids.length - MAX_EASY_LOOKUPS)).forEach((old) => delete days[old]);
+    store.meta = { ...store.meta, easyLookups: days };
+    store.metaDirty = true;
+    return first;
+  }
+
+  /**
    * The reader checked a word while reading. A new word starts learning; a
    * known or ignored word keeps its state, because only the reader changes it.
+   * A new `easy` word is added only on a lookup on a later day
+   * (firstEasyLookup); until then the result is an untracked record with no
+   * state.
    */
-  function captureWord(store, input, at, { countCheck = false, source = 'lookup' } = {}) {
+  function captureWord(store, input, at, { countCheck = false, source = 'lookup', easy = false } = {}) {
     const identity = identityForPair(input?.word, input?.reading);
     if (!identity) return null;
     const existing = store.records[identity.id];
+    if (!existing && easy && firstEasyLookup(store, identity.id, at)) return { ...identity, state: null };
     const record = existing ? { ...existing } : newRecord(identity, source, at);
     if (countCheck) record.count = (record.count || 0) + 1;
     addDetails(record, input);
@@ -435,6 +465,8 @@ Security Notes:
       record.dueAt = at;
     }
     record.state = state;
+    // Only a Learning word can be reviewed first.
+    if (state !== 'learning') delete record.priorityAt;
     record.changedAt = at;
     record.lastSeenAt = at;
     record.updatedAt = at;
@@ -442,6 +474,42 @@ Security Notes:
     clearRemoval(store, identity.id);
     trim(store);
     return record;
+  }
+
+  /**
+   * Ask to review a word first on EZFurigana (`on`), or stop, as there: a
+   * word not in Learning moves to Learning from its first step and a word not
+   * due is due now. At most REVIEW_FIRST_MAX words at once; `full` says the
+   * list is full and nothing changed. Returns `{ record, full }`.
+   */
+  function setReviewFirst(store, input, on, at) {
+    const identity = identityForPair(input?.word, input?.reading);
+    if (!identity) return { record: null, full: false };
+    const existing = store.records[identity.id];
+    if (!on && !existing) return { record: null, full: false };
+    if (on && !(existing && existing.state === 'learning' && existing.priorityAt)) {
+      const picked = Object.values(store.records).filter((record) => record.state === 'learning' && record.priorityAt).length;
+      if (picked >= REVIEW_FIRST_MAX) return { record: existing || null, full: true };
+    }
+    const record = existing ? { ...existing } : newRecord(identity, 'manual', at);
+    addDetails(record, input);
+    if (on) {
+      if (record.state !== 'learning') {
+        record.state = 'learning';
+        record.step = 0;
+      }
+      if (timeOf(record.dueAt) > at) record.dueAt = at;
+      record.priorityAt = at;
+    } else {
+      delete record.priorityAt;
+    }
+    record.changedAt = at;
+    record.lastSeenAt = at;
+    record.updatedAt = at;
+    putRecord(store, record);
+    clearRemoval(store, identity.id);
+    trim(store);
+    return { record, full: false };
   }
 
   /**
@@ -590,6 +658,8 @@ Security Notes:
       reading: record.reading,
       state: record.state,
       changedAt: record.changedAt || 0,
+      // Only while set: EZFurigana reads a newer choice without it as "not first".
+      ...(record.priorityAt ? { priorityAt: record.priorityAt } : {}),
       firstSeenAt: record.firstSeenAt,
       lastSeenAt: record.lastSeenAt,
       level: record.level || 0,
@@ -629,8 +699,11 @@ Security Notes:
       .slice(0, MAX_SENTENCES);
     const readings = snapshotReadings(row, sentences);
     const explanation = cleanExplanation(row.explanation);
+    // Older EZFurigana pages send no review-first time.
+    const priorityAt = row.state === 'learning' ? timeOf(row.priorityAt) : 0;
     return {
       ...(explanation ? { explanation } : {}),
+      ...(priorityAt ? { priorityAt } : {}),
       ...identity,
       state: row.state,
       count: count > 0 ? Math.min(count, 100000) : 0,
@@ -648,7 +721,7 @@ Security Notes:
   }
 
   const SYNCED_FIELDS = ['state', 'count', 'sentences', 'sentenceReadings', 'explanation', 'step', 'dueAt', 'firstSeenAt',
-    'lastSeenAt', 'lastReviewedAt', 'knownAt', 'changedAt', 'level'];
+    'lastSeenAt', 'lastReviewedAt', 'knownAt', 'changedAt', 'level', 'priorityAt'];
 
   /** The page's record with this browser's readings for sentences the page sent none for. */
   function withLocalReadings(record, local) {
@@ -718,6 +791,7 @@ Security Notes:
 
   root.TsukeruWords = {
     DAY_MS,
+    REVIEW_FIRST_MAX,
     SESSION_WORDS,
     badgeCount,
     dayKey,
@@ -742,6 +816,7 @@ Security Notes:
     cleanExplanation,
     setDefinition,
     setExplanation,
+    setReviewFirst,
     setWordState,
     statesOf,
     summarize,

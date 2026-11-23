@@ -1,6 +1,6 @@
 /*
 Module: content-tooltip
-Purpose: Manage the instrument-styled dictionary tooltip, lazy enrichment, word interactions, reporting, My Words capture with the Learning / Known switch, Study mode reveals, and learning/known word marks on pages.
+Purpose: Manage the instrument-styled dictionary tooltip, lazy enrichment, word interactions, reporting, My Words capture with the Learning / Known switch (tapping the selected state again hides the word) and the "Review first" footer button, Study mode reveals, and learning/known word marks on pages.
 
 Inputs:
 - Pointer/selection events, wrapper metadata, reading-aware background lookup/audio responses, and the shared lazy-state coordinator.
@@ -2269,6 +2269,8 @@ async function captureCheckedWord(element, wordInfo, source) {
       sentence: context.sentence,
       readings: context.readings,
       level: wordInfo?.jlpt || '',
+      // With the level, tells the background whether the word is easy for the reader.
+      band: wordInfo?.band || '',
       pos: wordInfo?.pos || '',
       countCheck,
       source,
@@ -2321,9 +2323,34 @@ async function rememberWordDefinition(recordPromise, data) {
   }).catch(() => {});
 }
 
-/** The Learning / Known switch, the same two-state control as the website popup. */
+async function setCheckedWordReviewFirst(record, on, element) {
+  const context = element ? wordSentenceWithReadings(element, record.word) : { sentence: '', readings: [] };
+  try {
+    const response = await chrome.runtime.sendMessage({
+      action: 'wordsSetReviewFirst',
+      word: record.word,
+      reading: record.reading,
+      on,
+      sentence: context.sentence,
+      readings: context.readings,
+    });
+    const updated = response?.success ? response.record : null;
+    if (updated) noteLocalWordState(updated);
+    return { record: updated, full: response?.full === true };
+  } catch (error) {
+    console.warn('Tsukeru: could not change Review first', error?.message);
+    return { record: null, full: false };
+  }
+}
+
+/**
+ * The Learning / Known switch and the "Review first" footer button, the same
+ * controls as the website popup. Tapping the selected state again hides the
+ * word (neither is selected then, as for an easy word that was not added).
+ * Review first puts the word in Learning and first in line; the switch follows.
+ */
 function renderTooltipProgress(tooltip, record) {
-  tooltip.querySelectorAll('.tooltip-progress').forEach((node) => node.remove());
+  tooltip.querySelectorAll('.tooltip-progress, .tooltip-progress-foot').forEach((node) => node.remove());
   if (!record) return;
   const host = tooltip.querySelector('.tsukeru-reading-actions');
   const header = tooltip.querySelector('.tsukeru-header-row');
@@ -2332,6 +2359,14 @@ function renderTooltipProgress(tooltip, record) {
   group.className = 'tooltip-progress';
   group.setAttribute('role', 'group');
   group.setAttribute('aria-label', t('content_word_state_for', [record.word], `Status of ${record.word}`));
+  const hideHint = t('content_state_tap_to_hide', undefined, 'Tap again to hide this word from My Words');
+  const firstLabel = t('content_review_first', undefined, 'Review first');
+  const first = document.createElement('button');
+  first.type = 'button';
+  first.className = 'tooltip-review-first';
+  const status = document.createElement('span');
+  status.className = 'tooltip-review-first-note';
+  status.setAttribute('role', 'status');
   const options = [
     ['learning', t('content_state_learning', undefined, 'Learning')],
     ['known', t('content_state_known', undefined, 'Known')],
@@ -2341,25 +2376,53 @@ function renderTooltipProgress(tooltip, record) {
     option.className = 'tooltip-progress-option';
     option.dataset.state = state;
     option.textContent = label;
-    option.setAttribute('aria-pressed', record.state === state ? 'true' : 'false');
-    option.addEventListener('click', async (event) => {
-      event.stopPropagation();
-      if (option.getAttribute('aria-pressed') === 'true') return;
-      const updated = await setCheckedWordState(record, state, tooltip._activeRuby);
-      if (!updated) return;
-      options.forEach((other) => {
-        other.setAttribute('aria-pressed', other.dataset.state === updated.state ? 'true' : 'false');
-      });
-    });
     return option;
   });
+  const show = (shown) => {
+    options.forEach((other) => {
+      const pressed = other.dataset.state === shown.state;
+      other.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+      if (pressed) other.title = hideHint;
+      else other.removeAttribute('title');
+    });
+    const on = shown.state === 'learning' && Boolean(shown.priorityAt);
+    first.setAttribute('aria-pressed', on ? 'true' : 'false');
+    first.textContent = on ? `✓ ${firstLabel}` : firstLabel;
+  };
+  options.forEach((option) => {
+    option.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      const next = option.getAttribute('aria-pressed') === 'true' ? 'ignored' : option.dataset.state;
+      const updated = await setCheckedWordState(record, next, tooltip._activeRuby);
+      if (!updated) return;
+      status.textContent = '';
+      show(updated);
+    });
+  });
+  first.addEventListener('click', async (event) => {
+    event.stopPropagation();
+    const on = first.getAttribute('aria-pressed') !== 'true';
+    const result = await setCheckedWordReviewFirst(record, on, tooltip._activeRuby);
+    if (result.full) {
+      const max = String(globalThis.TsukeruWords?.REVIEW_FIRST_MAX || 20);
+      status.textContent = t('content_review_first_full', [max], `Review first is full (${max} words)`);
+      return;
+    }
+    status.textContent = '';
+    if (result.record) show(result.record);
+  });
   group.append(...options);
+  show(record);
   if (host) {
     host.prepend(group);
   } else {
     group.classList.add('tooltip-progress-row');
     header.insertAdjacentElement('afterend', group);
   }
+  const foot = document.createElement('div');
+  foot.className = 'tooltip-progress-foot';
+  foot.append(status, first);
+  tooltip.appendChild(foot);
 }
 
 async function bindTooltipProgress(tooltip, recordPromise, token) {

@@ -728,6 +728,21 @@
   "remove_listed_word": {
     "message": "Remove $1 from this list"
   },
+  "content_review_first": {
+    "message": "Review first"
+  },
+  "content_review_first_full": {
+    "message": "Review first is full ($1 words)"
+  },
+  "content_state_tap_to_hide": {
+    "message": "Tap again to hide this word from My Words"
+  },
+  "hidden_words_count": {
+    "message": "Hidden ($1)"
+  },
+  "hidden_words_helper": {
+    "message": "Hidden words are not reviewed and are not added again when you look them up."
+  },
   "clear_learning_confirm": {
     "message": "Remove every learning word? They are removed on EZFurigana too."
   },

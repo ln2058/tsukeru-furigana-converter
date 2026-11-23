@@ -3,7 +3,7 @@ Module: bg-words
 Purpose: Own the My Words store in the background: load and persist word records, move the retired saved-word list into Learning, answer word requests from content scripts and the popup, run the EZFurigana sync exchange, and keep the toolbar badge showing how many words are due for review.
 
 Inputs:
-- Word messages from content scripts and the popup (capture, state, definition, a sentence explanation, removal, listing).
+- Word messages from content scripts and the popup (capture, with the word's frequency band and JLPT level so that an easy word for the chosen level waits for a lookup on a later day; state, including hiding a word; Review first; definition, a sentence explanation, removal, listing).
 - Sync messages from the content script on EZFurigana pages (outbox request and the page's record snapshot, each with the vocabulary estimate part that bg-vocab owns, the Discover reading days and the website's streak that bg-discover owns).
 - `chrome.storage.local` word records, removals, sync metadata, and the retired `vocabulary` list.
 
@@ -25,10 +25,12 @@ Security Notes:
 - Records hold no page URLs; nothing here sends words over the network.
 */
 import './word-rules.js';
-import { applySyncPart, syncPart } from './bg-vocab.js';
+import { applySyncPart, chosenLevel, syncPart } from './bg-vocab.js';
 import { discoverReadDays, noteSiteStreak } from './bg-discover.js';
 
 const Words = globalThis.TsukeruWords;
+// Loaded by bg-vocab.js.
+const Vocab = globalThis.TsukeruVocab;
 
 const RECORD_PREFIX = 'w:';
 const REMOVED_PREFIX = 'wr:';
@@ -165,7 +167,18 @@ function wordInput(message) {
 }
 
 function brief(record) {
-  return record ? { id: record.id, word: record.word, reading: record.reading, state: record.state } : null;
+  return record
+    ? { id: record.id, word: record.word, reading: record.reading, state: record.state, priorityAt: record.priorityAt || 0 }
+    : null;
+}
+
+/** Whether the reader's chosen level counts a word ({ band, level }) as known. */
+async function easyForReader(message) {
+  try {
+    return Vocab.assumedKnown({ band: text(message.band, 4), jlpt: message.level }, await chosenLevel());
+  } catch (_) {
+    return false;
+  }
 }
 
 export function isEzfuriganaSender(sender) {
@@ -179,7 +192,7 @@ export function isEzfuriganaSender(sender) {
 }
 
 const WORD_ACTIONS = new Set([
-  'wordsGetStates', 'wordsList', 'wordsCapture', 'wordsSetState', 'wordsSetDefinition', 'wordsSetExplanation',
+  'wordsGetStates', 'wordsList', 'wordsCapture', 'wordsSetState', 'wordsSetReviewFirst', 'wordsSetDefinition', 'wordsSetExplanation',
   'wordsRemove', 'wordsClear', 'wordsSyncStart', 'wordsSyncFinish',
 ]);
 
@@ -199,15 +212,21 @@ export async function handleWordsMessage(message, sender) {
       return { success: true, records: Words.listRecords(store), summary: Words.summarize(store, Date.now()) };
     }
     case 'wordsCapture': {
+      const easy = await easyForReader(message);
       const record = await update((store, at) => Words.captureWord(store, wordInput(message), at, {
         countCheck: message.countCheck === true,
         source: message.source === 'study' ? 'study' : 'lookup',
+        easy,
       }));
       return { success: true, record: brief(record) };
     }
     case 'wordsSetState': {
       const record = await update((store, at) => Words.setWordState(store, wordInput(message), message.state, at));
       return { success: Boolean(record), record: brief(record) };
+    }
+    case 'wordsSetReviewFirst': {
+      const result = await update((store, at) => Words.setReviewFirst(store, wordInput(message), message.on === true, at));
+      return { success: Boolean(result.record), record: brief(result.record), full: result.full };
     }
     case 'wordsSetDefinition': {
       await update((store, at) => Words.setDefinition(store, wordInput(message), message.definition, at));

@@ -329,6 +329,14 @@
         </div>
         <div class="vocab-pagination"><button type="button" id="knownWordsMore" class="secondary" data-i18n="vocab_show_more" hidden>Show more</button></div>
       </div>
+      <div class="word-hidden">
+        <button type="button" id="hiddenWordsToggle" class="text-action word-hidden-toggle" aria-expanded="false" aria-controls="hiddenWordsPanel" hidden></button>
+        <div id="hiddenWordsPanel" class="word-hidden-panel" hidden>
+          <p class="word-ledger-helper" data-i18n="hidden_words_helper">Hidden words are not reviewed and are not added again when you look them up.</p>
+          <ol id="hiddenWordsList" class="word-ledger-list"></ol>
+          <div class="vocab-pagination"><button type="button" id="hiddenWordsMore" class="secondary" data-i18n="vocab_show_more" hidden>Show more</button></div>
+        </div>
+      </div>
     </section>
 
     <section class="tab-content" id="discover-tab">

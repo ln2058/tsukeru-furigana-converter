@@ -728,6 +728,21 @@
   "remove_listed_word": {
     "message": "$1をこのリストから削除"
   },
+  "content_review_first": {
+    "message": "先に復習"
+  },
+  "content_review_first_full": {
+    "message": "「先に復習」はいっぱいです（$1語）"
+  },
+  "content_state_tap_to_hide": {
+    "message": "もう一度押すとマイ単語から非表示にします"
+  },
+  "hidden_words_count": {
+    "message": "非表示 ($1)"
+  },
+  "hidden_words_helper": {
+    "message": "非表示の単語は復習されず、調べても再び追加されません。"
+  },
   "clear_learning_confirm": {
     "message": "学習中の単語をすべて削除しますか？EZFuriganaからも削除されます。"
   },

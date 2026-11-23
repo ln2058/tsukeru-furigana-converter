@@ -1,13 +1,13 @@
 /*
 Module: popup-vocab
-Purpose: Power the popup's My Words tab (review strip, sync line, Learning / Known lists, exports) and This page tab (Study mode switch, JLPT profile meter, how much of the page the reader knows with its difficulty, the words they probably know, and Words in this text with Learning / Known switches), styled after EZFurigana's My Words and result panel.
+Purpose: Power the popup's My Words tab (review strip, sync line, Learning / Known lists with the words to review first leading Learning, the "Hidden (n)" words under them, exports) and This page tab (Study mode switch, JLPT profile meter, how much of the page the reader knows with its difficulty, the words they probably know, and Words in this text with Learning / Known switches), styled after EZFurigana's My Words and result panel.
 
 Inputs:
 - The resolved UI language and website routes from the shared i18n helper.
 - Word records and summaries from the background store, the vocabulary estimate (`vocabGet`) and the shared model (`TsukeruVocab`), page words from the active tab, the stored Study mode setting, popup UI events, background dictionary and audio responses, and `pageWordsChanged` notices from the active tab's content script.
 
 Outputs:
-- Rendered My Words and page word lists (each saved word with a pronunciation button; numbers that share a counter form one 〜年 row with their most frequent uses), Learning/Known/removal requests, Study mode updates, and CSV export downloads.
+- Rendered My Words and page word lists (each saved word with a pronunciation button; numbers that share a counter form one 〜年 row with their most frequent uses), Learning/Known/hide requests (a saved word's × hides it), Study mode updates, and CSV export downloads.
 - A saved word opens in place to its first meanings (the display language's cached translation when there is one, else English); its sentence has a "Play sentence" button (account audio).
 - A word under Words in this text opens the dictionary popup on the page (or scrolls to it when the page cannot open one) and closes the extension popup.
 
@@ -546,6 +546,9 @@ function buildLedgerRow(record) {
   open.addEventListener('click', () => toggleEntry(row, record, open));
   term.append(open, listenButton(record));
   if (record.level) term.appendChild(levelTag(record.level));
+  if (record.state === 'learning' && record.priorityAt) {
+    term.appendChild(textSpan('word-ledger-first', t('content_review_first', undefined, 'Review first')));
+  }
   row.appendChild(term);
 
   const sentence = cardSentence(record);
@@ -561,24 +564,63 @@ function buildLedgerRow(record) {
   const actions = document.createElement('div');
   actions.className = 'word-ledger-actions';
   const pair = { word: record.word, reading: record.reading };
-  if (record.state === 'known') {
+  if (record.state !== 'learning') {
     const again = iconButton('word-ledger-again', t('learn_again_word', [record.word], `Learn ${record.word} again`), ICONS.again);
     again.addEventListener('click', () => changeWord({ action: 'wordsSetState', ...pair, state: 'learning' }));
     actions.appendChild(again);
-  } else {
+  }
+  if (record.state !== 'known') {
     const known = iconButton('word-ledger-known', t('mark_known_word', [record.word], `I know ${record.word}`), ICONS.known);
     known.addEventListener('click', () => changeWord({ action: 'wordsSetState', ...pair, state: 'known' }));
     actions.appendChild(known);
   }
-  const remove = iconButton('word-ledger-remove', t('remove_listed_word', [record.word], `Remove ${record.word} from this list`), ICONS.remove);
-  remove.addEventListener('click', () => changeWord({ action: 'wordsRemove', id: record.id }));
-  actions.appendChild(remove);
+  // Hiding keeps the word out of reviews and out of the list when it is looked up again.
+  if (record.state !== 'ignored') {
+    const remove = iconButton('word-ledger-remove', t('remove_listed_word', [record.word], `Remove ${record.word} from this list`), ICONS.remove);
+    remove.addEventListener('click', () => changeWord({ action: 'wordsSetState', ...pair, state: 'ignored' }));
+    actions.appendChild(remove);
+  }
   row.appendChild(actions);
   return row;
 }
 
+/** A list's words; in Learning, the words to review first come first. */
 function listRecords(state) {
-  return wordRecords.filter((record) => record.state === state);
+  const records = wordRecords.filter((record) => record.state === state);
+  if (state !== 'learning') return records;
+  return [...records.filter((record) => record.priorityAt), ...records.filter((record) => !record.priorityAt)];
+}
+
+let hiddenOpen = false;
+let hiddenRenderedCount = 0;
+
+/**
+ * The hidden words behind "Hidden (n)" under the lists, as on EZFurigana:
+ * words taken out of My Words, which stay out when looked up again. The
+ * toggle shows only while there are some.
+ */
+function renderHidden({ append = false, keepRows = false } = {}) {
+  const toggle = document.getElementById('hiddenWordsToggle');
+  const panel = document.getElementById('hiddenWordsPanel');
+  const list = document.getElementById('hiddenWordsList');
+  const more = document.getElementById('hiddenWordsMore');
+  if (!toggle || !panel || !list) return;
+  const records = listRecords('ignored');
+  toggle.hidden = records.length === 0;
+  toggle.textContent = t('hidden_words_count', [String(records.length)], `Hidden (${records.length})`);
+  if (!records.length) hiddenOpen = false;
+  toggle.setAttribute('aria-expanded', hiddenOpen ? 'true' : 'false');
+  panel.hidden = !hiddenOpen;
+  const rows = append ? VOCABULARY_PAGE_SIZE : (keepRows ? Math.max(hiddenRenderedCount, VOCABULARY_PAGE_SIZE) : VOCABULARY_PAGE_SIZE);
+  if (!append) {
+    list.replaceChildren();
+    hiddenRenderedCount = 0;
+  }
+  if (!hiddenOpen) return;
+  const page = getVocabularyPage(records, hiddenRenderedCount, rows);
+  page.forEach((record) => list.appendChild(buildLedgerRow(record)));
+  hiddenRenderedCount += page.length;
+  if (more) more.hidden = hiddenRenderedCount >= records.length;
 }
 
 function renderList(state, { rows = VOCABULARY_PAGE_SIZE, append = false } = {}) {
@@ -672,6 +714,7 @@ export async function loadMyWords({ keepRows = false } = {}) {
   wordSummary = response?.success ? response.summary : null;
   renderStrip(wordSummary);
   selectList(selectedList, { rows: keepRows ? Math.max(vocabularyRenderedCount, VOCABULARY_PAGE_SIZE) : VOCABULARY_PAGE_SIZE });
+  renderHidden({ keepRows });
 }
 
 async function fillMissingDefinitions(records) {
@@ -760,6 +803,11 @@ export function initMyWordsTab() {
   LISTS.forEach((state) => {
     document.getElementById(`${state}WordsMore`)?.addEventListener('click', () => renderList(state, { append: true }));
   });
+  document.getElementById('hiddenWordsToggle')?.addEventListener('click', () => {
+    hiddenOpen = !hiddenOpen;
+    renderHidden();
+  });
+  document.getElementById('hiddenWordsMore')?.addEventListener('click', () => renderHidden({ append: true }));
   [['clearLearningBtn', 'learning'], ['clearKnownBtn', 'known']].forEach(([id, state]) => {
     document.getElementById(id)?.addEventListener('click', async () => {
       const message = state === 'learning'

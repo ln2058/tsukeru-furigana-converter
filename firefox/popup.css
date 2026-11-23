@@ -667,6 +667,13 @@ a.vocab-action-btn { display: inline-flex; align-items: center; text-decoration:
 .word-ledger-clear:only-child { margin-left: auto; }
 .word-ledger-list { margin: 9px 12px 12px; padding: 0; border: 1px solid var(--paper-edge); border-radius: 4px; background: var(--paper); background-image: url("paper-texture.svg"); list-style: none; }
 .word-ledger-list[hidden] { display: none; }
+/* Hidden words under the lists, behind "Hidden (n)". */
+.word-hidden { margin: 0 14px 12px; }
+.word-hidden-toggle { font-size: 10px; }
+.word-hidden-toggle[hidden], .word-hidden-panel[hidden] { display: none; }
+.word-hidden-panel .word-ledger-helper { margin-top: 6px; }
+.word-hidden-panel .word-ledger-list { margin: 9px -2px 0; }
+.word-ledger-first { color: var(--blue-readable); font-size: 9px; font-weight: 600; white-space: nowrap; }
 .word-ledger-row { display: grid; grid-template-areas: "term actions" "sentence actions" "entry entry"; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 10px; row-gap: 2px; min-height: 48px; padding: 7px 6px 7px 12px; border-bottom: 1px solid var(--border); }
 .word-ledger-row:last-child { border-bottom: 0; }
 .word-ledger-term { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 8px; min-width: 0; grid-area: term; }

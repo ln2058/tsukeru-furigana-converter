@@ -728,6 +728,21 @@
   "remove_listed_word": {
     "message": "목록에서 $1 삭제"
   },
+  "content_review_first": {
+    "message": "먼저 복습"
+  },
+  "content_review_first_full": {
+    "message": "먼저 복습 목록이 가득 찼습니다($1개 단어)"
+  },
+  "content_state_tap_to_hide": {
+    "message": "한 번 더 누르면 내 단어에서 숨깁니다"
+  },
+  "hidden_words_count": {
+    "message": "숨김 ($1)"
+  },
+  "hidden_words_helper": {
+    "message": "숨긴 단어는 복습하지 않으며, 다시 찾아봐도 추가되지 않습니다."
+  },
   "clear_learning_confirm": {
     "message": "학습 중인 단어를 모두 삭제할까요? EZFurigana에서도 삭제됩니다."
   },
