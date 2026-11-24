@@ -12,6 +12,8 @@ Outputs:
 Side Effects:
 - Mutates page DOM, attributes, classes, and inline CSS variables.
 - Starts/stops guarded mutation, viewport intersection, container-discovery, and caption observers.
+- Watches YouTube's caption box and adds furigana in place; other players' caption boxes (JW Player, Video.js, Plyr, ArtPlayer, DPlayer, Shaka, MediaElement, Flowplayer) are shown in Tsukeru's caption layer, and page processing never touches captions.
+- Caption text is sent marked as caption text, only while the video caption allowance lasts (content-captions); past it the lines stay plain. Lines already processed ahead (content-caption-cues) are inserted without a request.
 
 Failure Modes:
 - Invalid selectors, DOM race conditions, and batch marker mismatches.
@@ -51,6 +53,11 @@ const VIEWPORT_PREFETCH_PX = 1200;
 const MIN_DELAY_MS = 200;
 const MAX_DELAY_MS = 2000;
 const DICTIONARY_MAX_SENSES = 3;
+// Player caption boxes (content-caption-layer's list), Netflix's, and Tsukeru's own caption layer.
+const VIDEO_CAPTION_TEXT_SELECTOR = [
+  '.jw-captions', '.vjs-text-track-display', '.plyr__captions', '.art-subtitle', '.dplayer-subtitle',
+  '.shaka-text-container', '.mejs__captions-layer', '.fp-captions', '.player-timedtext', '.tsukeru-caption-layer',
+].join(', ');
 
 const LONG_PAGE_SEMANTIC_BLOCK_TAGS = new Set([
   'p', 'li', 'td', 'th', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
@@ -568,6 +575,8 @@ function isProcessableTextNode(node, { visibilityCache = null } = {}) {
       return false;
     }
   }
+  // Video captions are processed only by the caption code, within the caption allowance.
+  if (parent.closest(VIDEO_CAPTION_TEXT_SELECTOR)) return false;
 
   if (currentSite === 'twitter') {
     if (parent.closest('[data-testid="analytics"], [aria-hidden="true"]')) {
@@ -1076,11 +1085,16 @@ function registerLongPageBlocks(rootNode, siteConfig = SITE_CONFIGS[currentSite]
   return added;
 }
 
-function getYoutubeCaptionContainer() {
-  return document.querySelector('.ytp-caption-window-container') ||
-    document.querySelector('.caption-window') ||
-    document.querySelector('.ytp-caption-segment') ||
-    null;
+function getVideoCaptionContainer() {
+  if (currentSite === 'youtube') {
+    return document.querySelector('.ytp-caption-window-container') ||
+      document.querySelector('.caption-window') ||
+      document.querySelector('.ytp-caption-segment') ||
+      null;
+  }
+  // Other players' caption boxes are shown in Tsukeru's caption layer instead (content-caption-layer):
+  // they redraw their own text at will, so furigana added in place would flicker.
+  return null;
 }
 
 function collectCaptionTextNodes(rootNode) {
@@ -1458,6 +1472,8 @@ async function processOversizedNode(batch, settings, operation, {
     const response = await sendFuriganaWithRateLimitRetry({
       textContent: `${segment.marker}${segment.text}`,
       settings,
+      // Caption text counts against the video caption allowance.
+      ...(markCaption && { caption: true }),
     }, 3, isOperationCurrent, signal);
     if (!isOperationCurrent()) return { inserted: 0, skipped: 0, cancelled: true };
 
@@ -1800,14 +1816,14 @@ function getAddedCaptionMatch(node) {
 
 function shouldRunContainerDiscovery(mutations, siteConfig) {
   if (!dynamicContainer || dynamicContainer.isConnected === false) return true;
-  if (currentSite === 'youtube' && youtubeCaptionContainer?.isConnected === false) return true;
+  if (currentSite === 'youtube' && videoCaptionContainer?.isConnected === false) return true;
   for (const mutation of mutations) {
     if (mutation.type !== 'childList') continue;
     for (const node of mutation.addedNodes || []) {
       const replacement = getAddedNodeMatch(node, siteConfig.containerSelector);
       if (replacement && replacement !== dynamicContainer) return true;
       const captionReplacement = currentSite === 'youtube' ? getAddedCaptionMatch(node) : null;
-      if (captionReplacement && captionReplacement !== youtubeCaptionContainer) return true;
+      if (captionReplacement && captionReplacement !== videoCaptionContainer) return true;
     }
   }
   return false;
@@ -2217,7 +2233,9 @@ function collectDynamicTextNodes(targets, container, siteConfig) {
       roots = [target];
     }
 
-    for (const root of new Set(roots)) collectTextNodes(root).forEach((node) => nodes.add(node));
+    for (const root of new Set(roots)) {
+      collectTextNodes(root).forEach((node) => nodes.add(node));
+    }
   }
   return Array.from(nodes);
 }
@@ -2382,6 +2400,7 @@ async function drainDynamicQueue(settings, container, generation) {
   };
   dynamicProcessingOperation = operation;
   nodes.forEach((node) => processingQueue.set(node, operation));
+
   try {
     const batches = buildBatches(nodes);
     for (let i = 0; i < batches.length; i++) {
@@ -2412,7 +2431,9 @@ async function drainDynamicQueue(settings, container, generation) {
       }
     }
   } catch (error) {
-    if (!error.cancelled && !error.rateLimitType) console.error('Tsukeru: failed to process dynamic content', error);
+    if (!error.cancelled && !error.rateLimitType) {
+      console.error('Tsukeru: failed to process dynamic content', error);
+    }
   } finally {
     nodes.forEach((node) => {
       if (processingQueue.get(node) === operation) processingQueue.delete(node);
@@ -2437,6 +2458,7 @@ function bindDynamicContainer(settings, generation) {
   if (dynamicContainer === nextContainer && mutationObserver) {
     return;
   }
+
   const previousContainer = dynamicContainer;
   if (previousContainer && dynamicDrainTimer !== null && dynamicDrainContainer === previousContainer) {
     clearTimeout(dynamicDrainTimer);
@@ -2458,27 +2480,31 @@ function bindDynamicContainer(settings, generation) {
   mutationObserver = new MutationObserver((mutations) => {
     processMutations(mutations, settings, nextContainer, generation);
   });
-  mutationObserver.observe(nextContainer, { childList: true, subtree: true, characterData: true });
+  mutationObserver.observe(nextContainer, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+  });
   observeConfiguredElements(nextContainer, siteConfig);
   if (!longPageMode) enqueueDynamicTargets([nextContainer], settings, nextContainer, generation, 0);
 }
 
-function refreshYoutubeCaptionBinding(settings, generation) {
+function refreshVideoCaptionBinding(settings, generation) {
   if (currentSite !== 'youtube' || !isFuriganaActive || lifecycleGeneration !== generation) return;
-  const nextContainer = getYoutubeCaptionContainer();
-  if (!nextContainer && !youtubeCaptionContainer && !youtubeCaptionObserver) {
-    if (!youtubeCaptionRetryTimer) startYoutubeCaptionsObserver(settings);
+  const nextContainer = getVideoCaptionContainer();
+  if (!nextContainer && !videoCaptionContainer && !videoCaptionObserver) {
+    if (!videoCaptionRetryTimer) startVideoCaptionsObserver(settings);
     return;
   }
-  if (youtubeCaptionContainer === nextContainer && youtubeCaptionObserver) return;
-  stopYoutubeCaptionsObserver();
-  startYoutubeCaptionsObserver(settings);
+  if (videoCaptionContainer === nextContainer && videoCaptionObserver) return;
+  stopVideoCaptionsObserver();
+  startVideoCaptionsObserver(settings);
 }
 
 function discoverDynamicTargets(settings, generation) {
   if (lifecycleGeneration !== generation || !isFuriganaActive) return;
   bindDynamicContainer(settings, generation);
-  refreshYoutubeCaptionBinding(settings, generation);
+  refreshVideoCaptionBinding(settings, generation);
 }
 
 function startWatchingDynamicContent(settings) {
@@ -2495,7 +2521,9 @@ function startWatchingDynamicContent(settings) {
   containerDiscoveryObserver.observe(stableAncestor, { childList: true, subtree: true });
   discoverDynamicTargets(settings, generation);
   if (ENABLE_TEMPORARY_CONTAINER_POLL_FALLBACK && !containerDiscoveryPollTimer) {
-    containerDiscoveryPollTimer = setInterval(() => discoverDynamicTargets(settings, generation), TEMPORARY_CONTAINER_POLL_INTERVAL_MS);
+    containerDiscoveryPollTimer = setInterval(() => {
+      discoverDynamicTargets(settings, generation);
+    }, TEMPORARY_CONTAINER_POLL_INTERVAL_MS);
   }
 }
 
@@ -2530,60 +2558,67 @@ function stopWatchingDynamicContent() {
   processingQueue.clear();
 }
 
-function queueYoutubeCaptionProcessing(settings, generation, delayMs = 120) {
-  if (lifecycleGeneration !== generation || !youtubeCaptionObserver) return;
-  youtubeCaptionPending = true;
-  youtubeCaptionSettings = settings;
-  if (youtubeCaptionTimer !== null) return;
-  youtubeCaptionTimer = setTimeout(() => {
-    youtubeCaptionTimer = null;
-    processYoutubeCaptions(settings, generation);
+function queueVideoCaptionProcessing(settings, generation, delayMs = 120) {
+  if (lifecycleGeneration !== generation || !videoCaptionObserver) return;
+  videoCaptionPending = true;
+  videoCaptionSettings = settings;
+  if (videoCaptionTimer !== null) return;
+  videoCaptionTimer = setTimeout(() => {
+    videoCaptionTimer = null;
+    processVideoCaptions(settings, generation);
   }, delayMs);
 }
 
-async function processYoutubeCaptions(settings, generation) {
-  const container = youtubeCaptionContainer;
-  if (!container || !youtubeCaptionObserver || lifecycleGeneration !== generation) return;
-  if (youtubeCaptionProcessingOperation) {
-    youtubeCaptionPending = true;
+async function processVideoCaptions(settings, generation) {
+  const container = videoCaptionContainer;
+  if (!container || !videoCaptionObserver || lifecycleGeneration !== generation) return;
+  if (videoCaptionProcessingOperation) {
+    videoCaptionPending = true;
     return;
   }
-  youtubeCaptionPending = false;
+  videoCaptionPending = false;
   const operation = {
     token: Symbol('captions'),
     generation,
     container,
     controller: new AbortController(),
   };
-  youtubeCaptionProcessingOperation = operation;
+  videoCaptionProcessingOperation = operation;
   try {
     const nodes = collectCaptionTextNodes(container);
     if (!nodes.length) return;
-    const batches = buildBatches(nodes);
+    // Past the daily caption allowance the lines stay plain (content-captions shows why).
+    noteCaptionText();
+    if (!captionGateOpen()) return;
+    // Lines processed ahead of time (content-caption-cues) show at once; the rest are sent now.
+    const remaining = applyPrefetchedCaptionNodes(nodes);
+    if (!remaining.length) return;
+    const batches = buildBatches(remaining);
     for (let i = 0; i < batches.length; i++) {
-      if (!isYoutubeCaptionOperationCurrent(operation)) return;
+      if (!isVideoCaptionOperationCurrent(operation)) return;
       const batch = batches[i];
       if (batch.oversizedNode) {
         await processOversizedNode(batch, settings, operation, {
           markProcessed: false,
           markCaption: true,
-          isCurrent: () => isYoutubeCaptionOperationCurrent(operation),
+          isCurrent: () => isVideoCaptionOperationCurrent(operation),
         });
       } else {
         const response = await sendFuriganaWithRateLimitRetry({
           textContent: batch.payload,
           settings,
-        }, 3, () => isYoutubeCaptionOperationCurrent(operation), operation.controller.signal);
-        if (!isYoutubeCaptionOperationCurrent(operation)) return;
+          caption: true,
+        }, 3, () => isVideoCaptionOperationCurrent(operation), operation.controller.signal);
+        if (!isVideoCaptionOperationCurrent(operation)) return;
         await applyBatchResult(
           batch,
           response.processedHTML,
           false,
           true,
-          (node, index) => isYoutubeCaptionOperationCurrent(operation) && isBatchTargetCurrent(batch, index),
+          (node, index) => isVideoCaptionOperationCurrent(operation) && isBatchTargetCurrent(batch, index),
           {
             signal: operation.controller.signal,
-            operationIsCurrent: () => isYoutubeCaptionOperationCurrent(operation),
+            operationIsCurrent: () => isVideoCaptionOperationCurrent(operation),
           }
         );
       }
@@ -2592,66 +2627,75 @@ async function processYoutubeCaptions(settings, generation) {
       }
     }
   } catch (error) {
-    if (!error.cancelled && !error.rateLimitType) console.error('Tsukeru: YouTube captions processing failed', error);
+    if (error.errorCode === 'caption_limit') {
+      noteCaptionRefused(error.allowance);
+    } else if (!error.cancelled && !error.rateLimitType) {
+      console.error('Tsukeru: YouTube captions processing failed', error);
+    }
   } finally {
-    if (youtubeCaptionProcessingOperation === operation) {
-      youtubeCaptionProcessingOperation = null;
-      if (youtubeCaptionPending && isYoutubeCaptionWorkCurrent(generation, container)) {
-        queueYoutubeCaptionProcessing(settings, generation, 0);
+    if (videoCaptionProcessingOperation === operation) {
+      videoCaptionProcessingOperation = null;
+      if (videoCaptionPending && isVideoCaptionWorkCurrent(generation, container)) {
+        queueVideoCaptionProcessing(settings, generation, 0);
       }
     }
   }
 }
 
-function isYoutubeCaptionWorkCurrent(generation, container) {
+function isVideoCaptionWorkCurrent(generation, container) {
   return Boolean(
     lifecycleGeneration === generation &&
-    youtubeCaptionContainer === container &&
+    videoCaptionContainer === container &&
     container?.isConnected !== false &&
-    youtubeCaptionObserver
+    videoCaptionObserver
   );
 }
 
-function isYoutubeCaptionOperationCurrent(operation) {
+function isVideoCaptionOperationCurrent(operation) {
   return Boolean(
-    youtubeCaptionProcessingOperation === operation &&
-    isYoutubeCaptionWorkCurrent(operation.generation, operation.container)
+    videoCaptionProcessingOperation === operation &&
+    isVideoCaptionWorkCurrent(operation.generation, operation.container)
   );
 }
 
-function startYoutubeCaptionsObserver(settings) {
-  if (currentSite !== 'youtube') return;
+function startVideoCaptionsObserver(settings) {
+  if (!settings) return;
   const generation = lifecycleGeneration;
-  const container = getYoutubeCaptionContainer();
-  if (youtubeCaptionObserver && youtubeCaptionContainer === container) return;
+  const container = getVideoCaptionContainer();
+  if (videoCaptionObserver && videoCaptionContainer === container) return;
   if (!container) {
-    youtubeCaptionContainer = null;
-    clearTimeout(youtubeCaptionRetryTimer);
-    youtubeCaptionRetryTimer = setTimeout(() => {
-      youtubeCaptionRetryTimer = null;
-      if (isFuriganaActive && lifecycleGeneration === generation) startYoutubeCaptionsObserver(settings);
+    // Elsewhere a player's caption box is looked for again when a video plays (content-captions).
+    if (currentSite !== 'youtube') return;
+    videoCaptionContainer = null;
+    clearTimeout(videoCaptionRetryTimer);
+    videoCaptionRetryTimer = setTimeout(() => {
+      videoCaptionRetryTimer = null;
+      if (isFuriganaActive && lifecycleGeneration === generation) startVideoCaptionsObserver(settings);
     }, 1000);
     return;
   }
-  youtubeCaptionContainer = container;
-  youtubeCaptionSettings = settings;
-  youtubeCaptionObserver = new MutationObserver(() => queueYoutubeCaptionProcessing(settings, generation));
-  youtubeCaptionObserver.observe(container, { childList: true, subtree: true, characterData: true });
-  processYoutubeCaptions(settings, generation);
+
+  videoCaptionContainer = container;
+  videoCaptionSettings = settings;
+  videoCaptionObserver = new MutationObserver(() => {
+    queueVideoCaptionProcessing(settings, generation);
+  });
+  videoCaptionObserver.observe(container, { childList: true, subtree: true, characterData: true });
+  processVideoCaptions(settings, generation);
 }
 
-function stopYoutubeCaptionsObserver() {
-  clearTimeout(youtubeCaptionRetryTimer);
-  youtubeCaptionRetryTimer = null;
-  if (youtubeCaptionTimer !== null) clearTimeout(youtubeCaptionTimer);
-  youtubeCaptionTimer = null;
-  youtubeCaptionPending = false;
-  youtubeCaptionSettings = null;
-  youtubeCaptionProcessingOperation?.controller.abort();
-  if (youtubeCaptionObserver) youtubeCaptionObserver.disconnect();
-  youtubeCaptionObserver = null;
-  youtubeCaptionContainer = null;
-  youtubeCaptionProcessingOperation = null;
+function stopVideoCaptionsObserver() {
+  clearTimeout(videoCaptionRetryTimer);
+  videoCaptionRetryTimer = null;
+  if (videoCaptionTimer !== null) clearTimeout(videoCaptionTimer);
+  videoCaptionTimer = null;
+  videoCaptionPending = false;
+  videoCaptionSettings = null;
+  videoCaptionProcessingOperation?.controller.abort();
+  if (videoCaptionObserver) videoCaptionObserver.disconnect();
+  videoCaptionObserver = null;
+  videoCaptionContainer = null;
+  videoCaptionProcessingOperation = null;
 }
 
 function startIntersectionObserver(settings) {
@@ -2664,7 +2708,9 @@ function startIntersectionObserver(settings) {
       entries.forEach((entry) => updateLongPageViewport(entry, settings, generation));
       return;
     }
-    const visibleElements = entries.filter((entry) => entry.isIntersecting && entry.target.isConnected).map((entry) => entry.target);
+    const visibleElements = entries
+      .filter((entry) => entry.isIntersecting && entry.target.isConnected)
+      .map((entry) => entry.target);
     if (visibleElements.length) processVisibleElements(visibleElements, settings);
   }, { rootMargin: longPageMode ? VIEWPORT_ROOT_MARGIN : '50px', threshold: longPageMode ? 0 : 0.1 });
   if (dynamicContainer) observeConfiguredElements(dynamicContainer, siteConfig);
@@ -2673,7 +2719,9 @@ function startIntersectionObserver(settings) {
 function stopIntersectionObserver() {
   if (intersectionObserver) intersectionObserver.disconnect();
   intersectionObserver = null;
-  for (const element of observedIntersectionElements) element.removeAttribute('data-tsukeru-observed');
+  for (const element of observedIntersectionElements) {
+    element.removeAttribute('data-tsukeru-observed');
+  }
   observedIntersectionElements.clear();
   viewportVisibleBlocks.clear();
   viewportNearbyBlocks.clear();
@@ -2694,8 +2742,8 @@ function processVisibleElements(elements, settings) {
 
 // ── Page word extraction (for the popup's Words on this page) ────────────────
 
-function extractAllPageWords() {
-  const wordElements = getAnalysisWordElements(document);
+function extractAllPageWords(root = document) {
+  const wordElements = getAnalysisWordElements(root);
   const wordMap = new Map();
   const snippetCache = new Map();
   let occurrenceCounter = 0;

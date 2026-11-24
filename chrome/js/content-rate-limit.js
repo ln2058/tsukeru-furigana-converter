@@ -10,6 +10,7 @@ Inputs:
 Outputs:
 - Successful background responses after transient retries.
 - Thrown errors with rate-limit metadata after retries are exhausted.
+- Thrown errors for refused caption text (`caption_limit`) carry the caption allowance, with no toast.
 
 Side Effects:
 - Shows toast notifications through content-ui.js helpers.
@@ -130,6 +131,8 @@ async function sendFuriganaWithRateLimitRetry(payload, maxRetries = 1, isValid =
     err.status = response?.status;
     err.errorCode = response?.errorCode;
     err.operation = response?.operation || 'furigana';
+    // A refused caption request carries the video caption allowance that refused it.
+    if (response?.allowance) err.allowance = response.allowance;
     throw err;
   }
 }

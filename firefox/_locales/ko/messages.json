@@ -998,7 +998,7 @@
     "message": "계정 연결"
   },
   "supporter_connect_hint": {
-    "message": "ezfurigana.com이 열립니다. 로그인하면 자동으로 연결됩니다."
+    "message": "EZFurigana 로그인 페이지가 열립니다. 로그인하면 자동으로 연결됩니다."
   },
   "supporter_state_supporter": {
     "message": "서포터로 연결됨"
@@ -1207,6 +1207,15 @@
   "discover_tadoku_open": {
     "message": "쉬운 이야기 찾기"
   },
+  "discover_video_title": {
+    "message": "YouTube, Netflix, 애니로 일본어 공부해요"
+  },
+  "discover_video_text": {
+    "message": "일본어 자막에 후리가나가 달리고, 모르는 단어는 클릭 한 번으로 바로 찾아볼 수 있어요. 온라인 강의처럼 다른 사이트의 동영상에서도 쓸 수 있어요."
+  },
+  "discover_video_other": {
+    "message": "다른 사이트"
+  },
   "discover_streak_one": {
     "message": "1일 연속"
   },
@@ -1263,5 +1272,122 @@
   },
   "discover_vote_down": {
     "message": "제 취향은 아니에요"
+  },
+  "caption_limit_guest_title": {
+    "message": "자막 후리가나 무료 체험이 끝났습니다."
+  },
+  "caption_limit_guest_text": {
+    "message": "무료로 로그인하면 자막 후리가나를 하루 $1분 사용할 수 있습니다. 로그인하는 동안에도 동영상은 계속 재생됩니다."
+  },
+  "caption_limit_free_title": {
+    "message": "오늘의 무료 $1분을 모두 사용했습니다."
+  },
+  "caption_limit_free_text": {
+    "message": "자막의 후리가나와 단어 검색은 내일까지 일시 중지됩니다. 서포터는 하루 제한이 없습니다."
+  },
+  "caption_limit_sign_in": {
+    "message": "무료로 로그인"
+  },
+  "caption_limit_later": {
+    "message": "나중에"
+  },
+  "caption_sign_in_provider": {
+    "message": "WorkOS의 안전한 로그인"
+  },
+  "caption_preview_left": {
+    "message": "자막 후리가나 무료 체험이 $1분 남았습니다"
+  },
+  "caption_time_left": {
+    "message": "오늘 자막 후리가나가 $1분 남았습니다"
+  },
+  "caption_connected_toast": {
+    "message": "연결되었습니다. 자막 후리가나가 다시 켜졌습니다."
+  },
+  "caption_popup_unlimited": {
+    "message": "동영상 자막: 하루 제한 없음"
+  },
+  "caption_popup_free": {
+    "message": "동영상 자막: 오늘 $2분 중 $1분 남음"
+  },
+  "caption_popup_free_done": {
+    "message": "동영상 자막: 오늘의 $1분을 모두 사용함"
+  },
+  "caption_popup_guest": {
+    "message": "동영상 자막: 무료 체험 $1분 남음"
+  },
+  "caption_popup_guest_done": {
+    "message": "동영상 자막: 무료 체험이 끝났습니다. 무료로 로그인하면 매일 사용할 수 있습니다."
+  },
+  "supporter_view_captions": {
+    "message": "동영상 자막"
+  },
+  "supporter_view_captions_desc": {
+    "message": "YouTube 등 동영상 플레이어의 자막에 후리가나와 단어 검색을 제공합니다."
+  },
+  "supporter_view_captions_free": {
+    "message": "하루 $1분"
+  },
+  "supporter_view_captions_supporter": {
+    "message": "하루 제한 없음"
+  },
+  "caption_styled_hint": {
+    "message": "이 플레이어는 스타일 자막을 그림으로 표시합니다. 후리가나를 보려면 플레이어에서 스타일(ASS) 자막을 끄세요."
+  },
+  "caption_tools_label": {
+    "message": "Tsukeru 자막 도구"
+  },
+  "caption_tool_replay": {
+    "message": "이 줄 다시 듣기 (\\)"
+  },
+  "caption_tool_previous": {
+    "message": "이전 줄 ([)"
+  },
+  "caption_tool_next": {
+    "message": "다음 줄 (])"
+  },
+  "caption_tool_explain": {
+    "message": "이 줄 설명"
+  },
+  "caption_tool_explain_short": {
+    "message": "설명"
+  },
+  "caption_tool_words_short": {
+    "message": "단어"
+  },
+  "caption_explain_too_long": {
+    "message": "이 줄은 너무 길어서 설명할 수 없습니다."
+  },
+  "caption_explain_none": {
+    "message": "화면에 설명할 일본어 줄이 없습니다."
+  },
+  "video_words_title": {
+    "message": "이 동영상의 단어"
+  },
+  "video_words_reading": {
+    "message": "자막을 읽는 중…"
+  },
+  "video_words_none": {
+    "message": "이 동영상의 자막을 아직 불러오지 못했습니다."
+  },
+  "video_words_other": {
+    "message": "기타"
+  },
+  "video_words_counts": {
+    "message": "$1개 단어, 새 단어 $2개"
+  },
+  "video_words_partial": {
+    "message": "(지금까지 동영상의 $1%)"
+  },
+  "video_words_sort_hint": {
+    "message": "Tsukeru의 '이 페이지' 탭에서 내 단어로 분류할 수 있습니다."
+  },
+  "video_words_supporter": {
+    "message": "서포터는 동영상의 새 단어를 모두 보고 내 단어로 분류할 수 있습니다."
+  },
+  "video_words_in_list": {
+    "message": "아래 '이 글의 단어'에 페이지의 단어와 함께 있습니다."
+  },
+  "status_captions_only": {
+    "message": "이 페이지에는 일본어 본문이 없습니다. 동영상의 일본어 자막에 후리가나가 표시됩니다."
   }
 }

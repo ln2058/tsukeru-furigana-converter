@@ -29,7 +29,9 @@ for (const browser of ['chrome', 'firefox']) {
     assert.ok(html.includes('src="js/ui-messages.js"'));
     assert.ok(html.indexOf('src="js/ui-messages.js"') < html.indexOf('src="js/popup-main.js"'));
     for (const path of ['background.js', 'js/popup-settings.js']) {
-      const injection = read(path).match(/for \(const file of \[([\s\S]*?)\]/)[1];
+      const source = read(path);
+      // The background keeps its list in CONTENT_SCRIPT_FILES (shared with embedded frames).
+      const injection = (source.match(/CONTENT_SCRIPT_FILES = \[([\s\S]*?)\]/) || source.match(/for \(const file of \[([\s\S]*?)\]/))[1];
       assert.ok(injection.indexOf("'js/ui-messages.js'") >= 0);
       assert.ok(injection.indexOf("'js/ui-messages.js'") < injection.indexOf("'js/content-ui.js'"));
     }

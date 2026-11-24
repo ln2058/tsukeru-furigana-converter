@@ -16,13 +16,14 @@
 
 Tsukeru is a browser extension for Chrome, Microsoft Edge, and Firefox. It adds readings above kanji while preserving the layout of the page, with dictionary lookup, word lists, and Anki export.
 
-Version **4.7.0** adds Discover: five Japanese articles a day from other sites, picked for your level and what you enjoy, with finished articles counting toward your EZFurigana streak. Version 4.6.0 asked your Japanese level and showed how much of each page you know, offered to mark the words you probably know in one go, let a free EZFurigana account try sentence audio and Explain a few times a week, and let you drag the dictionary out of the way. Version 4.5.2 opened account links in the popup's language and counted weekly users with a random ID that changes every week. See the [changelog](CHANGELOG.md) for details.
+Version **4.8.0** adds furigana to Japanese video captions on YouTube, Netflix and video players on other sites, with word lookup, line replay, Explain and the words in each video (30 minutes a day on a free EZFurigana account, no daily limit for Supporters). It also adds Review first, the page buttons and kana-only words in My Words. Version 4.7.0 added Discover: five Japanese articles a day from other sites, picked for your level and what you enjoy, with finished articles counting toward your EZFurigana streak. Version 4.6.0 asked your Japanese level and showed how much of each page you know, offered to mark the words you probably know in one go, let a free EZFurigana account try sentence audio and Explain a few times a week, and let you drag the dictionary out of the way. Version 4.5.2 opened account links in the popup's language and counted weekly users with a random ID that changes every week. See the [changelog](CHANGELOG.md) for details.
 
 ![Tsukeru adding furigana to a Japanese Wikipedia article, with its popup open](.github/images/furigana-on-any-website.webp)
 
 ## Features
 
 - Add furigana to Japanese text on ordinary and dynamic webpages.
+- Add furigana to Japanese captions on YouTube, Netflix and video players on other sites, and look up caption words as you watch (30 minutes a day on a free EZFurigana account, no daily limit for Supporters).
 - Choose a minimum JLPT level and adjust reading size, colour, weight, and display style.
 - Look up annotated words for definitions, parts of speech, JLPT level, word frequency, pitch accent, example sentences, and audio. The Kanji tab shows each character's readings, details, and stroke order. English entries prefer TKGJE data and fall back to JMdict.
 - Read definitions in easy Japanese, Korean, or Traditional Chinese, with AI translation for untranslated entries within daily limits.
@@ -35,7 +36,7 @@ Version **4.7.0** adds Discover: five Japanese articles a day from other sites, 
 - Hide furigana for Known words, or turn this off in Settings.
 - Export to Anki through EZFurigana, or download a list as a CSV file.
 - Highlight words by JLPT level or part of speech, and choose a light or dark theme.
-- Handle changing content on sites such as YouTube and X when dynamic-page processing is enabled.
+- Handle changing content, such as comments and infinite scroll. YouTube, X and Reddit always do this; on other sites it is on by default.
 - Use the extension in English, Japanese, Korean, Simplified Chinese, or Traditional Chinese.
 
 ![The dictionary popup for 地方, with its JLPT level, pitch accent, audio, sentence tools and meanings](.github/images/dictionary.webp)

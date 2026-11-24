@@ -47,6 +47,7 @@ async function renderView(browserName, { state, entry, language = 'en', perks })
     TsukeruI18n: {
       language: () => language,
       websiteUrl: (path = '') => `https://www.ezfurigana.com${path}`,
+      signInUrl: (trigger) => `https://www.ezfurigana.com/auth/login?trigger=${trigger}`,
     },
     t: (_key, _substitutions, fallback) => fallback,
     chrome: { runtime: { sendMessage: async () => ({ success: true, perks }) } },
@@ -67,6 +68,7 @@ const PERKS = {
   sentenceAudio: { free: 3, supporter: 570 },
   explain: { free: 3, supporter: 50 },
   dictionary: { free: 10, supporter: 200 },
+  captions: { free: 30, guest: 5, supporter: null },
 };
 
 for (const browserName of ['chrome', 'firefox']) {
@@ -76,6 +78,7 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.deepEqual(rows, [
       { title: 'Sentence audio', free: 'Free account: 3 new sentences a week', supporter: 'Supporter: About 570 new sentences a month' },
       { title: 'Explain a sentence', free: 'Free account: 3 a week', supporter: 'Supporter: 50 a day' },
+      { title: 'Video captions', free: 'Free account: 30 min a day', supporter: 'Supporter: No daily limit' },
     ]);
     assert.equal(ids.supporterViewSignIn.hidden, true);
     assert.equal(ids.supporterViewSolo.hidden, false);
@@ -85,10 +88,11 @@ for (const browserName of ['chrome', 'firefox']) {
 
   test(`${browserName} a reader with no account is asked to sign in, and sees the dictionary row in Korean`, async () => {
     const { ids, rows } = await renderView(browserName, { state: 'none', entry: 'header', language: 'ko', perks: PERKS });
-    assert.deepEqual(rows.map((row) => row.title), ['Sentence audio', 'Explain a sentence', 'Dictionary in your language']);
+    assert.deepEqual(rows.map((row) => row.title), ['Sentence audio', 'Explain a sentence', 'Dictionary in your language', 'Video captions']);
     assert.equal(ids.supporterViewSignIn.hidden, false);
     assert.equal(ids.supporterViewSignInText.textContent, 'Sign in for free to start: 3 sentences a week to listen to and explain.');
-    assert.equal(ids.supporterViewSignInLink.href, 'https://www.ezfurigana.com/account?tsukeru=connect');
+    // One step: the website's sign-in, which returns to its signed-in page to connect.
+    assert.equal(ids.supporterViewSignInLink.href, 'https://www.ezfurigana.com/auth/login?trigger=tsukeru_connect');
     assert.equal(ids.supporterViewAction.href, 'https://www.ezfurigana.com/pricing?from=tsukeru&placement=extension_header');
   });
 
@@ -97,6 +101,7 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.deepEqual(rows.map((row) => [row.free, row.supporter]), [
       [undefined, 'Supporter: About 570 new sentences a month'],
       [undefined, 'Supporter: 50 a day'],
+      [undefined, 'Supporter: No daily limit'],
     ]);
     assert.equal(ids.supporterViewLede.textContent, "You're a Supporter. Thank you!");
     assert.equal(ids.supporterViewSolo.hidden, true);
@@ -108,8 +113,9 @@ for (const browserName of ['chrome', 'firefox']) {
     assert.deepEqual(none.rows.map((row) => [row.title, row.free, row.supporter]), [
       ['Sentence audio', undefined, undefined],
       ['Explain a sentence', undefined, undefined],
+      ['Video captions', undefined, undefined],
     ]);
     const off = await renderView(browserName, { state: 'free', entry: 'header', perks: { ...PERKS, explain: null } });
-    assert.deepEqual(off.rows.map((row) => row.title), ['Sentence audio']);
+    assert.deepEqual(off.rows.map((row) => row.title), ['Sentence audio', 'Video captions']);
   });
 }

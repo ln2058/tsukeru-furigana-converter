@@ -132,6 +132,18 @@ for (const browser of ['chrome', 'firefox']) {
     assert.match(popup, /websiteUrl\(copy\.path\)/);
   });
 
+  test(`${browser} sign-in goes straight to the website sign-in and back to its signed-in page`, async () => {
+    // The signed-in page exists in English and Japanese; other languages return to the English one.
+    const japanese = extension(browser, { preference: 'ja' });
+    await japanese.i18n.ready();
+    assert.equal(japanese.i18n.signInUrl('tsukeru_captions'),
+      'https://www.ezfurigana.com/auth/login?trigger=tsukeru_captions&return_to=%2Fjp%2Fauth%2Fsigned-in%3Ftsukeru%3Dconnect');
+    const korean = extension(browser, { preference: 'ko' });
+    await korean.i18n.ready();
+    assert.equal(korean.i18n.signInUrl('tsukeru_connect'),
+      'https://www.ezfurigana.com/auth/login?trigger=tsukeru_connect&return_to=%2Fauth%2Fsigned-in%3Ftsukeru%3Dconnect');
+  });
+
   test(`${browser} invalid preferences use native Auto resolution and load failures use English`, async () => {
     for (const preference of ['', 'fr', 'zh-Hant', '../ja', null, ['ko'], { toString: () => 'ko' }]) {
       const fixture = extension(browser, { preference, auto: 'zh-TW' });

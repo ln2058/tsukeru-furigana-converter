@@ -998,7 +998,7 @@
     "message": "アカウントを連携"
   },
   "supporter_connect_hint": {
-    "message": "ezfurigana.comを開きます。ログインすると自動で連携されます。"
+    "message": "EZFuriganaのログインページを開きます。ログインすると自動で連携されます。"
   },
   "supporter_state_supporter": {
     "message": "サポーターとして連携済み"
@@ -1207,6 +1207,15 @@
   "discover_tadoku_open": {
     "message": "読み物を探す"
   },
+  "discover_video_title": {
+    "message": "YouTube・Netflix・アニメで日本語を学ぼう"
+  },
+  "discover_video_text": {
+    "message": "日本語字幕にふりがなが付き、気になる単語はクリックするだけでその場で調べられます。オンライン講座など、ほかのサイトの動画でも使えます。"
+  },
+  "discover_video_other": {
+    "message": "ほかのサイト"
+  },
   "discover_streak_one": {
     "message": "1日連続"
   },
@@ -1263,5 +1272,122 @@
   },
   "discover_vote_down": {
     "message": "合わなかった"
+  },
+  "caption_limit_guest_title": {
+    "message": "字幕ふりがなの無料お試しが終わりました。"
+  },
+  "caption_limit_guest_text": {
+    "message": "無料でログインすると、字幕ふりがなを1日$1分使えます。ログインの間も動画は再生されたままです。"
+  },
+  "caption_limit_free_title": {
+    "message": "今日の無料分（$1分）を使い切りました。"
+  },
+  "caption_limit_free_text": {
+    "message": "字幕のふりがなと単語の検索は明日まで一時停止します。サポーターには1日の上限がありません。"
+  },
+  "caption_limit_sign_in": {
+    "message": "無料でログイン"
+  },
+  "caption_limit_later": {
+    "message": "あとで"
+  },
+  "caption_sign_in_provider": {
+    "message": "WorkOSによる安全なログイン"
+  },
+  "caption_preview_left": {
+    "message": "字幕ふりがなの無料お試しは残り$1分です"
+  },
+  "caption_time_left": {
+    "message": "今日の字幕ふりがなは残り$1分です"
+  },
+  "caption_connected_toast": {
+    "message": "連携しました。字幕のふりがなが再開しました。"
+  },
+  "caption_popup_unlimited": {
+    "message": "動画の字幕：1日の上限なし"
+  },
+  "caption_popup_free": {
+    "message": "動画の字幕：今日は残り$1分（$2分中）"
+  },
+  "caption_popup_free_done": {
+    "message": "動画の字幕：今日の$1分を使い切りました"
+  },
+  "caption_popup_guest": {
+    "message": "動画の字幕：無料お試しは残り$1分"
+  },
+  "caption_popup_guest_done": {
+    "message": "動画の字幕：無料お試しが終わりました。無料でログインすると毎日使えます。"
+  },
+  "supporter_view_captions": {
+    "message": "動画の字幕"
+  },
+  "supporter_view_captions_desc": {
+    "message": "YouTubeなどの動画プレーヤーの字幕に、ふりがなと単語の検索を。"
+  },
+  "supporter_view_captions_free": {
+    "message": "1日$1分"
+  },
+  "supporter_view_captions_supporter": {
+    "message": "1日の上限なし"
+  },
+  "caption_styled_hint": {
+    "message": "このプレーヤーはスタイル付き字幕を画像として表示しています。ふりがなを付けるには、プレーヤーでスタイル付き（ASS）字幕をオフにしてください。"
+  },
+  "caption_tools_label": {
+    "message": "Tsukeruの字幕ツール"
+  },
+  "caption_tool_replay": {
+    "message": "この行をもう一度（\\）"
+  },
+  "caption_tool_previous": {
+    "message": "前の行（[）"
+  },
+  "caption_tool_next": {
+    "message": "次の行（]）"
+  },
+  "caption_tool_explain": {
+    "message": "この行を解説"
+  },
+  "caption_tool_explain_short": {
+    "message": "解説"
+  },
+  "caption_tool_words_short": {
+    "message": "単語"
+  },
+  "caption_explain_too_long": {
+    "message": "この行は長すぎて解説できません。"
+  },
+  "caption_explain_none": {
+    "message": "解説できる日本語の行が画面にありません。"
+  },
+  "video_words_title": {
+    "message": "この動画の単語"
+  },
+  "video_words_reading": {
+    "message": "字幕を読み込んでいます…"
+  },
+  "video_words_none": {
+    "message": "この動画の字幕はまだ読み込まれていません。"
+  },
+  "video_words_other": {
+    "message": "その他"
+  },
+  "video_words_counts": {
+    "message": "$1語（うち新しい単語$2語）"
+  },
+  "video_words_partial": {
+    "message": "（現在、動画の$1%分）"
+  },
+  "video_words_sort_hint": {
+    "message": "Tsukeruの「このページ」タブからマイ単語に分けられます。"
+  },
+  "video_words_supporter": {
+    "message": "サポーターは動画の新しい単語をすべて確認し、マイ単語に分けられます。"
+  },
+  "video_words_in_list": {
+    "message": "下の「この文章の単語」に、ページの単語と一緒に表示されています。"
+  },
+  "status_captions_only": {
+    "message": "このページには日本語の本文がありません。動画の日本語字幕にふりがなが付きます。"
   }
 }

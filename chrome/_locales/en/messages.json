@@ -998,7 +998,7 @@
     "message": "Connect account"
   },
   "supporter_connect_hint": {
-    "message": "Opens ezfurigana.com. Sign in there and Tsukeru connects by itself."
+    "message": "Opens the EZFurigana sign-in page. Once you sign in, Tsukeru connects by itself."
   },
   "supporter_state_supporter": {
     "message": "Connected as a Supporter"
@@ -1207,6 +1207,15 @@
   "discover_tadoku_open": {
     "message": "Find easy stories"
   },
+  "discover_video_title": {
+    "message": "Learn Japanese from YouTube, Netflix and anime"
+  },
+  "discover_video_text": {
+    "message": "See furigana on Japanese subtitles, and click any word to look it up as you watch. It works in video players on other sites too, like online courses."
+  },
+  "discover_video_other": {
+    "message": "Other sites"
+  },
   "discover_streak_one": {
     "message": "1-day streak"
   },
@@ -1263,5 +1272,122 @@
   },
   "discover_vote_down": {
     "message": "Not for me"
+  },
+  "caption_limit_guest_title": {
+    "message": "Your free preview of caption furigana is used."
+  },
+  "caption_limit_guest_text": {
+    "message": "Sign in free for $1 minutes of caption furigana a day. Your video keeps playing while you sign in."
+  },
+  "caption_limit_free_title": {
+    "message": "Today's $1 free minutes are used."
+  },
+  "caption_limit_free_text": {
+    "message": "Furigana and word lookup in captions are paused until tomorrow. Supporters have no daily limit."
+  },
+  "caption_limit_sign_in": {
+    "message": "Sign in free"
+  },
+  "caption_limit_later": {
+    "message": "Not now"
+  },
+  "caption_sign_in_provider": {
+    "message": "Secure sign-in by WorkOS"
+  },
+  "caption_preview_left": {
+    "message": "$1 min left in your free preview of caption furigana"
+  },
+  "caption_time_left": {
+    "message": "$1 min of caption furigana left today"
+  },
+  "caption_connected_toast": {
+    "message": "Connected. Caption furigana is back on."
+  },
+  "caption_popup_unlimited": {
+    "message": "Video captions: no daily limit"
+  },
+  "caption_popup_free": {
+    "message": "Video captions: $1 of $2 min left today"
+  },
+  "caption_popup_free_done": {
+    "message": "Video captions: today's $1 min are used"
+  },
+  "caption_popup_guest": {
+    "message": "Video captions: $1 min of free preview left"
+  },
+  "caption_popup_guest_done": {
+    "message": "Video captions: free preview used. Sign in free for a daily allowance."
+  },
+  "supporter_view_captions": {
+    "message": "Video captions"
+  },
+  "supporter_view_captions_desc": {
+    "message": "Furigana and word lookup in the captions of YouTube and other video players."
+  },
+  "supporter_view_captions_free": {
+    "message": "$1 min a day"
+  },
+  "supporter_view_captions_supporter": {
+    "message": "No daily limit"
+  },
+  "caption_styled_hint": {
+    "message": "This player draws styled subtitles as pictures. Turn off styled (ASS) subtitles in the player to get furigana."
+  },
+  "caption_tools_label": {
+    "message": "Tsukeru caption tools"
+  },
+  "caption_tool_replay": {
+    "message": "Replay this line (\\)"
+  },
+  "caption_tool_previous": {
+    "message": "Previous line ([)"
+  },
+  "caption_tool_next": {
+    "message": "Next line (])"
+  },
+  "caption_tool_explain": {
+    "message": "Explain this line"
+  },
+  "caption_tool_explain_short": {
+    "message": "Explain"
+  },
+  "caption_tool_words_short": {
+    "message": "Words"
+  },
+  "caption_explain_too_long": {
+    "message": "This line is too long to explain."
+  },
+  "caption_explain_none": {
+    "message": "There is no Japanese line on screen to explain."
+  },
+  "video_words_title": {
+    "message": "Words in this video"
+  },
+  "video_words_reading": {
+    "message": "Reading the subtitles…"
+  },
+  "video_words_none": {
+    "message": "No subtitle lines are known for this video yet."
+  },
+  "video_words_other": {
+    "message": "Other"
+  },
+  "video_words_counts": {
+    "message": "$1 words, $2 new to you"
+  },
+  "video_words_partial": {
+    "message": "($1% of the video so far)"
+  },
+  "video_words_sort_hint": {
+    "message": "Sort them into My Words from Tsukeru's This page tab."
+  },
+  "video_words_supporter": {
+    "message": "Supporters see every new word from the video and can sort them into My Words."
+  },
+  "video_words_in_list": {
+    "message": "They are in Words in this text below, with the page's words."
+  },
+  "status_captions_only": {
+    "message": "This page has no Japanese text of its own. Furigana will show in the video's Japanese captions."
   }
 }

@@ -1,9 +1,13 @@
 # Changelog
 
-## 4.7.5 — 2026-11-23
+## 4.8.0 — 2026-11-25
 
 ### Added
 
+- **Furigana on video captions**: Japanese subtitles on YouTube, Netflix and video players on other sites get furigana. Click a caption word to look it up; the video pauses while the dictionary is open and plays again when you close it. Upcoming lines are prepared ahead, so furigana shows as soon as a line appears.
+- **Caption tools**: a small bar in the player replays the current line or moves to the previous or next one (also the `\`, `[` and `]` keys while the pointer is over the player; not on Netflix). Explain this line explains the whole sentence. Words in this video counts the video's words by JLPT level and how many are new to you; Supporters also see the full list, in the player and on This page.
+- **Daily caption time**: a free EZFurigana account gets 30 minutes of caption furigana a day. Supporters have no daily limit. Without an account you can try it for 5 minutes, then sign in for free in one step from the player. Only playing videos with Japanese captions count, and other page text is never limited.
+- **Video banner in Discover**: shows the caption feature, with links to YouTube and Netflix. Close it with × to hide it.
 - **Review first**: a button at the bottom of the dictionary popup that stays in view while you scroll the popup. Words you pick come up first in your next EZFurigana review and stay first until you know them. You can pick up to 20 words at a time.
 - **Page buttons**: on pages with furigana, a small bar at the bottom right turns furigana on and off, and reads aloud or explains Japanese text you select (up to 120 characters). Collapse it to one button, or turn it off under Settings > Page behavior. Explanations you have already received open again without using a try.
 - **Supporter view**: the star at the top of the popup, and Become a Supporter on the account card, now open a short page in the popup that compares a free account and Supporter for sentence audio, Explain and, in Japanese, Korean and Chinese, the dictionary in your language.
@@ -12,6 +16,10 @@
 
 ### Changed
 
+- **Apply to new page content** is now on by default for new installs, so furigana keeps up as comments, "Load more" and infinite scroll add text. Your current setting is kept.
+- Furigana on video captions is light by default, to stand out on the dark caption box; a colour you choose in Settings applies to captions too.
+- The collapsed page buttons now show the Tsukeru icon, faint until you point at it.
+- Tsukeru now also loads inside embedded video players on a page, so their captions can get furigana. It stays idle there until you apply furigana on the page.
 - The Learning / Known switch moved from beside the reading to the bottom of the dictionary popup, next to Review first.
 - Looking up a word that is easy for your level no longer adds it to My Words. If you look it up again on another day, it is added.
 

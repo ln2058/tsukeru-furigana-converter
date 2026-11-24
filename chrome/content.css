@@ -2,6 +2,9 @@
 .tsukeru-word-tooltip,
 .tsukeru-content-report-modal,
 .tsukeru-page-dock,
+.tsukeru-caption-card,
+.tsukeru-caption-note,
+.tsukeru-caption-tools,
 .tsukeru-toast {
   color-scheme: light !important;
   --tsukeru-group-n1: #f0a8a0;
@@ -50,6 +53,9 @@
   .tsukeru-word-tooltip:not([data-tsukeru-theme="light"]),
   .tsukeru-content-report-modal:not([data-tsukeru-theme="light"]),
   .tsukeru-page-dock:not([data-tsukeru-theme="light"]),
+  .tsukeru-caption-card:not([data-tsukeru-theme="light"]),
+  .tsukeru-caption-note:not([data-tsukeru-theme="light"]),
+  .tsukeru-caption-tools:not([data-tsukeru-theme="light"]),
   .tsukeru-toast:not([data-tsukeru-theme="light"]) {
     color-scheme: dark !important;
     --tsukeru-group-n1: #77393a;
@@ -97,6 +103,9 @@
 .tsukeru-word-tooltip[data-tsukeru-theme="dark"],
 .tsukeru-content-report-modal[data-tsukeru-theme="dark"],
 .tsukeru-page-dock[data-tsukeru-theme="dark"],
+.tsukeru-caption-card[data-tsukeru-theme="dark"],
+.tsukeru-caption-note[data-tsukeru-theme="dark"],
+.tsukeru-caption-tools[data-tsukeru-theme="dark"],
 .tsukeru-toast[data-tsukeru-theme="dark"] {
   color-scheme: dark !important;
   --tsukeru-group-n1: #77393a;
@@ -168,6 +177,8 @@
   --tsukeru-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
   --tsukeru-sans: "BIZ UDPGothic", "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
   --tsukeru-ruby-color: #475569;
+  /* Video captions: the reader's colour, or a light one while the colour is the default (content-main setRubyColor). */
+  --tsukeru-caption-ruby-color: #cbd5e1;
   --tsukeru-ruby-size: .65em;
   --tsukeru-ruby-weight: normal;
   /* JLPT runs N5 (blue) to N1 (red); part of speech uses the hues between, as on EZFurigana. */
@@ -1296,7 +1307,34 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 .tsukeru-page-dock .tsukeru-dock-collapse { width: 28px !important; color: var(--tsukeru-secondary) !important; }
 .tsukeru-page-dock .tsukeru-dock-collapse svg { width: 14px !important; height: 12px !important; }
 .tsukeru-page-dock .tsukeru-dock-launcher { display: inline-flex !important; border-radius: 6px !important; color: var(--tsukeru-blue-readable) !important; }
-/* The collapsed dock's ふ in the extension icon's blue, on whole 2 px cells. */
+/* The collapsed dock is the extension icon itself: faint and grey until pointed at or focused, so it stays out of the reading. */
+.tsukeru-page-dock .tsukeru-dock-launcher:not([data-fallback="true"]) { border: 0 !important; background: none !important; box-shadow: none !important; }
+.tsukeru-page-dock .tsukeru-dock-launcher:not([data-fallback="true"]):hover { background: none !important; }
+.tsukeru-page-dock .tsukeru-dock-launcher-icon {
+  display: block !important;
+  width: 32px !important;
+  height: 32px !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 7px !important;
+  box-shadow: var(--tsukeru-toast-shadow) !important;
+  filter: grayscale(1) !important;
+  opacity: .45 !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  transition: filter .15s ease, opacity .15s ease !important;
+}
+.tsukeru-page-dock .tsukeru-dock-launcher:is(:hover, :focus-visible) .tsukeru-dock-launcher-icon { filter: none !important; opacity: 1 !important; }
+/* Touch screens have no hover: show the icon in colour. */
+@media (hover: none) {
+  .tsukeru-page-dock .tsukeru-dock-launcher-icon { filter: none !important; opacity: .85 !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tsukeru-page-dock .tsukeru-dock-launcher-icon { transition: none !important; }
+}
+/* Fallback: the icon's ふ in the extension icon's blue, on whole 2 px cells. */
 .tsukeru-page-dock .tsukeru-dock-launcher svg { width: 26px !important; height: 22px !important; }
 
 .tsukeru-page-dock .tsukeru-dock-panel {
@@ -1340,6 +1378,14 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 .tsukeru-page-dock .tsukeru-explain-notice,
 .tsukeru-page-dock .tsukeru-explain-result { margin: 0 !important; }
 
+/* No dock while anything on the page is fullscreen (a video): it would cover the player's
+   fullscreen button, and the caption tools bar has its tools there. It returns when fullscreen ends.
+   Netflix's watch page (`watch-video-root`) is a window-filling player even outside fullscreen. */
+html:has(:fullscreen) .tsukeru-page-dock,
+html.watch-video-root .tsukeru-page-dock,
+:fullscreen .tsukeru-page-dock,
+:fullscreen > .tsukeru-page-dock { display: none !important; }
+
 /* Desktop first: no dock beside the mobile bottom sheet, and none in print. */
 @media (max-width: 600px) {
   .tsukeru-page-dock { display: none !important; }
@@ -1349,4 +1395,251 @@ body.tsukeru-furigana-disabled [data-tsukeru-wrapper="1"] ruby { background-colo
 }
 @media (prefers-reduced-motion: reduce) {
   .tsukeru-page-dock .tsukeru-dock-button { transition: none !important; }
+}
+
+/* Video captions (content-captions.js): the limit card and the minutes-left note,
+   inside the player (or its fullscreen element) so they stay over the video. */
+.tsukeru-caption-card,
+.tsukeru-caption-note {
+  position: absolute !important;
+  z-index: 2147483645 !important;
+  margin: 0 !important;
+  border: 1px solid var(--tsukeru-border-strong) !important;
+  color: var(--tsukeru-text) !important;
+  font-family: var(--tsukeru-sans) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  line-height: 1.45 !important;
+  letter-spacing: normal !important;
+  direction: ltr !important;
+  text-align: left !important;
+  text-shadow: none !important;
+  pointer-events: auto !important;
+}
+.tsukeru-caption-card[data-placement="window"],
+.tsukeru-caption-note[data-placement="window"] { position: fixed !important; }
+.tsukeru-caption-card *,
+.tsukeru-caption-card *::before,
+.tsukeru-caption-card *::after { box-sizing: border-box !important; }
+.tsukeru-caption-card {
+  right: 16px !important;
+  bottom: 72px !important;
+  width: min(320px, calc(100% - 32px)) !important;
+  padding: 12px 36px 12px 14px !important;
+  border-radius: 4px !important;
+  background-color: var(--tsukeru-paper) !important;
+  box-shadow: var(--tsukeru-tooltip-shadow) !important;
+}
+.tsukeru-caption-card-title { margin: 0 0 4px !important; padding: 0 !important; color: var(--tsukeru-ink) !important; font-size: 14px !important; font-weight: 650 !important; }
+.tsukeru-caption-card-text { margin: 0 !important; padding: 0 !important; color: var(--tsukeru-text) !important; font-size: 12.5px !important; }
+.tsukeru-caption-card-note { margin: 8px 0 0 !important; padding: 0 !important; color: var(--tsukeru-secondary) !important; font-size: 11px !important; }
+.tsukeru-caption-card-actions { display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 8px !important; margin: 10px 0 0 !important; padding: 0 !important; }
+.tsukeru-caption-card-primary,
+.tsukeru-caption-card-later {
+  display: inline-flex !important;
+  align-items: center !important;
+  margin: 0 !important;
+  padding: 5px 12px !important;
+  border-radius: 3px !important;
+  cursor: pointer !important;
+  font: inherit !important;
+  font-size: 12.5px !important;
+  font-weight: 650 !important;
+  text-decoration: none !important;
+}
+.tsukeru-caption-card-primary { border: 1px solid var(--tsukeru-blue) !important; background: var(--tsukeru-blue) !important; color: #fff !important; }
+.tsukeru-caption-card-primary:hover { background: var(--tsukeru-blue-dark) !important; border-color: var(--tsukeru-blue-dark) !important; }
+.tsukeru-caption-card-later { border: 1px solid transparent !important; background: transparent !important; color: var(--tsukeru-secondary) !important; font-weight: 400 !important; }
+.tsukeru-caption-card-later:hover { color: var(--tsukeru-text) !important; text-decoration: underline !important; }
+.tsukeru-caption-card-close {
+  position: absolute !important;
+  top: 6px !important;
+  right: 6px !important;
+  display: inline-flex !important;
+  width: 26px !important;
+  height: 26px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1px solid transparent !important;
+  border-radius: 3px !important;
+  background: transparent !important;
+  color: var(--tsukeru-secondary) !important;
+  cursor: pointer !important;
+  font: inherit !important;
+  font-size: 18px !important;
+  line-height: 1 !important;
+}
+.tsukeru-caption-card-close:hover { background: var(--tsukeru-surface-hover) !important; color: var(--tsukeru-text) !important; }
+.tsukeru-caption-card button:focus-visible,
+.tsukeru-caption-card a:focus-visible { outline: 2px solid var(--tsukeru-blue) !important; outline-offset: 1px !important; }
+.tsukeru-caption-note {
+  top: 16px !important;
+  right: 16px !important;
+  max-width: calc(100% - 32px) !important;
+  padding: 6px 12px !important;
+  border-radius: 6px !important;
+  background: linear-gradient(180deg, var(--tsukeru-metal-highlight), var(--tsukeru-metal)) !important;
+  box-shadow: var(--tsukeru-toast-shadow) !important;
+  font-size: 12.5px !important;
+}
+@media print {
+  .tsukeru-caption-card,
+  .tsukeru-caption-note { display: none !important; }
+}
+
+/* Tsukeru's caption layer (content-caption-layer.js): browser-drawn tracks and
+   Netflix, over the video. Sizes follow the video box (container units). */
+.tsukeru-caption-layer {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 2147483600 !important;
+  container-type: size !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  margin: 0 !important;
+  padding: 0 6% 7% !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", system-ui, sans-serif !important;
+  line-height: 1.35 !important;
+  text-align: center !important;
+}
+.tsukeru-caption-layer .tsukeru-caption-cue {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  max-width: 100% !important;
+  margin: 0 0 .25em !important;
+  padding: .12em .45em !important;
+  border-radius: 3px !important;
+  background: rgba(8, 8, 8, .72) !important;
+  color: #fff !important;
+  font-size: clamp(15px, 5.2cqh, 54px) !important;
+  font-weight: 500 !important;
+  text-shadow: none !important;
+  pointer-events: auto !important;
+}
+.tsukeru-caption-layer .tsukeru-caption-cue[data-align="start"] { align-items: flex-start !important; text-align: left !important; }
+.tsukeru-caption-layer .tsukeru-caption-cue[data-top="true"] { position: absolute !important; top: 6% !important; left: 50% !important; transform: translateX(-50%) !important; }
+.tsukeru-caption-layer .tsukeru-caption-cue[data-vertical="true"] {
+  position: absolute !important;
+  top: 8% !important;
+  right: 5% !important;
+  left: auto !important;
+  max-height: 84% !important;
+  transform: none !important;
+  writing-mode: vertical-rl !important;
+}
+.tsukeru-caption-layer .tsukeru-caption-line { display: block !important; white-space: pre-wrap !important; }
+.tsukeru-caption-layer .tsukeru-caption-slanted { font-style: italic !important; }
+.tsukeru-caption-layer .tsukeru-caption-emphasis { text-emphasis: filled circle !important; }
+.tsukeru-caption-layer rt { color: #f1f1f1 !important; }
+/* The reader's furigana colour, light by default on video (as in YouTube's caption box); plain light with custom styling off. */
+:root[data-tsukeru-custom-style="on"] .tsukeru-caption-layer rt { color: var(--tsukeru-caption-ruby-color) !important; }
+/* Netflix's own caption box while the layer shows its Japanese subtitles; it stays in the page. */
+[data-tsukeru-netflix-captions] .player-timedtext { visibility: hidden !important; }
+@media print {
+  .tsukeru-caption-layer { display: none !important; }
+}
+
+/* Caption tools (content-caption-tools.js): a small bar in the player while the pointer moves over it,
+   and the Explain and words panels, which reuse the caption card. */
+.tsukeru-caption-tools {
+  position: absolute !important;
+  left: 12px !important;
+  bottom: 64px !important;
+  z-index: 2147483645 !important;
+  display: flex !important;
+  align-items: stretch !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid var(--tsukeru-border-strong) !important;
+  border-radius: 6px !important;
+  background: linear-gradient(180deg, var(--tsukeru-metal-highlight), var(--tsukeru-metal)) !important;
+  box-shadow: var(--tsukeru-toast-shadow) !important;
+  color: var(--tsukeru-text) !important;
+  font-family: var(--tsukeru-sans) !important;
+  font-size: 12.5px !important;
+  line-height: 1 !important;
+  opacity: 1 !important;
+  transition: opacity .2s ease !important;
+  pointer-events: auto !important;
+}
+.tsukeru-caption-tools[data-placement="window"] { position: fixed !important; }
+.tsukeru-caption-tools[data-shown="false"] { opacity: 0 !important; pointer-events: none !important; }
+.tsukeru-caption-tools .tsukeru-caption-tool {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 32px !important;
+  height: 30px !important;
+  margin: 0 !important;
+  padding: 0 9px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--tsukeru-text) !important;
+  cursor: pointer !important;
+  font: inherit !important;
+  font-weight: 600 !important;
+}
+.tsukeru-caption-tools .tsukeru-caption-tool[hidden] { display: none !important; }
+.tsukeru-caption-tools .tsukeru-caption-tool + .tsukeru-caption-tool { border-left: 1px solid var(--tsukeru-metal-shadow) !important; }
+.tsukeru-caption-tools .tsukeru-caption-tool:hover { background: var(--tsukeru-surface-hover) !important; }
+.tsukeru-caption-tools .tsukeru-caption-tool:focus-visible { outline: 2px solid var(--tsukeru-blue) !important; outline-offset: -2px !important; }
+.tsukeru-caption-tools .tsukeru-caption-tool svg { fill: currentColor !important; }
+/* Whole pixels per grid cell keep the icons crisp: 2 px for previous/next (7 cells), 1.6 px for replay. */
+.tsukeru-caption-tools .tsukeru-caption-tool-previous svg,
+.tsukeru-caption-tools .tsukeru-caption-tool-next svg { width: 14px !important; height: 14px !important; }
+.tsukeru-caption-tools .tsukeru-caption-tool-replay svg { width: 16px !important; height: 13px !important; }
+.tsukeru-caption-card[data-kind] { bottom: auto !important; top: 16px !important; max-height: calc(100% - 120px) !important; overflow-y: auto !important; }
+.tsukeru-caption-card .tsukeru-hidden { display: none !important; }
+.tsukeru-caption-card .tsukeru-explain-notice { margin: 8px 0 !important; padding: 8px 10px !important; border: 1px solid var(--tsukeru-blue-border) !important; border-radius: 3px !important; background: var(--tsukeru-blue-soft) !important; color: var(--tsukeru-text) !important; font-size: 12px !important; line-height: 1.5 !important; }
+.tsukeru-caption-card .tsukeru-explain-notice p,
+.tsukeru-caption-card .tsukeru-explain-result p { margin: 0 !important; padding: 0 !important; }
+.tsukeru-caption-card .tsukeru-explain-continue { margin: 6px 0 0 !important; padding: 3px 10px !important; border: 1px solid var(--tsukeru-blue) !important; border-radius: 3px !important; background: var(--tsukeru-blue) !important; color: #fff !important; cursor: pointer !important; font: inherit !important; font-weight: 650 !important; }
+.tsukeru-caption-card .tsukeru-explain-result { margin: 6px 0 0 !important; padding: 4px 10px !important; border-left: 2px solid var(--tsukeru-blue) !important; color: var(--tsukeru-text) !important; font-size: 12.5px !important; line-height: 1.55 !important; }
+.tsukeru-caption-card .tsukeru-explain-translation { color: var(--tsukeru-ink) !important; font-weight: 650 !important; }
+.tsukeru-caption-card .tsukeru-explain-points { margin: 6px 0 0 !important; padding: 0 !important; list-style: none !important; }
+.tsukeru-caption-card .tsukeru-explain-points li { margin: 4px 0 0 !important; padding: 0 !important; list-style: none !important; }
+.tsukeru-caption-card .tsukeru-explain-piece { display: block !important; color: var(--tsukeru-blue-readable) !important; font-weight: 650 !important; }
+.tsukeru-caption-card .tsukeru-explain-note,
+.tsukeru-caption-card .tsukeru-explain-ai { margin-top: 6px !important; color: var(--tsukeru-secondary) !important; font-size: 11px !important; }
+/* The JLPT colour bar in the words panel, as in the popup's This page tab. */
+.tsukeru-caption-card .tsukeru-caption-words-levels { display: flex !important; width: 100% !important; height: 8px !important; gap: 1px !important; margin: 8px 0 0 !important; padding: 0 !important; overflow: hidden !important; border: 1px solid var(--tsukeru-border) !important; border-radius: 2px !important; background: var(--tsukeru-border) !important; }
+.tsukeru-caption-card .tsukeru-caption-words-levels[hidden] { display: none !important; }
+.tsukeru-caption-card .tsukeru-caption-words-segment { min-width: 3px !important; height: 100% !important; background: var(--tsukeru-group-neutral) !important; }
+.tsukeru-caption-card .tsukeru-caption-words-segment[data-level="5"] { background: var(--tsukeru-group-n5) !important; }
+.tsukeru-caption-card .tsukeru-caption-words-segment[data-level="4"] { background: var(--tsukeru-group-n4) !important; }
+.tsukeru-caption-card .tsukeru-caption-words-segment[data-level="3"] { background: var(--tsukeru-group-n3) !important; }
+.tsukeru-caption-card .tsukeru-caption-words-segment[data-level="2"] { background: var(--tsukeru-group-n2) !important; }
+.tsukeru-caption-card .tsukeru-caption-words-segment[data-level="1"] { background: var(--tsukeru-group-n1) !important; }
+.tsukeru-caption-card .tsukeru-caption-words-list { display: flex !important; flex-wrap: wrap !important; gap: 4px 6px !important; margin: 8px 0 0 !important; padding: 0 !important; list-style: none !important; }
+.tsukeru-caption-card .tsukeru-caption-words-list li { display: inline-flex !important; align-items: baseline !important; gap: 4px !important; margin: 0 !important; padding: 2px 6px !important; border: 1px solid var(--tsukeru-border) !important; border-radius: 3px !important; background: var(--tsukeru-surface) !important; list-style: none !important; }
+.tsukeru-caption-card .tsukeru-caption-word { font-size: 13px !important; color: var(--tsukeru-text) !important; }
+.tsukeru-caption-card .tsukeru-caption-word-reading { font-size: 10.5px !important; color: var(--tsukeru-secondary) !important; }
+@media print {
+  .tsukeru-caption-tools { display: none !important; }
+}
+
+/* YouTube's captions: the reader's furigana colour, light by default on the dark caption box. */
+:root[data-tsukeru-custom-style="on"] :is(.ytp-caption-window-container, .caption-window) [data-tsukeru-wrapper="1"] rt { color: var(--tsukeru-caption-ruby-color) !important; }
+/* YouTube sizes its caption box (.caption-window) for the lines without
+   furigana, with a fixed height and overflow hidden, so readings pushed the
+   last lines out of view. While the box holds Tsukeru's furigana it takes the
+   height of its lines; a box anchored at the bottom grows upwards. */
+.caption-window:has([data-tsukeru-wrapper="1"]) {
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* A player that draws captions as page text: its box stays in the page (Tsukeru reads it) but hidden,
+   while Tsukeru's caption layer shows the same lines (content-caption-layer.js). */
+[data-tsukeru-player-captions] :is(.jw-captions, .vjs-text-track-display, .plyr__captions, .art-subtitle, .dplayer-subtitle, .shaka-text-container, .mejs__captions-layer, .fp-captions) {
+  visibility: hidden !important;
 }

@@ -1,6 +1,6 @@
 /*
 Module: content-main
-Purpose: Coordinate eager and viewport-limited furigana apply/clear lifecycles and route content-script message actions.
+Purpose: Coordinate eager and viewport-limited furigana apply/clear lifecycles and route content-script message actions. In an embedded frame, only video captions follow the top page's Apply and Clear.
 
 Inputs:
 - Popup/background message actions and persisted settings payloads.
@@ -12,7 +12,7 @@ Outputs:
 
 Side Effects:
 - Toggles page classes/attributes/styles and shared runtime globals.
-- Starts/stops observers, long-page block state, dictionary popup behavior, lazy tooltip lookup sessions, live appearance updates, and the page dock (shown while the page has furigana).
+- Starts/stops observers, the video caption allowance's counting and player card (content-captions), long-page block state, dictionary popup behavior, lazy tooltip lookup sessions, live appearance updates, and the page dock (shown while the page has furigana).
 - Uses the shared i18n catalog for action-triggered feedback.
 - Applies My Words display settings (Study mode, hidden readings on known words) and follows word state changes from `chrome.storage.onChanged`.
 
@@ -35,6 +35,10 @@ Security Notes:
 //   js/tooltip-async-state.js (lazy tooltip request coordination)
 //   js/word-rules.js        (My Words identity rules)
 //   js/content-tooltip.js   (dictionary tooltip, My Words states)
+//   js/content-caption-cues.js (subtitle files, lines processed ahead)
+//   js/content-caption-layer.js (Tsukeru's caption layer, Netflix, player .vtt files)
+//   js/content-caption-tools.js (pause on lookup, line replay, Explain, video words)
+//   js/content-captions.js  (video caption allowance, player limit card, frame mode)
 //
 // Guard pattern: state variables and the message listener are initialized
 // only once per page context. Functions (applyFurigana etc.) are defined
@@ -134,7 +138,7 @@ async function applyFurigana(settings, { automatic = false } = {}) {
         } else {
           refreshWordStates();
         }
-        if (currentSite === 'youtube') startYoutubeCaptionsObserver(settings);
+        startVideoCaptions(settings);
         return { pending: revealPending };
       } finally {
         if (activeApplyOperation === operation) activeApplyOperation = null;
@@ -162,7 +166,7 @@ async function applyFurigana(settings, { automatic = false } = {}) {
     settings?.removeCustomStyling ? 'off' : 'on'
   );
   document.documentElement.style.setProperty('--tsukeru-ruby-size', `${settings?.rubySize ?? 0.65}em`);
-  document.documentElement.style.setProperty('--tsukeru-ruby-color', settings?.rubyColor || '#475569');
+  setRubyColor(settings?.rubyColor);
   document.documentElement.style.setProperty('--tsukeru-ruby-weight', settings?.rubyWeight || 'normal');
   setLevelFilter(settings);
   applyWordDisplaySettings(settings);
@@ -183,7 +187,7 @@ async function applyFurigana(settings, { automatic = false } = {}) {
       await refreshWordStates();
       if (!isValid()) return;
       startLongPageProcessing(settings);
-      if (currentSite === 'youtube') startYoutubeCaptionsObserver(settings);
+      startVideoCaptions(settings);
       return { pending: true };
     }
 
@@ -208,6 +212,8 @@ async function applyFurigana(settings, { automatic = false } = {}) {
       await refreshWordStates();
       if (!isValid()) return;
       startLongPageProcessing(settings);
+      // Long pages (YouTube included) get the caption extras too: tools bar, caption layer, embedded players.
+      startVideoCaptions(settings);
       return;
     }
 
@@ -266,12 +272,16 @@ async function applyFurigana(settings, { automatic = false } = {}) {
       }
     }
 
-    if (currentSite === 'youtube') {
-      startYoutubeCaptionsObserver(settings);
-    }
+    startVideoCaptions(settings);
 
   } catch (error) {
     if (!isValid() || error.cancelled) return;
+    // No Japanese text on the page itself, but a video (here or in an embedded player): its captions get furigana.
+    if (error.errorCode === 'no_text' && await pageHasVideo()) {
+      if (!isValid()) return;
+      startCaptionsOnly(settings);
+      return { captionsOnly: true };
+    }
     console.warn('Tsukeru: apply failed', error?.errorCode || 'unknown');
     if (error.rateLimitType || error.errorCode === 'service_unavailable') {
       // Rate-limit and service-availability toasts are guaranteed by the retry helper.
@@ -294,6 +304,39 @@ async function applyFurigana(settings, { automatic = false } = {}) {
 /** Show or remove the page dock (content-dock.js) after furigana changed. */
 function refreshPageDock() {
   if (typeof syncPageDock === 'function') syncPageDock().catch(() => {});
+}
+
+const DEFAULT_RUBY_COLOR = '#475569';
+const DEFAULT_CAPTION_RUBY_COLOR = '#cbd5e1';
+
+/**
+ * Set the furigana colour. Video captions sit on a dark box, so while the
+ * colour is the default (made for light pages) they use a light one instead;
+ * a colour the reader chose applies to captions too.
+ */
+function setRubyColor(color) {
+  const value = typeof color === 'string' && color ? color : DEFAULT_RUBY_COLOR;
+  const root = document.documentElement;
+  root.style.setProperty('--tsukeru-ruby-color', value);
+  root.style.setProperty('--tsukeru-caption-ruby-color',
+    value.toLowerCase() === DEFAULT_RUBY_COLOR ? DEFAULT_CAPTION_RUBY_COLOR : value);
+}
+
+/**
+ * Follow the popup's live appearance changes (furigana colour, size, weight,
+ * highlighting, custom styling). Embedded frames use it too, so a player's
+ * caption layer follows the same settings.
+ */
+function applyAppearanceUpdate(request) {
+  const root = document.documentElement;
+  if (typeof request.color === 'string' && request.color) setRubyColor(request.color);
+  if (typeof request.size === 'string' && request.size) root.style.setProperty('--tsukeru-ruby-size', request.size);
+  if (typeof request.weight === 'string' && request.weight) root.style.setProperty('--tsukeru-ruby-weight', request.weight);
+  const hasManagedRuby = document.querySelector('[data-tsukeru-wrapper="1"]');
+  if (request.highlightMode && (isFuriganaActive || hasManagedRuby)) setHighlightMode(request.highlightMode);
+  if (typeof request.removeCustomStyling === 'boolean' && (isFuriganaActive || hasManagedRuby)) {
+    root.setAttribute('data-tsukeru-custom-style', request.removeCustomStyling ? 'off' : 'on');
+  }
 }
 
 /**
@@ -339,7 +382,9 @@ function clearFurigana() {
   isFuriganaActive = false;
   stopWatchingDynamicContent();
   stopIntersectionObserver();
-  stopYoutubeCaptionsObserver();
+  stopVideoCaptionsObserver();
+  stopCaptionAllowance();
+  stopCaptionLayers();
   clearLongPageRuntime({ retainClassification: true });
   setHighlightMode('off');
   clearWordDisplaySettings();
@@ -378,7 +423,10 @@ function hardClearFurigana() {
   clearDefinitionCaches();
   stopWatchingDynamicContent();
   stopIntersectionObserver();
-  stopYoutubeCaptionsObserver();
+  stopVideoCaptionsObserver();
+  stopCaptionAllowance();
+  stopCaptionLayers();
+  clearCaptionCueTrack();
   clearLongPageRuntime();
   setHighlightMode('off');
   clearWordDisplaySettings();
@@ -409,15 +457,15 @@ if (!window.__TSUKERU_LOADED__) {
   var dynamicProcessingOperation = null;
   var dynamicSettings = null;
   var observedIntersectionElements = new Set();
-  var youtubeCaptionObserver = null;
-  var youtubeCaptionRetryTimer = null;
+  var videoCaptionObserver = null;
+  var videoCaptionRetryTimer = null;
   var processedNodes = new WeakSet();
   var processingQueue = new Map();
-  var youtubeCaptionTimer = null;
-  var youtubeCaptionProcessingOperation = null;
-  var youtubeCaptionPending = false;
-  var youtubeCaptionContainer = null;
-  var youtubeCaptionSettings = null;
+  var videoCaptionTimer = null;
+  var videoCaptionProcessingOperation = null;
+  var videoCaptionPending = false;
+  var videoCaptionContainer = null;
+  var videoCaptionSettings = null;
   var currentSite = detectSite();        // detectSite() defined in content-dom.js
   var currentHighlightMode = 'off';
   var dictionaryTooltip = null;
@@ -453,9 +501,12 @@ if (!window.__TSUKERU_LOADED__) {
   });
 
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    // An embedded frame does captions only, and never answers (content-captions).
+    if (window.top !== window) return handleFrameCaptionMessage(request, sendResponse);
+
     if (request.action === 'applyFurigana') {
       applyFurigana(request.settings)
-        .then((result) => sendResponse({ ok: true, pending: Boolean(result?.pending) }))
+        .then((result) => sendResponse({ ok: true, pending: Boolean(result?.pending), captionsOnly: Boolean(result?.captionsOnly) }))
         .catch(async (error) => {
           const failure = serializeApplyFailure(error);
           if (failure.rateLimitType || failure.errorCode === 'service_unavailable') {
@@ -486,8 +537,24 @@ if (!window.__TSUKERU_LOADED__) {
       sendResponse({ ok: true });
     }
 
+    // The sign-in tab opened from the caption limit card connected Tsukeru.
+    if (request.action === 'captionConnected') {
+      handleCaptionConnected();
+      sendResponse({ ok: true });
+    }
+
     if (request.action === 'getFuriganaState') {
       sendResponse({ active: isFuriganaActive });
+    }
+
+    // The popup's This page tab: the words of the video's subtitles (content-caption-tools),
+    // or of a video playing in an embedded frame, which the background asks for.
+    if (request.action === 'getVideoWords') {
+      getVideoWords()
+        .then((answer) => (answer?.available ? answer : askBackground({ action: 'frameVideoWords' })))
+        .then((answer) => sendResponse(answer?.available ? answer : { available: false }))
+        .catch(() => sendResponse({ available: false }));
+      return true;
     }
 
     if (request.action === 'getPageWords') {
@@ -520,20 +587,12 @@ if (!window.__TSUKERU_LOADED__) {
     }
 
     if (request.action === 'updateAppearance') {
-      if (request.color) document.documentElement.style.setProperty('--tsukeru-ruby-color', request.color);
-      if (request.size) document.documentElement.style.setProperty('--tsukeru-ruby-size', request.size);
-      if (request.weight) document.documentElement.style.setProperty('--tsukeru-ruby-weight', request.weight);
-      const hasManagedRuby = document.querySelector('[data-tsukeru-wrapper="1"]');
-      if (request.highlightMode && (isFuriganaActive || hasManagedRuby)) setHighlightMode(request.highlightMode);
-      if (typeof request.removeCustomStyling === 'boolean' && (isFuriganaActive || hasManagedRuby)) {
-        document.documentElement.setAttribute(
-          'data-tsukeru-custom-style',
-          request.removeCustomStyling ? 'off' : 'on'
-        );
-      }
+      applyAppearanceUpdate(request);
       sendResponse({ ok: true });
     }
   });
 
+  listenForPageCaptions();
+  if (window.top !== window) watchFrameVideo();
   autoApplyIfListed();
 }

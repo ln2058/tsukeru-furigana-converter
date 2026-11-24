@@ -7,6 +7,7 @@ Inputs:
 
 Outputs:
 - Localized strings, active BCP 47 language, and message-only catalog snapshots.
+- Website addresses in the display language, and the one-step sign-in address (`signInUrl`).
 
 Side Effects:
 - Fetches private packaged files in extension contexts and sends internal messages from content scripts.
@@ -178,8 +179,19 @@ Security Notes:
     const prefix = locales[code].home;
     return `https://www.ezfurigana.com${prefix}${page || (prefix ? '' : '/')}`;
   }
+  /**
+   * Sign in to EZFurigana and connect Tsukeru in one step: the website's
+   * /auth/login goes straight to the sign-in page (or on at once when signed
+   * in) and returns to its signed-in page, where content-sync connects. That
+   * page exists in English and Japanese only.
+   */
+  function signInUrl(trigger) {
+    const japanese = language() === locales.ja.lang;
+    const returnTo = `${japanese ? locales.ja.home : ''}/auth/signed-in?tsukeru=connect`;
+    return `https://www.ezfurigana.com/auth/login?trigger=${encodeURIComponent(trigger)}&return_to=${encodeURIComponent(returnTo)}`;
+  }
   globalThis.TsukeruI18n = Object.freeze({
-    locales, normalize, autoLocale, format, t, language, ready, initExtension, initContent, getCatalog, websiteUrl,
+    locales, normalize, autoLocale, format, t, language, ready, initExtension, initContent, getCatalog, websiteUrl, signInUrl,
     preference: () => preference,
     subscribe(callback) { subscribers.add(callback); return () => subscribers.delete(callback); },
   });

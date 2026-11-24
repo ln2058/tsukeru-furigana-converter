@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_manifest_name__",
-  "version": "4.7.0",
+  "version": "4.8.0",
   "description": "__MSG_manifest_description__",
   "default_locale": "en",
   "permissions": [
@@ -49,13 +49,30 @@
         "js/content-vocab.js",
         "js/content-tooltip.js",
         "js/content-dock.js",
+        "js/content-caption-cues.js",
+        "js/content-caption-layer.js",
+        "js/content-caption-tools.js",
+        "js/content-captions.js",
         "js/content-main.js",
         "js/discover-reading.js",
         "js/content-discover.js"
       ],
       "css": [
         "content.css"
-      ]
+      ],
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://www.netflix.com/*"
+      ],
+      "js": [
+        "js/page-captions.js"
+      ],
+      "all_frames": true,
+      "run_at": "document_start",
+      "world": "MAIN"
     },
     {
       "matches": [

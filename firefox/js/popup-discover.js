@@ -1,6 +1,6 @@
 /*
 Module: popup-discover
-Purpose: Show the Discover tab: today's picks (about five articles chosen for this reader, with why each was picked, how many are read and the reading streak; for a beginner or N5 reader, a link to Tadoku's free graded books above them), the last few articles read to the end, and one tap away the full feed filtered by level and category. Each card has its picture (or a tile in its category's colour), its JLPT tag, how much of it the reader knows, and how many of their learning words it has; a finished article's card has like and dislike buttons.
+Purpose: Show the Discover tab: a closable banner for furigana on video captions (YouTube, Netflix, other sites) at the top, then today's picks (about five articles chosen for this reader, with why each was picked, how many are read and the reading streak; for a beginner or N5 reader, a link to Tadoku's free graded books above them), the last few articles read to the end, and one tap away the full feed filtered by level and category. Each card has its picture (or a tile in its category's colour), its JLPT tag, how much of it the reader knows, and how many of their learning words it has; a finished article's card has like and dislike buttons.
 
 Inputs:
 - The Discover feed from the background (`discoverFeed`), the reader's word states (`wordsGetStates`), the vocabulary estimate (`vocabGet`), the stored hidden/opened record, reading history, today's picks, reading days and the website's streak, and popup clicks and scrolling.
@@ -10,7 +10,7 @@ Outputs:
 - A mark on the Discover tab when a new day's picks are waiting.
 
 Side Effects:
-- Reads and writes the hidden/opened record (`discoverState`) and today's picks (`discoverDaily`) in chrome.storage.local; reads the history, reading days and website streak that bg-discover writes.
+- Reads and writes the hidden/opened record (`discoverState`), today's picks (`discoverDaily`) and whether the video banner was closed (`discoverVideoBannerClosed`) in chrome.storage.local; reads the history, reading days and website streak that bg-discover writes.
 - Opening an article asks the background to open it in a new tab with furigana, which closes the popup.
 
 Failure Modes:
@@ -18,7 +18,7 @@ Failure Modes:
 - If the background cannot open the article, the browser opens it directly, without automatic furigana or reading measurement.
 
 Security Notes:
-- Article text is inserted with textContent only. The background opens articles by ID from its stored feed; the popup's own fallback opens only that same feed's https address.
+- Article text is inserted with textContent only. The video banner links only to fixed YouTube and Netflix home pages. The background opens articles by ID from its stored feed; the popup's own fallback opens only that same feed's https address.
 - Word states, the reader's level and what Discover learned stay on this device; coverage and picks are worked out here. Counter notes carry only fixed bands (where and in which place a card was shown, its category, level, pick reason and known band; the streak and level bands), never words, titles or addresses.
 - Card pictures load only from EZFurigana's picture path, without cookies or a referrer; the article's own site is not contacted until the reader opens the article.
 */
@@ -548,9 +548,30 @@ async function resetLearning() {
   }
 }
 
+// The video captions banner at the top of the tab, until the reader closes it.
+const DISCOVER_VIDEO_BANNER_KEY = 'discoverVideoBannerClosed';
+
+async function initVideoBanner() {
+  const banner = byId('discoverVideo');
+  if (!banner) return;
+  let closed = false;
+  try {
+    closed = (await chrome.storage.local.get(DISCOVER_VIDEO_BANNER_KEY))[DISCOVER_VIDEO_BANNER_KEY] === true;
+  } catch (_) {
+    return; // Storage unavailable: leave it hidden.
+  }
+  if (closed) return;
+  banner.hidden = false;
+  byId('discoverVideoClose')?.addEventListener('click', () => {
+    banner.hidden = true;
+    chrome.storage.local.set({ [DISCOVER_VIDEO_BANNER_KEY]: true }).catch(() => {});
+  }, { once: true });
+}
+
 /** Wire the tab's buttons; `onChooseLevel` opens where the reader's level is set (Settings). */
 export function initDiscover({ onChooseLevel } = {}) {
   if (typeof onChooseLevel === 'function') chooseLevel = onChooseLevel;
+  void initVideoBanner();
   byId('discoverRetry')?.addEventListener('click', () => { void showDiscover(); });
   byId('discoverLevelAction')?.addEventListener('click', () => chooseLevel());
   byId('discoverViewToggle')?.addEventListener('click', () => {

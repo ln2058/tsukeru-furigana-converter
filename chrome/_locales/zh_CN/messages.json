@@ -998,7 +998,7 @@
     "message": "连接账号"
   },
   "supporter_connect_hint": {
-    "message": "打开 ezfurigana.com 并登录，Tsukeru 会自动连接账号。"
+    "message": "打开 EZFurigana 登录页面。登录后，Tsukeru 会自动连接账号。"
   },
   "supporter_state_supporter": {
     "message": "支持者账号已连接"
@@ -1207,6 +1207,15 @@
   "discover_tadoku_open": {
     "message": "查找简单读物"
   },
+  "discover_video_title": {
+    "message": "看 YouTube、Netflix 和动漫学日语"
+  },
+  "discover_video_text": {
+    "message": "日语字幕上也能显示振假名，遇到生词点一下就能查。网课等其他网站的视频也一样能用。"
+  },
+  "discover_video_other": {
+    "message": "其他网站"
+  },
   "discover_streak_one": {
     "message": "连续 1 天"
   },
@@ -1263,5 +1272,122 @@
   },
   "discover_vote_down": {
     "message": "不感兴趣"
+  },
+  "caption_limit_guest_title": {
+    "message": "字幕注音的免费试用已用完。"
+  },
+  "caption_limit_guest_text": {
+    "message": "免费登录后，每天可使用 $1 分钟字幕注音。登录期间视频会继续播放。"
+  },
+  "caption_limit_free_title": {
+    "message": "今天的 $1 分钟免费时长已用完。"
+  },
+  "caption_limit_free_text": {
+    "message": "字幕的注音和查词将暂停到明天。支持者没有每日限制。"
+  },
+  "caption_limit_sign_in": {
+    "message": "免费登录"
+  },
+  "caption_limit_later": {
+    "message": "以后再说"
+  },
+  "caption_sign_in_provider": {
+    "message": "由 WorkOS 提供安全登录"
+  },
+  "caption_preview_left": {
+    "message": "字幕注音免费试用还剩 $1 分钟"
+  },
+  "caption_time_left": {
+    "message": "今天的字幕注音还剩 $1 分钟"
+  },
+  "caption_connected_toast": {
+    "message": "已连接。字幕注音已恢复。"
+  },
+  "caption_popup_unlimited": {
+    "message": "视频字幕：无每日限制"
+  },
+  "caption_popup_free": {
+    "message": "视频字幕：今天还剩 $1 分钟（共 $2 分钟）"
+  },
+  "caption_popup_free_done": {
+    "message": "视频字幕：今天的 $1 分钟已用完"
+  },
+  "caption_popup_guest": {
+    "message": "视频字幕：免费试用还剩 $1 分钟"
+  },
+  "caption_popup_guest_done": {
+    "message": "视频字幕：免费试用已用完。免费登录即可每天使用。"
+  },
+  "supporter_view_captions": {
+    "message": "视频字幕"
+  },
+  "supporter_view_captions_desc": {
+    "message": "为 YouTube 等视频播放器的字幕添加注音和查词。"
+  },
+  "supporter_view_captions_free": {
+    "message": "每天 $1 分钟"
+  },
+  "supporter_view_captions_supporter": {
+    "message": "无每日限制"
+  },
+  "caption_styled_hint": {
+    "message": "此播放器将样式字幕显示为图片。要显示注音，请在播放器中关闭样式（ASS）字幕。"
+  },
+  "caption_tools_label": {
+    "message": "Tsukeru 字幕工具"
+  },
+  "caption_tool_replay": {
+    "message": "重播这一行（\\）"
+  },
+  "caption_tool_previous": {
+    "message": "上一行（[）"
+  },
+  "caption_tool_next": {
+    "message": "下一行（]）"
+  },
+  "caption_tool_explain": {
+    "message": "讲解这一行"
+  },
+  "caption_tool_explain_short": {
+    "message": "讲解"
+  },
+  "caption_tool_words_short": {
+    "message": "单词"
+  },
+  "caption_explain_too_long": {
+    "message": "这一行太长，无法讲解。"
+  },
+  "caption_explain_none": {
+    "message": "屏幕上没有可讲解的日语字幕。"
+  },
+  "video_words_title": {
+    "message": "本视频中的单词"
+  },
+  "video_words_reading": {
+    "message": "正在读取字幕…"
+  },
+  "video_words_none": {
+    "message": "尚未获取本视频的字幕。"
+  },
+  "video_words_other": {
+    "message": "其他"
+  },
+  "video_words_counts": {
+    "message": "$1 个单词，其中 $2 个是新词"
+  },
+  "video_words_partial": {
+    "message": "（目前为视频的 $1%）"
+  },
+  "video_words_sort_hint": {
+    "message": "可在 Tsukeru 的“本页”标签中将它们整理到我的单词。"
+  },
+  "video_words_supporter": {
+    "message": "支持者可以查看视频中的所有新词，并整理到我的单词。"
+  },
+  "video_words_in_list": {
+    "message": "它们与页面中的单词一起列在下方的“本页单词”里。"
+  },
+  "status_captions_only": {
+    "message": "此页面本身没有日语文本。注音将显示在视频的日语字幕中。"
   }
 }

@@ -7,6 +7,7 @@ Inputs:
 
 Outputs:
 - Active tab-pane state changes (This page normally opens first; language changes reopen Settings) and report success/error UI feedback.
+- The account card, with the video caption minutes left today (`captionAllowance` from the background).
 
 Side Effects:
 - Mutates popup DOM state, shows the toggle shortcut the browser has set (`commands.getAll`), sets language-specific home/pricing/store-review links, requests coalesced page-word refreshes, and sends `reportReadingError` messages.
@@ -226,11 +227,11 @@ async function showToggleShortcut(element) {
 // ── EZFurigana account card ───────────────────────────────────────────────────
 
 const SUPPORTER_CARD = {
-  none: { text: () => t('supporter_state_none', undefined, 'Connect a free account to try sentence audio and explanations. Supporters get much more.'), meta: () => t('supporter_connect_hint', undefined, 'Opens ezfurigana.com. Sign in there and Tsukeru connects by itself.'), action: () => t('supporter_connect', undefined, 'Connect account'), path: '/account?tsukeru=connect' },
+  none: { text: () => t('supporter_state_none', undefined, 'Connect a free account to try sentence audio and explanations. Supporters get much more.'), meta: () => t('supporter_connect_hint', undefined, 'Opens the EZFurigana sign-in page. Once you sign in, Tsukeru connects by itself.'), action: () => t('supporter_connect', undefined, 'Connect account'), signIn: true },
   free: { text: () => t('supporter_state_free', undefined, 'Connected with a free account. You can try sentence audio and explanations a few times a week.'), action: () => t('supporter_become', undefined, 'Become a Supporter'), pricing: true },
   supporter: { text: () => t('supporter_state_supporter', undefined, 'Connected as a Supporter'), action: () => t('supporter_manage', undefined, 'Manage account'), path: '/account' },
-  disconnected: { text: () => t('supporter_state_disconnected', undefined, 'Disconnected from your EZFurigana account. Connect again to use your account in Tsukeru.'), action: () => t('supporter_connect', undefined, 'Connect account'), path: '/account?tsukeru=connect' },
-  expired: { text: () => t('supporter_state_expired', undefined, 'Your Supporter connection expired. Open EZFurigana once to reconnect.'), action: () => t('supporter_reconnect', undefined, 'Reconnect'), path: '/account?tsukeru=connect' },
+  disconnected: { text: () => t('supporter_state_disconnected', undefined, 'Disconnected from your EZFurigana account. Connect again to use your account in Tsukeru.'), action: () => t('supporter_connect', undefined, 'Connect account'), signIn: true },
+  expired: { text: () => t('supporter_state_expired', undefined, 'Your Supporter connection expired. Open EZFurigana once to reconnect.'), action: () => t('supporter_reconnect', undefined, 'Reconnect'), signIn: true },
 };
 
 // The connection the account card shows, and where the Supporter view was opened.
@@ -269,18 +270,46 @@ function renderSupporterCard(status) {
   meta.hidden = !meta.textContent;
   const action = document.getElementById('supporterCardAction');
   action.textContent = copy.action();
-  action.href = copy.pricing ? getEzfuriganaPricingUrl() : TsukeruI18n.websiteUrl(copy.path);
+  action.href = copy.pricing ? getEzfuriganaPricingUrl()
+    : copy.signIn ? TsukeruI18n.signInUrl('tsukeru_connect') : TsukeruI18n.websiteUrl(copy.path);
   action.hidden = false;
+}
+
+/** The video caption minutes left today, under the account card. */
+function captionAllowanceText(allowance) {
+  const minutes = (ms) => String(Math.max(0, Math.ceil(Number(ms) / 60000)));
+  switch (allowance?.state) {
+    case 'unlimited': return t('caption_popup_unlimited', undefined, 'Video captions: no daily limit');
+    case 'free': return t('caption_popup_free', [minutes(allowance.remainingMs), minutes(allowance.limitMs)], `Video captions: ${minutes(allowance.remainingMs)} of ${minutes(allowance.limitMs)} min left today`);
+    case 'free_done': return t('caption_popup_free_done', [minutes(allowance.limitMs)], `Video captions: today's ${minutes(allowance.limitMs)} min are used`);
+    case 'guest': return t('caption_popup_guest', [minutes(allowance.remainingMs)], `Video captions: ${minutes(allowance.remainingMs)} min of free preview left`);
+    case 'guest_done': return t('caption_popup_guest_done', undefined, 'Video captions: free preview used. Sign in free for a daily allowance.');
+    default: return '';
+  }
+}
+
+function renderCaptionAllowance() {
+  const line = document.getElementById('supporterCardCaptions');
+  if (!line) return;
+  Promise.resolve()
+    .then(() => chrome.runtime.sendMessage({ action: 'captionAllowance' }))
+    .then((response) => {
+      line.textContent = response?.success ? captionAllowanceText(response.allowance) : '';
+      line.hidden = !line.textContent;
+    })
+    .catch(() => { line.hidden = true; });
 }
 
 function initSupporterCard() {
   const refresh = () => Promise.resolve()
     .then(() => chrome.runtime.sendMessage({ action: 'getSupporterStatus' }))
     .then((status) => { if (status?.success) renderSupporterCard(status); })
+    .then(renderCaptionAllowance)
     .catch(() => { /* Keep the card as it is. */ });
   refresh();
   // Connecting finishes on the website; update while the popup stays open.
   chrome.storage?.onChanged?.addListener((changes, area) => {
     if (area === 'local' && changes.tsukeruSupporter) refresh();
+    else if (area === 'local' && changes.captionAllowance) renderCaptionAllowance();
   });
 }

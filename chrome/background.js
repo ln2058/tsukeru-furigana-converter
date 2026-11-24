@@ -4,7 +4,7 @@ Purpose: Route extension events and messages between popup/content scripts and b
 
 Inputs:
 - Shared UI catalogs, uiLocale storage changes, runtime install, command, and context menu events.
-- Message actions and payloads from popup/content scripts, including My Words, the vocabulary estimate, EZFurigana sync actions, the Discover feed, and Discover reading (visits, progress, votes, articles not found and the popup's notes, via `bg-discover`).
+- Message actions and payloads from popup/content scripts, including video caption playback ticks and the caption limit card's sign-in, My Words, the vocabulary estimate, EZFurigana sync actions, the Discover feed, and Discover reading (visits, progress, votes, articles not found and the popup's notes, via `bg-discover`).
 - Browser startup and tab activation, which refresh the review badge.
 
 Outputs:
@@ -15,7 +15,7 @@ Side Effects:
 - Serves private UI catalogs to this extension and updates localized menu titles.
 - Seeds and reads `chrome.storage.sync` defaults.
 - Records the review-prompt first-seen time and local days with successful furigana in `chrome.storage.local`.
-- Creates context menus and injects content scripts/CSS, including tooltip dependencies in order, when needed.
+- Creates context menus and injects content scripts/CSS, including tooltip dependencies in order, when needed; starts video captions in an embedded frame with a video while the top page has furigana, and asks that frame for the video's words for the top page.
 - Routes optional lookup reading fields and API error metadata without persisting them.
 
 Failure Modes:
@@ -26,6 +26,7 @@ Security Notes:
 - Delegates external network traffic to `bg-api` only.
 - Audio proxy messages accept only HTTPS www.ezfurigana.com URLs on the default port.
 - Account token handoff messages are accepted only from this extension's script on the website; the popup may only read the plan.
+- Caption text is refused (`caption_limit`) once the video caption allowance is used (`bg-captions`); the request format sent to the backend is unchanged.
 - Automatic furigana is decided from the tab address the browser reports for a top-level page, never from a URL the page sends, or once for a tab the popup opened from Discover.
 - Discover opens only articles in the stored feed, chosen by ID; the popup never supplies the address.
 - Discover reading progress is taken only from this extension's content script in the top frame of the tab opened from Discover; the article it belongs to comes from the stored visit, never from the page.
@@ -41,6 +42,9 @@ import {
   fetchSentenceAudio, fetchExampleAudio, fetchSentenceExplanation, fetchDiscoverFeed, discoverArticle,
   getSupporterPerks,
 } from './js/bg-api.js';
+import {
+  MAX_TICK_MS, allowanceOpen, finishCaptionSignIn, getCaptionAllowance, noteCaptionPlayback, openCaptionSignIn,
+} from './js/bg-captions.js';
 import { discoverVisitFor, missingFromTab, noteDiscoverEvent, noteDiscoverProgress, startDiscoverVisit, voteFromTab } from './js/bg-discover.js';
 import { handleWordsMessage, isEzfuriganaSender, isWordsAction, refreshWordBadge } from './js/bg-words.js';
 import { handleVocabMessage, isVocabAction } from './js/bg-vocab.js';
@@ -284,7 +288,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const work = message.action === 'supporterRefreshDue'
       ? supporterRefreshDue(Date.now(), { forced: message.forced === true }).then((due) => ({ success: true, due }))
       : storeSupporterHandoff({ plan: message.plan, token: message.token, expiresAt: message.expiresAt }, Date.now(), { connect: message.connect === true })
-        .then(({ plan, changed }) => ({ success: true, plan, changed }));
+        .then(({ plan, changed }) => {
+          // A sign-in tab opened from a caption limit card closes and returns to the video.
+          finishCaptionSignIn(sender.tab?.id, plan).catch(() => {});
+          return { success: true, plan, changed };
+        });
     work.then(sendResponse).catch(() => sendResponse({ success: false, error: 'Supporter handoff failed' }));
     return true;
   }
@@ -449,16 +457,81 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // Video captions: how much of the daily allowance is left, a playback tick, and the limit card's sign-in.
+  if (message?.action === 'captionAllowance') {
+    if (sender.id !== chrome.runtime.id) return false;
+    getCaptionAllowance().then((allowance) => sendResponse({ success: true, allowance }));
+    return true;
+  }
+
+  if (message?.action === 'captionTick') {
+    if (sender.id !== chrome.runtime.id || !sender.tab?.id) return false;
+    const ms = Number(message.ms);
+    if (!Number.isFinite(ms) || ms <= 0 || ms > MAX_TICK_MS) {
+      sendResponse({ success: false, error: 'invalid_tick' });
+      return true;
+    }
+    noteCaptionPlayback(ms).then((allowance) => sendResponse({ success: true, allowance }));
+    return true;
+  }
+
+  if (message?.action === 'frameCaptionsReady') {
+    if (sender.id !== chrome.runtime.id || !sender.tab?.id || !(sender.frameId > 0)) return false;
+    noteVideoFrame(sender.tab.id, sender.frameId)
+      .then(() => startFrameCaptions(sender.tab.id, sender.frameId))
+      .then((started) => sendResponse({ success: started }))
+      .catch(() => sendResponse({ success: false }));
+    return true;
+  }
+
+  // The top page: whether an embedded frame has a video, and starting their captions once furigana is on.
+  if (message?.action === 'tabHasVideoFrames' || message?.action === 'frameCaptionsStart') {
+    if (sender.id !== chrome.runtime.id || !sender.tab?.id || sender.frameId !== 0) return false;
+    const work = message.action === 'tabHasVideoFrames'
+      ? readVideoFrames().then((frames) => ({ success: true, has: (frames[sender.tab.id] || []).length > 0 }))
+      : startTabFrameCaptions(sender.tab.id).then((count) => ({ success: true, count }));
+    work.then(sendResponse).catch(() => sendResponse({ success: false }));
+    return true;
+  }
+
+  // The top page's video words when its video plays in an embedded frame (the popup asks only the top page).
+  if (message?.action === 'frameVideoWords') {
+    if (sender.id !== chrome.runtime.id || !sender.tab?.id || sender.frameId !== 0) return false;
+    frameVideoWords(sender.tab.id)
+      .then(sendResponse)
+      .catch(() => sendResponse({ available: false }));
+    return true;
+  }
+
+  if (message?.action === 'captionSignIn') {
+    if (sender.id !== chrome.runtime.id || !sender.tab?.id) return false;
+    openCaptionSignIn(sender.tab)
+      .then((opened) => sendResponse({ success: opened }))
+      .catch(() => sendResponse({ success: false }));
+    return true;
+  }
+
   if (message.action === 'processFurigana') {
-    handleFuriganaRequest(message.payload)
-      .then((result) => {
-        recordSuccessfulFuriganaDay();
-        sendResponse({ success: true, ...result });
-      })
-      .catch((error) => {
-        console.error('Furigana request failed', error);
-        sendResponse({ success: false, ...serializeApiError(error) });
-      });
+    const { caption = false, ...payload } = message.payload || {};
+    // Caption text is processed only while the daily allowance lasts; other page text is never limited.
+    const allowed = caption === true
+      ? getCaptionAllowance().then((allowance) => ({ open: allowanceOpen(allowance), allowance }))
+      : Promise.resolve({ open: true });
+    allowed.then(({ open, allowance }) => {
+      if (!open) {
+        sendResponse({ success: false, error: 'Caption allowance used', errorCode: 'caption_limit', allowance });
+        return;
+      }
+      handleFuriganaRequest(payload)
+        .then((result) => {
+          recordSuccessfulFuriganaDay();
+          sendResponse({ success: true, ...result });
+        })
+        .catch((error) => {
+          console.error('Furigana request failed', error);
+          sendResponse({ success: false, ...serializeApiError(error) });
+        });
+    });
     return true; // Keep the message channel open for async response
   }
 
@@ -620,24 +693,109 @@ async function ensureContentScript(tabId) {
   // Inject the split content scripts in manifest dependency order.
   // The guard in content-main.js (window.__TSUKERU_LOADED__) prevents
   // double-initialization if the manifest already auto-injected them.
-  for (const file of [
-    'js/i18n.js',
-    'js/ui-messages.js',
-    'js/content-ui.js',
-    'js/content-rate-limit.js',
-    'js/content-dom.js',
-    'js/tooltip-async-state.js',
-    'js/word-rules.js',
-    'js/vocab-model.js',
-    'js/content-vocab.js',
-    'js/content-tooltip.js',
-    'js/content-dock.js',
-    'js/content-main.js',
-  ]) {
+  await injectContentScripts({ tabId });
+}
+
+// The top page's content scripts, in manifest dependency order.
+const CONTENT_SCRIPT_FILES = [
+  'js/i18n.js',
+  'js/ui-messages.js',
+  'js/content-ui.js',
+  'js/content-rate-limit.js',
+  'js/content-dom.js',
+  'js/tooltip-async-state.js',
+  'js/word-rules.js',
+  'js/vocab-model.js',
+  'js/content-vocab.js',
+  'js/content-tooltip.js',
+  'js/content-dock.js',
+  'js/content-caption-cues.js',
+  'js/content-caption-layer.js',
+  'js/content-caption-tools.js',
+  'js/content-captions.js',
+  'js/content-main.js',
+];
+
+async function injectContentScripts(target) {
+  for (const file of CONTENT_SCRIPT_FILES) {
     try {
-      await chrome.scripting.executeScript({ target: { tabId }, files: [file] });
+      await chrome.scripting.executeScript({ target, files: [file] });
     } catch (e) {
       // Ignore if already injected or not permitted.
     }
   }
+}
+
+// Embedded frames that reported a video, per tab (session storage survives a
+// background restart): the top page asks whether there is one, and starts them.
+const VIDEO_FRAMES_KEY = 'videoFrames';
+const MAX_VIDEO_FRAMES = 8;
+
+async function readVideoFrames() {
+  try {
+    const stored = (await chrome.storage.session.get(VIDEO_FRAMES_KEY))[VIDEO_FRAMES_KEY];
+    return stored && typeof stored === 'object' ? stored : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+async function noteVideoFrame(tabId, frameId) {
+  const frames = await readVideoFrames();
+  const list = (Array.isArray(frames[tabId]) ? frames[tabId] : []).filter((id) => id !== frameId);
+  frames[tabId] = [...list, frameId].slice(-MAX_VIDEO_FRAMES);
+  // Keep a few tabs only; closed tabs are dropped below.
+  const kept = Object.entries(frames).slice(-20);
+  await chrome.storage.session.set({ [VIDEO_FRAMES_KEY]: Object.fromEntries(kept) }).catch(() => {});
+}
+
+chrome.tabs?.onRemoved?.addListener((tabId) => {
+  readVideoFrames().then((frames) => {
+    if (!frames[tabId]) return;
+    delete frames[tabId];
+    chrome.storage.session.set({ [VIDEO_FRAMES_KEY]: frames }).catch(() => {});
+  });
+});
+
+/** The top page turned furigana on: start captions in its frames that have a video. */
+async function startTabFrameCaptions(tabId) {
+  const frames = (await readVideoFrames())[tabId] || [];
+  await Promise.all(frames.map((frameId) => startFrameCaptions(tabId, frameId, { topActive: true })));
+  return frames.length;
+}
+
+/**
+ * The words of a video playing in an embedded frame, for the top page to
+ * answer the popup with: the most recent video frame that has subtitle lines.
+ */
+async function frameVideoWords(tabId) {
+  const frames = ((await readVideoFrames())[tabId] || []).slice().reverse();
+  for (const frameId of frames) {
+    const answer = await chrome.tabs.sendMessage(tabId, { action: 'getVideoWords', frameVideoWords: true }, { frameId }).catch(() => null);
+    if (answer?.available !== true || !Array.isArray(answer.words) || !Array.isArray(answer.units)) continue;
+    return {
+      available: true,
+      supporter: answer.supporter === true,
+      coverage: Number.isFinite(answer.coverage) ? Math.min(1, Math.max(0, answer.coverage)) : 0,
+      words: answer.words,
+      units: answer.units,
+    };
+  }
+  return { available: false };
+}
+
+/**
+ * An embedded frame with a video (its content scripts run in every frame, in
+ * captions-only mode): when the top page has furigana, start that frame's
+ * captions with the stored settings. Nothing is injected; frames already
+ * have the scripts from the manifest.
+ */
+async function startFrameCaptions(tabId, frameId, { topActive = false } = {}) {
+  if (!topActive) {
+    const state = await chrome.tabs.sendMessage(tabId, { action: 'getFuriganaState' }, { frameId: 0 }).catch(() => null);
+    if (!state?.active) return false;
+  }
+  const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
+  await chrome.tabs.sendMessage(tabId, { action: 'applyFurigana', settings, frameCaptions: true }, { frameId }).catch(() => {});
+  return true;
 }

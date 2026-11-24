@@ -12,6 +12,8 @@ function loadSerializer(browserName) {
     window: {},
     document: {},
     detectSite: () => 'default',
+    listenForPageCaptions: () => {},
+    watchFrameVideo: () => {},
     chrome: {
       i18n: { getMessage: () => '' },
       runtime: { onMessage: { addListener() {} }, sendMessage: async () => ({}) },

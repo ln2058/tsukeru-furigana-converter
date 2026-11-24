@@ -1,6 +1,6 @@
 /*
 Module: popup-supporter
-Purpose: Render the popup's Supporter view: what a free account and a Supporter get in Tsukeru (sentence audio, Explain, and the dictionary in the reader's language), what stays free, and one button on to the pricing page, or to the account for Supporters.
+Purpose: Render the popup's Supporter view: what a free account and a Supporter get in Tsukeru (sentence audio, Explain, the dictionary in the reader's language, and furigana in video captions), what stays free, and one button on to the pricing page, or to the account for Supporters.
 
 Inputs:
 - The connection state the account card shows (`none`, `free`, `supporter`, `disconnected`, `expired`) and how the view was opened (`header` or `account`).
@@ -49,6 +49,14 @@ const SUPPORTER_VIEW_ROWS = [
     supporter: (n) => t('supporter_view_dictionary_supporter', [n], `${n} new words a day`),
     translatedOnly: true,
   },
+  {
+    perk: 'captions',
+    title: () => t('supporter_view_captions', undefined, 'Video captions'),
+    description: () => t('supporter_view_captions_desc', undefined, 'Furigana and word lookup in the captions of YouTube and other video players.'),
+    free: (n) => t('supporter_view_captions_free', [n], `${n} min a day`),
+    // Supporters have no daily limit, so their cell has no figure.
+    supporter: () => t('supporter_view_captions_supporter', undefined, 'No daily limit'),
+  },
 ];
 
 // Figures arrive once per popup opening; until then, wait this long before
@@ -95,7 +103,7 @@ function planCell(plan, describe, count) {
   const name = plan === 'free'
     ? t('supporter_view_col_free', undefined, 'Free account')
     : t('supporter_view_col_supporter', undefined, 'Supporter');
-  cell.append(text('span', 'visually-hidden', `${name}: `), text('span', '', describe(formatCount(count))));
+  cell.append(text('span', 'visually-hidden', `${name}: `), text('span', '', describe(count == null ? '' : formatCount(count))));
   return cell;
 }
 
@@ -126,6 +134,7 @@ function renderPlans(perks, state) {
     );
     const figures = perks?.[row.perk];
     if (figures) {
+      // A plan's figure may be null where that plan has no limit (Supporter captions).
       const values = document.createElement('div');
       values.className = 'supporter-view-values';
       if (!supporter) values.append(planCell('free', row.free, figures.free));
@@ -148,7 +157,7 @@ function renderSignIn(perks, state) {
   document.getElementById('supporterViewSignInText').textContent = audio && audio === explain
     ? t('supporter_view_sign_in_count', [formatCount(audio)], `Sign in for free to start: ${formatCount(audio)} sentences a week to listen to and explain.`)
     : t('supporter_view_sign_in', undefined, 'Sign in for free to start listening to and explaining sentences.');
-  document.getElementById('supporterViewSignInLink').href = TsukeruI18n.websiteUrl('/account?tsukeru=connect');
+  document.getElementById('supporterViewSignInLink').href = TsukeruI18n.signInUrl('tsukeru_connect');
 }
 
 function render(perks) {

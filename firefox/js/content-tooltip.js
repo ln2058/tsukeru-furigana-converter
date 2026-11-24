@@ -22,7 +22,7 @@ Outputs:
 - A `pageWordsChanged` runtime notice once furigana insertions pause (at most every few seconds while they continue), so an open popup re-lists the page's words.
 
 Side Effects:
-- Creates/removes tooltip DOM on the root element, scroll/resize/Escape listeners that re-place or close it, and disclosure state.
+- Creates/removes tooltip DOM on the root element (inside the fullscreen element while the page is fullscreen, so it shows over a fullscreen video), scroll/resize/Escape listeners that re-place or close it, and disclosure state.
 - A click on a word opens its popup instead of the page's own click (not a click that ends a text selection, which is for the page dock); inside a link, a modifier click, Enter, or a second click while that link's word is open goes to the link instead.
 - Places the tooltip with the placement rules shared with EZFurigana (a bottom sheet at 600 px wide or less) and marks the clicked word with `tsukeru-active-word` while it is open.
 - Dragging the header (not the headword or its buttons) moves the tooltip on desktop; a moved tooltip stays where it was dropped, kept on screen, and no longer follows or closes with its word. The next word opens beside it again.
@@ -201,6 +201,8 @@ function handleDictionaryClick(event) {
 
   const wordInfo = extractWordInfo(targetEl);
   if (!wordInfo.word) return;
+  // A caption word: the player does not see the click, and the video pauses while the popup is open.
+  if (typeof captionWordLookupStarted === 'function') captionWordLookupStarted(targetEl, event);
 
   // Links stay usable: a modifier click or Enter is left to the browser, and
   // clicking a link again while a word in it has the popup open follows it.
@@ -324,10 +326,22 @@ async function showDefinitionTooltip(ruby, wordInfo, point = null, { trusted = f
   }
 }
 
+/** Attach a tooltip surface (inside the fullscreen element while there is one; content-ui). */
+function mountTooltipSurface(element, home) {
+  if (typeof mountTsukeruSurface === 'function') {
+    mountTsukeruSurface(element, home);
+    return;
+  }
+  const parent = home === 'html' ? (document.documentElement || document.body) : document.body;
+  if (element.parentNode !== parent) parent.appendChild(element);
+}
+
 function ensureDictionaryTooltip() {
   // dictionaryTooltip is a var global from content-main.js
   if (dictionaryTooltip && dictionaryTooltip.isConnected) {
     applyTsukeruUiTheme(dictionaryTooltip);
+    // Fullscreen may have started since it was attached.
+    mountTooltipSurface(dictionaryTooltip, 'html');
     return dictionaryTooltip;
   }
   const existing = document.getElementById('tsukeru-word-tooltip');
@@ -343,8 +357,8 @@ function ensureDictionaryTooltip() {
   applyTsukeruUiTheme(dictionaryTooltip);
   applyTooltipSizePreference(dictionaryTooltip);
   // Mounted on <html> so a transform or filter on the page's <body> cannot
-  // offset or clip the fixed-position tooltip.
-  (document.documentElement || document.body).appendChild(dictionaryTooltip);
+  // offset or clip the fixed-position tooltip; in fullscreen, inside the fullscreen element.
+  mountTooltipSurface(dictionaryTooltip, 'html');
   bindTooltipDrag(dictionaryTooltip);
   if (typeof ResizeObserver === 'function') {
     // Content that loads or expands re-places the tooltip on its chosen side.
@@ -366,6 +380,7 @@ function hideDefinitionTooltip() {
     dictionaryTooltip._placementSide = '';
     dictionaryTooltip._moved = false;
   }
+  if (typeof captionLookupEnded === 'function') captionLookupEnded();
 }
 
 // ── Tooltip placement ─────────────────────────────────────────────────────────
@@ -1383,7 +1398,7 @@ function sentenceAudioMessage(code) {
 function refusalLink(code, placement) {
   const offer = TsukeruUiMessages.refusalOffer(code);
   if (offer === 'connect') {
-    return { href: TsukeruI18n.websiteUrl('/account?tsukeru=connect'), label: t('supporter_sign_in', undefined, 'Sign in') };
+    return { href: TsukeruI18n.signInUrl('tsukeru_connect'), label: t('supporter_sign_in', undefined, 'Sign in') };
   }
   if (offer === 'pricing') {
     return {
@@ -2001,6 +2016,8 @@ function ensureContentReportModal() {
   let modal = document.getElementById('tsukeru-content-report-modal');
   if (modal) {
     applyTsukeruUiTheme(modal);
+    // Fullscreen may have started since it was attached.
+    mountTooltipSurface(modal, 'body');
     return modal;
   }
 
@@ -2031,7 +2048,7 @@ function ensureContentReportModal() {
     </div>
   `;
 
-  document.body.appendChild(modal);
+  mountTooltipSurface(modal, 'body');
 
   document.getElementById('tsukeru-crm-close').onclick = () => {
     pendingReadingReport = null;
@@ -2082,8 +2099,10 @@ function ensureContentReportModal() {
 // ── Sentence context extraction ───────────────────────────────────────────────
 
 function extractSentenceContext(element) {
-  let container = element.closest('p, article, section, blockquote');
-  if (!container || container.textContent.trim().length < 20) {
+  // A caption word's sentence is its caption line.
+  const captionLine = element.closest('.tsukeru-caption-cue, .caption-window, .jw-text-track-cue, .vjs-text-track-cue, .plyr__caption, .art-subtitle, .dplayer-subtitle');
+  let container = captionLine || element.closest('p, article, section, blockquote');
+  if (!captionLine && (!container || container.textContent.trim().length < 20)) {
     // The complete analysis wrapper may itself be a span. Start from its
     // parent so the fallback includes surrounding sentence context.
     container = element.parentElement?.closest('div, li, td, span');

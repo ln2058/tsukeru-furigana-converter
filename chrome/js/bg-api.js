@@ -14,7 +14,7 @@ Side Effects:
 - Persists only validated cooldown metadata, the current UTC day's and ISO week's random IDs, and the website's account token answer (a free account's or a Supporter's) through extension-local storage; backend quotas remain authoritative. A token refused before its expiry marks this browser disconnected, and the website does not reconnect it until the popup's Connect.
 - Shares logical dictionary lookups and bounds completed in-memory dictionary results.
 - Reads/writes furigana fragments, successful localized dictionary entries, and sentence explanations (by language and text hash) through `bg-cache`.
-- Keeps the popup Supporter view's plan figures in local storage (`supporterPerks`) for 12 hours.
+- Keeps the popup Supporter view's plan figures in local storage (`supporterPerks`) for 12 hours, including the video caption minutes `bg-captions` counts against.
 - Keeps the last Discover feed and its version tag in `chrome.storage.session`: used for an hour, then sent back with the tag, and kept another hour when the backend says it has not changed.
 - Posts Discover's anonymous counts (`{ id, kind }` lists) and success counters (`{ name, dims }` lists from `bg-discover`) to /api/extension/discover/events.
 
@@ -47,7 +47,7 @@ export const DEFAULT_SETTINGS = {
   gradeLevel: 4,
   furiganaType: 'hiragana',
   highlightMode: 'off',
-  watchDynamic: false,
+  watchDynamic: true,
   removeCustomStyling: false,
   // The popup's ruby style, so the keyboard shortcut, context menu and
   // automatic sites apply it as the popup's Apply button does.
@@ -1427,11 +1427,27 @@ function perkCount(value) {
   return Number.isInteger(value) && value > 0 && value <= 1_000_000 ? value : null;
 }
 
+// Video caption minutes, used when the server sends none (an older server).
+const DEFAULT_CAPTION_PERKS = Object.freeze({ free: 30, guest: 5, supporter: null });
+
+/** Minutes of caption furigana: a free account's a day and the one-time preview (Supporters: no daily limit). */
+function captionPerks(value) {
+  const minutes = (count) => (Number.isInteger(count) && count > 0 && count <= 1440 ? count : null);
+  const free = minutes(value?.free_daily_minutes);
+  const guest = minutes(value?.guest_preview_minutes);
+  return {
+    free: free || DEFAULT_CAPTION_PERKS.free,
+    guest: guest || DEFAULT_CAPTION_PERKS.guest,
+    supporter: null,
+  };
+}
+
 /**
  * The popup's Supporter view figures from `/api/extension/supporter-perks`:
  * `{ sentenceAudio, explain, dictionary }`, each `{ free, supporter }` or null
- * when the feature is off or its figures are not valid; null for a body that
- * is not version 1.
+ * when the feature is off or its figures are not valid, and `captions`
+ * (`{ free, guest, supporter: null }` in minutes, defaults when absent); null
+ * for a body that is not version 1.
  */
 export function cleanSupporterPerks(body) {
   if (!body || typeof body !== 'object' || body.ok !== true || body.version !== 1) return null;
@@ -1445,6 +1461,7 @@ export function cleanSupporterPerks(body) {
     sentenceAudio: pair(body.sentence_audio, 'free_weekly_sentences', 'supporter_monthly_sentences'),
     explain: pair(body.sentence_explain, 'free_weekly', 'supporter_daily'),
     dictionary: pair(body.translated_dictionary, 'free_weekly_words', 'supporter_daily_words'),
+    captions: captionPerks(body.video_captions),
   };
 }
 

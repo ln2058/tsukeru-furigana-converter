@@ -58,6 +58,7 @@
           <div class="supporter-card-copy">
             <p id="supporterCardText" class="supporter-card-text"></p>
             <p id="supporterCardMeta" class="supporter-card-meta" hidden></p>
+            <p id="supporterCardCaptions" class="supporter-card-meta" hidden></p>
           </div>
           <a id="supporterCardAction" class="supporter-card-action" target="_blank" rel="noopener noreferrer" hidden></a>
         </div>
@@ -249,6 +250,13 @@
         <p id="pageProfileSummary" class="result-profile-summary" aria-live="polite"></p>
         <span id="pageProfileCoverage" class="result-profile-coverage" hidden></span>
       </div>
+      <section id="videoWordsSlip" class="video-words" aria-labelledby="videoWordsTitle" hidden>
+        <h2 id="videoWordsTitle" class="section-title" data-i18n="video_words_title">Words in this video</h2>
+        <p id="videoWordsSummary" class="video-words-summary" aria-live="polite"></p>
+        <span id="videoWordsMeter" class="result-profile-meter video-words-meter" role="img" hidden></span>
+        <p id="videoWordsNote" class="video-words-note"></p>
+        <a id="videoWordsUpgrade" class="primary-link video-words-upgrade" target="_blank" rel="noopener noreferrer" hidden data-i18n="supporter_become">Become a Supporter</a>
+      </section>
       <section id="pageWordsSlip" class="result-words-slip" aria-labelledby="pageWordsTitle" hidden>
         <header class="result-words-head">
           <h2 id="pageWordsTitle" class="section-title" data-i18n="page_words_title">Words in this text</h2>
@@ -370,6 +378,16 @@
     </section>
 
     <section class="tab-content" id="discover-tab">
+      <aside id="discoverVideo" class="discover-video" aria-labelledby="discoverVideoTitle" hidden>
+        <button type="button" id="discoverVideoClose" class="discover-video-close" aria-label="Close" title="Close" data-i18n-aria-label="content_close" data-i18n-title="content_close">&times;</button>
+        <h3 id="discoverVideoTitle" class="discover-video-title" data-i18n="discover_video_title">Learn Japanese from YouTube, Netflix and anime</h3>
+        <p class="discover-video-text" data-i18n="discover_video_text">See furigana on Japanese subtitles, and click any word to look it up as you watch. It works in video players on other sites too, like online courses.</p>
+        <ul class="discover-video-sites">
+          <li><a class="discover-video-site" href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer"><svg class="discover-video-icon" viewBox="0 0 28 20" aria-hidden="true"><rect width="28" height="20" rx="5" fill="#ff0000"/><path d="M11 5.5v9l7.5-4.5z" fill="#fff"/></svg><span class="discover-video-label">YouTube</span></a></li>
+          <li><a class="discover-video-site" href="https://www.netflix.com/" target="_blank" rel="noopener noreferrer"><svg class="discover-video-icon" viewBox="0 0 20 20" aria-hidden="true"><rect width="20" height="20" rx="4" fill="#141414"/><path d="M6 3.5h2.8l2.4 7V3.5H14v13h-2.8l-2.4-7v7H6z" fill="#e50914"/></svg><span class="discover-video-label">Netflix</span></a></li>
+          <li><span class="discover-video-site discover-video-site-other"><svg class="discover-video-icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="currentColor"/><path d="M8 5.8v8.4l6.3-4.2z" fill="#fff"/></svg><span class="discover-video-label" data-i18n="discover_video_other">Other sites</span></span></li>
+        </ul>
+      </aside>
       <div id="discoverToday" class="discover-today">
         <h2 class="discover-today-title" data-i18n="discover_today">Today's picks</h2>
         <span id="discoverProgress" class="discover-today-progress"></span>

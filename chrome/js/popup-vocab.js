@@ -7,6 +7,7 @@ Inputs:
 - Word records and summaries from the background store, the vocabulary estimate (`vocabGet`) and the shared model (`TsukeruVocab`), page words from the active tab, the stored Study mode setting, popup UI events, background dictionary and audio responses, and `pageWordsChanged` notices from the active tab's content script.
 
 Outputs:
+- Words in this video (counts by level and of new words; for Supporters the video's words join Words in this text), asked again while the subtitles are still being read.
 - Rendered My Words and page word lists (each saved word with a pronunciation button; numbers that share a counter form one 〜年 row with their most frequent uses), Learning/Known/hide requests (a saved word's × hides it), Study mode updates, and CSV export downloads.
 - A saved word opens in place to its first meanings (the display language's cached translation when there is one, else English); its sentence has a "Play sentence" button (account audio).
 - A word under Words in this text opens the dictionary popup on the page (or scrolls to it when the page cannot open one) and closes the extension popup.
@@ -1008,8 +1009,8 @@ function levelLabel(level) {
   return level ? `N${level}` : t('level_no_jlpt', undefined, 'No JLPT level');
 }
 
-function renderPageMeter(byLevel) {
-  const meter = document.getElementById('pageProfileMeter');
+/** The JLPT colour bar: one segment per level, as wide as its share of the words. */
+function renderPageMeter(byLevel, meter = document.getElementById('pageProfileMeter'), total = pageWords.length) {
   if (!meter) return;
   const levels = PAGE_LEVEL_ORDER.filter((level) => byLevel.get(level) > 0);
   meter.replaceChildren(...levels.map((level) => {
@@ -1021,7 +1022,7 @@ function renderPageMeter(byLevel) {
     return segment;
   }));
   meter.setAttribute('aria-label', levels
-    .map((level) => `${levelLabel(level)} ${Math.round((byLevel.get(level) / pageWords.length) * 100)}%`)
+    .map((level) => `${levelLabel(level)} ${Math.round((byLevel.get(level) / Math.max(1, total)) * 100)}%`)
     .join(', '));
 }
 
@@ -1340,24 +1341,74 @@ export async function requestPageWordsRefresh() {
   }
 }
 
+// Words in this video: counts for everyone; a Supporter's list joins the page's words.
+const VIDEO_WORDS_POLLS = 12;
+const VIDEO_WORDS_POLL_MS = 2500;
+const LEARNED_STATES = new Set(['known', 'ignored']);
+let videoWordsPolls = 0;
+let videoWordsTimer = 0;
+
+function renderVideoWords(video, words, states) {
+  const slip = document.getElementById('videoWordsSlip');
+  if (!slip) return;
+  slip.hidden = !video?.available;
+  if (slip.hidden) return;
+  const fresh = words.filter((word) => !LEARNED_STATES.has(states?.[word.id]));
+  const coverage = Math.max(0, Math.min(1, Number(video.coverage) || 0));
+  const summary = t('video_words_counts', [String(words.length), String(fresh.length)], `${words.length} words, ${fresh.length} new to you`);
+  document.getElementById('videoWordsSummary').textContent = coverage < 1
+    ? `${summary} ${t('video_words_partial', [String(Math.round(coverage * 100))], `(${Math.round(coverage * 100)}% of the video so far)`)}`
+    : summary;
+  const byLevel = new Map();
+  for (const word of words) byLevel.set(word.level, (byLevel.get(word.level) || 0) + 1);
+  // The same JLPT colour bar as the page's.
+  const meter = document.getElementById('videoWordsMeter');
+  if (meter) {
+    meter.hidden = !words.length;
+    renderPageMeter(byLevel, meter, words.length);
+  }
+  const supporter = video.supporter === true;
+  document.getElementById('videoWordsNote').textContent = supporter
+    ? t('video_words_in_list', undefined, 'They are in Words in this text below, with the page\'s words.')
+    : t('video_words_supporter', undefined, 'Supporters see every new word from the video and can sort them into My Words.');
+  const upgrade = document.getElementById('videoWordsUpgrade');
+  upgrade.hidden = supporter;
+  upgrade.href = TsukeruI18n.websiteUrl('/pricing?from=tsukeru&placement=extension_video_words');
+}
+
+/** While the video's subtitles are still being read, ask again a few times. */
+function pollVideoWords(video) {
+  if (videoWordsTimer) clearTimeout(videoWordsTimer);
+  if (!video?.available || Number(video.coverage) >= 1 || videoWordsPolls >= VIDEO_WORDS_POLLS) return;
+  videoWordsPolls += 1;
+  videoWordsTimer = setTimeout(() => {
+    if (document.getElementById('page-tab')?.classList.contains('active')) loadPageWords();
+  }, VIDEO_WORDS_POLL_MS);
+}
+
 async function loadPageWords() {
   const sequence = ++pageLoadSequence;
   const display = await chrome.storage.sync.get({ hideKnownFurigana: DEFAULT_SETTINGS.hideKnownFurigana });
   if (sequence !== pageLoadSequence) return;
   let rawWords = [];
+  let video = null;
   const tab = await getActiveTab();
   if (sequence !== pageLoadSequence) return;
   if (tab?.id && isSupportedPageTab(tab.url)) {
     try {
       const response = await chrome.tabs.sendMessage(tab.id, { action: 'getPageWords' });
       rawWords = Array.isArray(response?.words) ? response.words : [];
+      video = await chrome.tabs.sendMessage(tab.id, { action: 'getVideoWords' }).catch(() => null);
     } catch (_) {
       // No content script on this page yet: nothing to list.
     }
   }
   if (sequence !== pageLoadSequence) return;
-  const words = collectPageWords(rawWords);
-  const states = words.length ? await sendWords({ action: 'wordsGetStates' }) : null;
+  const videoRaw = video?.available && Array.isArray(video.words) ? video.words : [];
+  const videoWords = collectPageWords(videoRaw);
+  // A Supporter's video words are listed with the page's, so they can be sorted into My Words.
+  const words = collectPageWords(video?.supporter === true ? rawWords.concat(videoRaw) : rawWords);
+  const states = words.length || videoWords.length ? await sendWords({ action: 'wordsGetStates' }) : null;
   const estimate = words.length ? await sendWords({ action: 'vocabGet' }) : null;
   if (sequence !== pageLoadSequence) return;
   hideKnownFurigana = display.hideKnownFurigana !== false;
@@ -1368,6 +1419,8 @@ async function loadPageWords() {
   pageStates = states?.success && states.states ? states.states : {};
   // Kana-only words are listed once the reader has them in My Words, as on EZFurigana.
   pageWords = words.filter((word) => !wordRules().kanaOnlyWord(word.word) || pageStates[word.id]);
+  renderVideoWords(video, videoWords.filter((word) => !wordRules().kanaOnlyWord(word.word) || pageStates[word.id]), pageStates);
+  pollVideoWords(video);
   renderPage();
 }
 

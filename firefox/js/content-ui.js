@@ -12,7 +12,7 @@ Outputs:
 - Language and light/dark theme attributes on extension-owned UI surfaces only.
 
 Side Effects:
-- Mutates the document body to add and remove toast elements.
+- Mutates the document body to add and remove toast elements; while the page is fullscreen, toasts and other extension surfaces (`mountTsukeruSurface`) go inside the fullscreen element, and move back when it ends.
 - Starts and clears toast timers for auto-dismiss and countdown updates.
 - Lazily initializes shared UI catalog messaging.
 - Reads the saved theme and listens for changes; tracks only the current tooltip, report dialog, and toast, releasing disconnected elements.
@@ -113,8 +113,45 @@ function _formatRemaining(ms) {
   return TsukeruUiMessages.formatDuration(ms, _getMessage);
 }
 
+// ── Fullscreen ───────────────────────────────────────────────────────────────
+// In fullscreen the browser draws only the fullscreen element, so Tsukeru's
+// popups, notices and dialogs are attached inside it meanwhile, and moved
+// back (to <html> or <body>) when fullscreen ends.
+const tsukeruFullscreenSurfaces = new Map(); // element -> 'html' | 'body'
+let tsukeruFullscreenBound = false;
+
+function tsukeruSurfaceParent(home = 'body') {
+  const fullscreen = document.fullscreenElement;
+  // A video that is fullscreen by itself cannot hold other elements.
+  if (fullscreen && !(fullscreen instanceof HTMLMediaElement) && !(fullscreen instanceof HTMLIFrameElement)) return fullscreen;
+  return home === 'html'
+    ? (document.documentElement || document.body)
+    : (document.body || document.documentElement);
+}
+
+/** Attach an extension surface where it can be seen, following fullscreen changes. */
+function mountTsukeruSurface(element, home = 'body') {
+  if (!element) return;
+  tsukeruFullscreenSurfaces.set(element, home);
+  const parent = tsukeruSurfaceParent(home);
+  if (parent && element.parentNode !== parent) parent.appendChild(element);
+  if (!tsukeruFullscreenBound) {
+    tsukeruFullscreenBound = true;
+    document.addEventListener('fullscreenchange', () => {
+      for (const [surface, surfaceHome] of tsukeruFullscreenSurfaces) {
+        if (!surface.isConnected) {
+          tsukeruFullscreenSurfaces.delete(surface);
+          continue;
+        }
+        const target = tsukeruSurfaceParent(surfaceHome);
+        if (target && surface.parentNode !== target) target.appendChild(surface);
+      }
+    });
+  }
+}
+
 function _getToastMount() {
-  return document.body || document.documentElement || null;
+  return tsukeruSurfaceParent('body');
 }
 
 function _applyToastStyles(toast) {
@@ -264,7 +301,7 @@ function showToast(message, options = {}) {
   toast.appendChild(closeButton);
 
   if (mount) {
-    mount.appendChild(toast);
+    mountTsukeruSurface(toast, 'body');
   }
 
   _activeToastId = toastId;

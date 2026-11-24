@@ -33,7 +33,7 @@ export const DEFAULT_SETTINGS = {
   gradeLevel: 4,
   furiganaType: 'hiragana',
   highlightMode: 'off',
-  watchDynamic: false,
+  watchDynamic: true,
   removeCustomStyling: false,
   rubySize: 0.65,
   rubyColor: '#475569',
@@ -917,9 +917,11 @@ export async function initSettingsForm() {
       }
       if (response?.ok) {
         pageApplied = true;
-        announce(response.pending
-          ? t('status_waiting_for_content', undefined, 'Waiting for page content...')
-          : t('status_furigana_applied', undefined, 'Furigana applied'));
+        announce(response.captionsOnly
+          ? t('status_captions_only', undefined, "This page has no Japanese text of its own. Furigana will show in the video's Japanese captions.")
+          : response.pending
+            ? t('status_waiting_for_content', undefined, 'Waiting for page content...')
+            : t('status_furigana_applied', undefined, 'Furigana applied'));
       } else {
         const structuredFailure = response?.rateLimitType
           || response?.errorCode === 'service_unavailable'

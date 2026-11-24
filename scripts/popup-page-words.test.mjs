@@ -53,6 +53,8 @@ function loadPopupVocab(browserName, {
       },
       tabs: {
         sendMessage: async (tabId, message) => {
+          // No video on these pages (video words: popup-video-words cases).
+          if (message.action === 'getVideoWords') return { available: false };
           pageRequests.push([tabId, message.action]);
           return getPageWords(message);
         },

@@ -66,6 +66,7 @@ function loadApi(browserName, route, { cacheLimit = 200, storage = null, manifes
       fetchSentenceAudio,
       fetchSentenceExplanation,
       getSupporterPerks,
+      cleanSupporterPerks,
     };
   `;
   const calls = [];
@@ -266,6 +267,7 @@ for (const browserName of ['chrome', 'firefox']) {
       sentence_explain: { free_weekly: 3, supporter_daily: 50 },
       // A feature the server switched off, and one with a figure that is not a count.
       translated_dictionary: null,
+      video_captions: { free_daily_minutes: 20, guest_preview_minutes: 3 },
       extra: { free_weekly: '<b>9</b>' },
     };
     const storage = memoryStorage();
@@ -280,9 +282,13 @@ for (const browserName of ['chrome', 'firefox']) {
       sentenceAudio: { free: 3, supporter: 570 },
       explain: { free: 3, supporter: 50 },
       dictionary: null,
+      captions: { free: 20, guest: 3, supporter: null },
     };
 
     assert.deepEqual(JSON.parse(JSON.stringify(await api.getSupporterPerks(now))), expected);
+    // An older server sends no caption minutes; the extension's own figures apply.
+    assert.deepEqual({ ...api.cleanSupporterPerks({ ...body, video_captions: undefined }).captions }, { free: 30, guest: 5, supporter: null });
+    assert.deepEqual({ ...api.cleanSupporterPerks({ ...body, video_captions: { free_daily_minutes: 99999, guest_preview_minutes: '5' } }).captions }, { free: 30, guest: 5, supporter: null });
     const call = calls.find(({ url }) => url.endsWith('/api/extension/supporter-perks'));
     assert.equal(call.options.credentials, 'omit');
     assert.equal(call.options.headers['x-tsukeru-supporter'], undefined, 'no account token');
